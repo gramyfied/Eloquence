@@ -1,0 +1,102 @@
+# ==========================================
+# ELOQUENCE PROJECT - GITIGNORE OPTIMISÉ
+# ==========================================
+
+# Dossiers temporaires spécifiques (identifiés)
+temp_*/
+fixes/
+backup/
+old/
+
+# Services - logs et données temporaires
+services/*/logs/
+services/*/temp/
+services/*/cache/
+
+# Frontend Flutter
+frontend/flutter_app/build/
+frontend/flutter_app/.dart_tool/
+frontend/flutter_app/.packages
+frontend/flutter_app/.pub-cache/
+frontend/flutter_app/.pub/
+
+# Backend Python
+services/api-backend/__pycache__/
+services/api-backend/*.pyc
+services/api-backend/.pytest_cache/
+
+# Agent IA
+services/eloquence-agent/__pycache__/
+services/eloquence-agent/*.pyc
+
+# Modèles IA (trop volumineux)
+models/
+*.bin
+*.onnx
+*.pt
+*.model
+
+# Configuration sensible - SÉCURITÉ CRITIQUE
+.env
+.env.*
+!.env.example
+secrets.yaml
+secrets.json
+config/secrets/
+*.key
+*.pem
+
+# Document de référence des clés (CONFIDENTIEL)
+CLES_API_ELOQUENCE_REFERENCE.md
+MES_CLES_API.txt
+STATUT_CLES_ELOQUENCE.md
+*.p12
+*.pfx
+
+# Fichiers avec clés API potentielles
+*api_key*
+*secret*
+*token*
+*credential*
+!*example*
+!*template*
+
+# Logs
+*.log
+logs/
+
+# Tests
+test_results/
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fichiers volumineux spécifiques (dépendances Python, caches de modèles)
+services/api-backend/.local/
+services/whisper-stt/.cache/
+
+# Fichiers de build et cache supplémentaires
+*.dill
+*.cache.dill.track.dill
+kernel_blob.bin
+
+# Fichiers APK et binaires volumineux (gérés par LFS)
+*.apk
+*.so
+
+# Cache Docker et volumes
+.docker/
+docker-volumes/
+
+# Fichiers de diagnostic temporaires
+test_*.py
+diagnostic_*.py
+vad_diagnostic.py
+*_diagnostic.py

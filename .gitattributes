@@ -1,0 +1,46 @@
+# Git LFS Configuration pour 25Eloquence-Finalisation
+
+# Fichiers binaires volumineux Flutter
+*.apk filter=lfs diff=lfs merge=lfs -text
+*.so filter=lfs diff=lfs merge=lfs -text
+*.dill filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+
+# Fichiers de build Flutter
+frontend/flutter_app/build/**/*.apk filter=lfs diff=lfs merge=lfs -text
+frontend/flutter_app/build/**/*.so filter=lfs diff=lfs merge=lfs -text
+frontend/flutter_app/build/**/*.dill filter=lfs diff=lfs merge=lfs -text
+frontend/flutter_app/build/**/*.bin filter=lfs diff=lfs merge=lfs -text
+
+# Fichiers Dart Tool
+frontend/flutter_app/.dart_tool/**/*.dill filter=lfs diff=lfs merge=lfs -text
+
+# Autres fichiers binaires volumineux
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.tar filter=lfs diff=lfs merge=lfs -text
+*.rar filter=lfs diff=lfs merge=lfs -text
+*.7z filter=lfs diff=lfs merge=lfs -text
+
+# Fichiers audio/vidéo
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.avi filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+
+# Fichiers images volumineux
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.ai filter=lfs diff=lfs merge=lfs -text
+*.sketch filter=lfs diff=lfs merge=lfs -text
+
+# Modèles et données
+*.model filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.pb filter=lfs diff=lfs merge=lfs -text
+
+# Bases de données
+*.db filter=lfs diff=lfs merge=lfs -text
+*.sqlite filter=lfs diff=lfs merge=lfs -text
+*.sqlite3 filter=lfs diff=lfs merge=lfs -text

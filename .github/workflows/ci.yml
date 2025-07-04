@@ -1,0 +1,40 @@
+# Workflow d'intégration continue (CI)
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.x'
+
+    - name: Get Flutter dependencies
+      run: flutter pub get
+
+    - name: Analyze Flutter code
+      run: flutter analyze
+
+    - name: Run Flutter tests
+      run: flutter test
+
+    - name: Build Docker images
+      run: docker-compose build --no-cache
+
+    - name: Run Backend tests
+      run: |
+        docker-compose up -d api-backend
+        sleep 10 # Give service time to start
+        docker-compose exec api-backend python -m pytest tests/ -v

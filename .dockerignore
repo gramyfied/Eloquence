@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+.gitmodules
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.tox/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Node.js (si vous avez des outils frontend dans les mêmes dossiers)
+node_modules/
+npm-debug.log

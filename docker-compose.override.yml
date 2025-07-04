@@ -1,0 +1,45 @@
+services:
+  api-backend:
+    build:
+      context: .
+      dockerfile: ./services/api-backend/Dockerfile.dev
+    volumes:
+      - ./services/api-backend:/app
+      # On exclut node_modules et __pycache__ du volume pour de meilleures performances
+      - /app/node_modules
+      - /app/__pycache__
+    # La commande gunicorn démarre le serveur avec hot-reload.
+    command: gunicorn --workers 1 --bind 0.0.0.0:8000 --reload app:app
+
+  whisper-stt:
+    build:
+      context: .
+      dockerfile: ./services/whisper-stt/Dockerfile.dev
+    volumes:
+      - ./services/whisper-stt:/app
+      - ./services/api-backend/api/whisper_asr_service.py:/app/whisper_asr_service.py
+      - /app/__pycache__
+    command: gunicorn --workers 1 --bind 0.0.0.0:8001 --reload whisper_asr_service:app
+
+  openai-tts:
+    build:
+      context: .
+      dockerfile: ./services/api-backend/openai-tts/Dockerfile.dev
+    volumes:
+      - ./services/api-backend/services/tts_service_openai.py:/app/tts_service_openai.py
+      - /app/__pycache__
+    command: uvicorn tts_service_openai:app --host 0.0.0.0 --port 5002 --reload
+
+  eloquence-agent-v1:
+    build:
+      context: .
+      dockerfile: ./services/api-backend/Dockerfile.agent.dev
+    volumes:
+      # On monte le dossier qui contient le code de l'agent
+      - ./services/api-backend:/app
+      - /app/__pycache__
+    # La commande utilise watchfiles pour relancer le script Python à chaque modification
+    # Le `.` surveille le répertoire courant du conteneur, qui est /app
+    # Utilise l'implémentation minimale avec VoiceAssistant pour éviter le bug AudioEmitter
+    command: >
+      sh -c "watchfiles 'python -u services/real_time_voice_agent_minimal.py dev' ."

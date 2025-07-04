@@ -1,0 +1,21 @@
+#!/bin/sh
+# wait-for-it.sh: wait for a host and port to be available
+
+set -e
+
+host="$1"
+shift
+port="$1"
+shift
+if [ "$1" = '--' ]; then
+  shift
+fi
+cmd="$@"
+
+until nc -z "$host" "$port"; do
+  >&2 echo "LiveKit is unavailable - sleeping"
+  sleep 1
+done
+
+>&2 echo "LiveKit is up - executing command"
+exec "$@"
