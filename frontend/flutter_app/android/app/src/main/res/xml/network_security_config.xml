@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Configuration pour le développement - permettre le trafic HTTP local -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Permettre le trafic HTTP/WebSocket en clair pour les IPs locales et Docker -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- IPs Docker -->
+        <domain includeSubdomains="true">172.16.0.0/12</domain>
+        <domain includeSubdomains="false">172.18.0.5</domain>
+        <domain includeSubdomains="false">172.19.0.3</domain>
+        
+        <!-- IP réseau local -->
+        <domain includeSubdomains="false">192.168.1.44</domain>
+        <domain includeSubdomains="true">192.168.1.0/24</domain>
+        
+        <!-- Localhost et émulateur -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        
+        <!-- Domaines LiveKit -->
+        <domain includeSubdomains="true">livekit.cloud</domain>
+    </domain-config>
+</network-security-config>

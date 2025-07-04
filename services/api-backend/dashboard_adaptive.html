@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Systeme Adaptatif</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .metric { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .value { font-size: 1.5em; font-weight: bold; }
+        .good { color: green; }
+        .warning { color: orange; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Systeme Adaptatif LiveKit</h1>
+    
+    <button onclick="updateStatus()">Actualiser</button>
+    <button onclick="testSystem()">Tester</button>
+    
+    <div class="metric">
+        <div>Statut: <span id="status" class="value">--</span></div>
+    </div>
+    
+    <div class="metric">
+        <div>Efficacite: <span id="efficiency" class="value">--</span></div>
+        <div>Objectif: > 95%</div>
+    </div>
+    
+    <div class="metric">
+        <div>Profil: <span id="profile" class="value">--</span></div>
+    </div>
+    
+    <div class="metric">
+        <div>Sessions: <span id="sessions" class="value">--</span></div>
+    </div>
+    
+    <div class="metric">
+        <div>Amelioration: <span id="improvement" class="value">--</span></div>
+    </div>
+    
+    <div id="log" style="margin-top: 20px; padding: 10px; background: #f0f0f0;">
+        Chargement...
+    </div>
+
+    <script>
+        async function updateStatus() {
+            try {
+                const response = await fetch('http://localhost:8000/adaptive/status');
+                const data = await response.json();
+                
+                document.getElementById('status').textContent = data.status;
+                document.getElementById('efficiency').textContent = (data.efficiency || 0).toFixed(1) + '%';
+                document.getElementById('profile').textContent = data.profile || 'N/A';
+                document.getElementById('sessions').textContent = data.sessions || 0;
+                document.getElementById('improvement').textContent = (data.improvement || 0).toFixed(1) + 'x';
+                
+                // Couleurs
+                const eff = data.efficiency || 0;
+                const effElement = document.getElementById('efficiency');
+                if (eff > 95) effElement.className = 'value good';
+                else if (eff > 80) effElement.className = 'value warning';
+                else effElement.className = 'value error';
+                
+                document.getElementById('log').textContent = 
+                    'Derniere mise a jour: ' + new Date().toLocaleTimeString() + '\n' +
+                    'Statut: ' + data.status + '\n' +
+                    'Disponible: ' + (data.available ? 'Oui' : 'Non');
+                
+            } catch (error) {
+                document.getElementById('log').textContent = 'Erreur: ' + error.message;
+            }
+        }
+        
+        async function testSystem() {
+            try {
+                const response = await fetch('http://localhost:8000/adaptive/test', {method: 'POST'});
+                const data = await response.json();
+                
+                document.getElementById('log').textContent = 
+                    'Test: ' + data.status + '\n' +
+                    'Message: ' + (data.message || data.error);
+                    
+            } catch (error) {
+                document.getElementById('log').textContent = 'Erreur test: ' + error.message;
+            }
+        }
+        
+        // Mise à jour automatique
+        setInterval(updateStatus, 15000);
+        updateStatus();
+    </script>
+</body>
+</html>

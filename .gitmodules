@@ -1,0 +1,4 @@
+[submodule "frontend/flutter_app"]
+	path = frontend/flutter_app
+	url = https://github.com/gramyfied/eloquence-flutter-frontend.git
+	branch = feature/new-branch-test

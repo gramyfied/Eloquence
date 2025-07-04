@@ -1,0 +1,66 @@
+# Dockerfile Agent LiveKit v1.x - OPTIMISÉ POUR LE DÉVELOPPEMENT
+
+# --- Base Stage ---
+# Utilise une image complète pour avoir les outils de build nécessaires
+FROM python:3.11 as base
+
+# Variables d'environnement
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libsndfile1-dev \
+    ffmpeg \
+    git \
+    curl \
+    wget \
+    pkg-config \
+    libasound2-dev \
+    libpulse-dev \
+    libssl-dev \
+    libffi-dev \
+    libopus-dev \
+    libvpx-dev \
+    libx264-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswresample-dev \
+    libsrtp2-dev \
+    libwebrtc-audio-processing-dev \
+    procps \
+    netcat-openbsd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation manuelle de websocat
+RUN wget -qO /usr/local/bin/websocat "https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl" && \
+    chmod +x /usr/local/bin/websocat
+
+# Création du répertoire de travail
+WORKDIR /app
+
+# Copie et installation des dépendances Python
+# C'est la couche qui sera mise en cache. Elle ne sera reconstruite
+# que si le fichier requirements.agent.v1.txt change.
+COPY services/api-backend/requirements.agent.v1.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir watchfiles
+
+# --- Development Stage ---
+# En développement, nous nous arrêtons ici.
+# Le code source sera monté via un volume dans docker-compose.override.yml.
+
+# Création d'un utilisateur non-root pour la sécurité
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Le point d'entrée sera défini dans docker-compose.override.yml
+# pour permettre le hot-reloading.
+CMD ["tail", "-f", "/dev/null"]

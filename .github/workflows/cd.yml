@@ -1,0 +1,36 @@
+# Workflow de déploiement continu (CD)
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+      - 'docker-compose.yml'
+      - 'Dockerfile.*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-test # Dépend du succès du CI
+    environment:
+      name: production # Environnement de déploiement
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Deploy to Server
+      run: echo "Déploiement sur le serveur de production..."
+      # Ajoutez ici votre logique de déploiement réelle, ex: SSH, rsync, ou commande de déploiement cloud
+      # Exemple:
+      # - name: Deploy with SSH
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USERNAME }}
+      #     key: ${{ secrets.SSH_KEY }}
+      #     script: |
+      #       cd /path/to/your/app
+      #       docker-compose pull
+      #       docker-compose up -d
