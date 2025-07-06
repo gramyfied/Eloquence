@@ -17,6 +17,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Récupérer les variables d'environnement
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+logger.info(f"🔧 [CONFIG] LiveKit URL: {LIVEKIT_URL}")
+logger.info(f"🔧 [CONFIG] LiveKit API Key: {LIVEKIT_API_KEY}")
+logger.info(f"🔧 [CONFIG] LiveKit API Secret: {'*' * 10 if LIVEKIT_API_SECRET else 'NOT SET'}")
+logger.info(f"🔧 [CONFIG] OpenAI API Key: {'sk-proj-...' + OPENAI_API_KEY[-4:] if OPENAI_API_KEY else 'NOT SET'}")
+
 async def entrypoint(ctx: JobContext):
     """
     Point d'entrée minimal pour tester le TTS
@@ -79,4 +90,13 @@ async def entrypoint(ctx: JobContext):
     logger.info("🎤 [TTS] Message de bienvenue envoyé")
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    # Configurer les options du worker avec les paramètres de connexion
+    worker_options = WorkerOptions(
+        entrypoint_fnc=entrypoint,
+        api_key=LIVEKIT_API_KEY,
+        api_secret=LIVEKIT_API_SECRET,
+        ws_url=LIVEKIT_URL
+    )
+    
+    logger.info("🚀 [MAIN] Démarrage du worker avec les options configurées")
+    cli.run_app(worker_options)
