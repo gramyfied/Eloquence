@@ -13,7 +13,7 @@ redis:
 
 keys:
   # Clés API pour développement (à changer en production)
-  devkey: livekit_secret_key_32_characters_long_for_security_2025
+  devkey: devsecret123456789abcdef0123456789abcdef
 
 # Configuration TURN pour connectivité
 turn:

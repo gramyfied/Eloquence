@@ -30,7 +30,8 @@ services/eloquence-agent/__pycache__/
 services/eloquence-agent/*.pyc
 
 # Modèles IA (trop volumineux)
-models/
+ai_models/
+ml_models/
 *.bin
 *.onnx
 *.pt
