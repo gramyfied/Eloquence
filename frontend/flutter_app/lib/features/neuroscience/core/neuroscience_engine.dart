@@ -112,6 +112,7 @@ class NeuroscienceEngine {
         completionRate: 1.0,
         score: 75.0,
         skillsData: const [],
+        timestamp: DateTime.now(),
       );
       
       // Mettre à jour la progression

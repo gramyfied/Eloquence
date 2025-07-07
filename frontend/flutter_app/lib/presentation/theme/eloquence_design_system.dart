@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
+import 'dart:ui';
 
 // Palette de Couleurs STRICTE
 class EloquenceColors {
@@ -67,4 +68,35 @@ class EloquenceSpacing {
   static const double lg = 24.0;
   static const double xl = 32.0;
   static const double xxl = 48.0;
+}
+
+// Rayons de bordure
+class EloquenceRadii {
+  static final BorderRadius card = BorderRadius.circular(16.0);
+  static final BorderRadius button = BorderRadius.circular(12.0);
+  static final BorderRadius circle = BorderRadius.circular(100.0);
+}
+
+// Effets visuels
+class EloquenceEffects {
+  static final ImageFilter blur = ImageFilter.blur(sigmaX: 15, sigmaY: 15);
+}
+
+// Bordures
+class EloquenceBorders {
+  static final Border card = Border.all(
+    color: EloquenceColors.glassBorder,
+    width: 1,
+  );
+}
+
+// Ombres
+class EloquenceShadows {
+  static final List<BoxShadow> card = [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.1),
+      blurRadius: 20,
+      offset: const Offset(0, 8),
+    ),
+  ];
 }

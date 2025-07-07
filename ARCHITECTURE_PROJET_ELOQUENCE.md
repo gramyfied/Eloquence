@@ -173,6 +173,27 @@ lib/
     └── usecases/          # Cas d'usage
 ```
 
+### 🎨 Design System Eloquence
+
+Le Design System d'Eloquence est au cœur de l'expérience utilisateur. Il garantit une cohérence visuelle et ergonomique sur toute la plateforme, en s'appuyant sur des principes de design modernes et une identité de marque forte.
+
+**Philosophie :**
+- **Clarté et Focus** : Une interface épurée qui met en avant le contenu et l'interaction vocale.
+- **Esthétique Futuriste** : Utilisation d'effets de "glassmorphisme" pour une sensation de profondeur et de modernité.
+- **Ergonomie "Thumb-First"** : Les interactions principales sont positionnées dans la "thumb zone" pour une utilisation à une main confortable.
+
+**Implémentation Technique :**
+- **Fichier de Constantes** : [`eloquence_design_system.dart`](./frontend/flutter_app/lib/presentation/theme/eloquence_design_system.dart) centralise toutes les valeurs du design (couleurs, typographies, espacements).
+- **Fichier de Composants** : [`eloquence_components.dart`](./frontend/flutter_app/lib/presentation/widgets/eloquence_components.dart) regroupe tous les widgets réutilisables.
+
+**Composants Clés :**
+- `EloquenceScaffold`: Le `Scaffold` de base de l'application, intégrant le fond `navy` et la navigation par défaut.
+- `EloquenceGlassCard`: Le conteneur principal pour tout contenu, avec effet de flou et bordures lumineuses.
+- `EloquenceMicrophone`: Le bouton central animé pour l'enregistrement, avec un effet de halo pulsant.
+- `EloquenceProgressBar`: Une barre de progression personnalisée avec un dégradé `cyan-violet`.
+- `EloquenceWaveforms`: Des formes d'ondes animées pour visualiser l'activité audio.
+- `EloquenceBottomNav`: Une barre de navigation inférieure avec effet de "glassmorphisme".
+
 ### 🧠 Système Neuroscientifique
 
 #### Moteur d'Engagement

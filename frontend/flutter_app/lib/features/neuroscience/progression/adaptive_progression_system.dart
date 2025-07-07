@@ -4,6 +4,7 @@ import '../core/models/user_context.dart';
 import '../core/models/user_performance.dart';
 import '../core/models/user_profile.dart';
 import 'models/progression_path.dart';
+import '../../../domain/entities/exercise.dart';
 
 /// Système qui adapte dynamiquement le parcours d'apprentissage
 class AdaptiveProgressionSystem {
@@ -120,10 +121,9 @@ class AdaptiveProgressionSystem {
         id: 'default_exercise_1',
         title: 'Exercice de prononciation de base',
         description: 'Un exercice simple pour améliorer votre prononciation',
-        type: 'pronunciation',
-        targetSkill: 'pronunciation',
-        difficulty: 0.5,
-        estimatedDuration: 5,
+        type: ExerciseType.pronunciation,
+        difficulty: ExerciseDifficulty.beginner,
+        durationInMinutes: 5,
       ),
     ];
     
@@ -800,10 +800,9 @@ class ContentGenerator {
           id: 'default_exercise',
           title: 'Exercice de prononciation',
           description: 'Un exercice pour améliorer votre prononciation',
-          type: 'pronunciation',
-          targetSkill: 'pronunciation',
-          difficulty: 0.5,
-          estimatedDuration: 5,
+          type: ExerciseType.pronunciation,
+          difficulty: ExerciseDifficulty.beginner,
+          durationInMinutes: 5,
         ),
       ];
     }
@@ -826,51 +825,58 @@ class ContentGenerator {
   
   /// Génère un exercice pour une étape
   Exercise _generateExerciseForStep(LearningStep step) {
-    // Générer un identifiant unique
     final id = 'exercise_${step.type}_${step.targetSkill}_${DateTime.now().millisecondsSinceEpoch}';
+    final skillName = _getSkillName(step.targetSkill);
     
-    // Générer un titre
     String title;
+    String description;
+
     switch (step.type) {
       case 'warmup':
         title = 'Échauffement vocal';
-        break;
-      case 'practice':
-        title = 'Exercice de ${_getSkillName(step.targetSkill)}';
-        break;
-      case 'conclusion':
-        title = 'Conclusion et récapitulatif';
-        break;
-      default:
-        title = 'Exercice de ${_getSkillName(step.targetSkill)}';
-    }
-    
-    // Générer une description
-    String description;
-    switch (step.type) {
-      case 'warmup':
         description = 'Un exercice court pour préparer votre voix et vous mettre en condition';
         break;
       case 'practice':
-        description = 'Un exercice pour améliorer votre ${_getSkillName(step.targetSkill)}';
+        title = 'Exercice de $skillName';
+        description = 'Un exercice pour améliorer votre $skillName';
         break;
       case 'conclusion':
+        title = 'Conclusion et récapitulatif';
         description = 'Un récapitulatif de votre session et des points à retenir';
         break;
       default:
+        title = 'Exercice de $skillName';
         description = 'Un exercice pour améliorer vos compétences vocales';
     }
-    
-    // Créer l'exercice
+
     return Exercise(
       id: id,
       title: title,
       description: description,
-      type: step.type,
-      targetSkill: step.targetSkill,
-      difficulty: step.difficulty,
-      estimatedDuration: step.estimatedDuration,
+      type: _mapSkillToExerciseType(step.targetSkill),
+      difficulty: _mapDifficulty(step.difficulty),
+      durationInMinutes: step.estimatedDuration,
     );
+  }
+
+  ExerciseType _mapSkillToExerciseType(String skill) {
+    switch (skill) {
+      case 'pronunciation':
+        return ExerciseType.pronunciation;
+      case 'fluency':
+        return ExerciseType.fluency;
+      case 'intonation':
+        return ExerciseType.intonation;
+      default:
+        return ExerciseType.pronunciation; // Fallback
+    }
+  }
+
+  ExerciseDifficulty _mapDifficulty(double difficulty) {
+    if (difficulty < 0.3) return ExerciseDifficulty.beginner;
+    if (difficulty < 0.6) return ExerciseDifficulty.intermediate;
+    if (difficulty < 0.8) return ExerciseDifficulty.advanced;
+    return ExerciseDifficulty.expert;
   }
   
   /// Obtient le nom d'une compétence
