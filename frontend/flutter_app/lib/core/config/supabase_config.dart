@@ -13,7 +13,7 @@ class SupabaseConfig {
       lineLength: 80,
       colors: true,
       printEmojis: true,
-      printTime: true,
+      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
   
@@ -32,7 +32,7 @@ class SupabaseConfig {
       
       // Vérifier la connexion
       try {
-        final response = await client.from('exercises').select('id').limit(1);
+        await client.from('exercises').select('id').limit(1);
         _logger.i('Connexion à Supabase établie avec succès');
       } catch (e) {
         _logger.e('Erreur de connexion à Supabase: $e');

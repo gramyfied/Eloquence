@@ -118,15 +118,15 @@ class _GlowMicrophoneButtonState extends State<GlowMicrophoneButton> with Single
                     BoxShadow(
                       color: (widget.isRecording
                           ? DarkTheme.accentCyan
-                          : DarkTheme.primaryPurple).withOpacity(0.5),
+                          : DarkTheme.primaryPurple).withAlpha(128),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
                     // Effet de lueur animé
                     if (widget.isRecording)
                       BoxShadow(
-                        color: DarkTheme.accentCyan.withOpacity(
-                          _glowAnimation.value,
+                        color: DarkTheme.accentCyan.withAlpha(
+                          (_glowAnimation.value * 255).toInt(),
                         ),
                         blurRadius: _blurAnimation.value,
                         spreadRadius: _spreadAnimation.value,
@@ -134,8 +134,8 @@ class _GlowMicrophoneButtonState extends State<GlowMicrophoneButton> with Single
                     // Seconde couche de lueur pour un effet plus prononcé
                     if (widget.isRecording)
                       BoxShadow(
-                        color: DarkTheme.accentPink.withOpacity(
-                          _glowAnimation.value * 0.7,
+                        color: DarkTheme.accentPink.withAlpha(
+                          (_glowAnimation.value * 0.7 * 255).toInt(),
                         ),
                         blurRadius: _blurAnimation.value * 0.8,
                         spreadRadius: _spreadAnimation.value * 0.6,
@@ -154,7 +154,7 @@ class _GlowMicrophoneButtonState extends State<GlowMicrophoneButton> with Single
                           size: widget.size * 0.5,
                           shadows: [
                             Shadow(
-                              color: Colors.black.withOpacity(0.3),
+                              color: Colors.black.withAlpha(77),
                               blurRadius: 5,
                               offset: const Offset(0, 2),
                             ),

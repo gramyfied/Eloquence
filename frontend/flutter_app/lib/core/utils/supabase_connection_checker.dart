@@ -11,7 +11,7 @@ class SupabaseConnectionChecker {
       lineLength: 80,
       colors: true,
       printEmojis: true,
-      printTime: true,
+      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
 
@@ -25,35 +25,13 @@ class SupabaseConnectionChecker {
       if (isConnected) {
         _logger.i('✅ Connexion à Supabase établie avec succès');
         _logger.d('URL: ${SupabaseConfig.supabaseUrl}');
-        
-        if (kDebugMode) {
-          print('====================================');
-          print('✅ Connexion à Supabase établie avec succès');
-          print('URL: ${SupabaseConfig.supabaseUrl}');
-          print('====================================');
-        }
       } else {
         _logger.e('❌ Échec de la connexion à Supabase');
-        
-        if (kDebugMode) {
-          print('====================================');
-          print('❌ Échec de la connexion à Supabase');
-          print('URL: ${SupabaseConfig.supabaseUrl}');
-          print('Vérifiez vos informations de connexion et votre connexion internet');
-          print('====================================');
-        }
       }
       
       return isConnected;
     } catch (e) {
       _logger.e('❌ Erreur lors de la vérification de la connexion à Supabase: $e');
-      
-      if (kDebugMode) {
-        print('====================================');
-        print('❌ Erreur lors de la vérification de la connexion à Supabase');
-        print('Erreur: $e');
-        print('====================================');
-      }
       
       return false;
     }
@@ -62,13 +40,13 @@ class SupabaseConnectionChecker {
   /// Affiche les informations de connexion à Supabase
   static void printConnectionInfo() {
     if (kDebugMode) {
-      print('====================================');
-      print('INFORMATIONS DE CONNEXION SUPABASE');
-      print('====================================');
-      print('URL: ${SupabaseConfig.supabaseUrl}');
-      print('Projet: zjhzwzgslkrociuootph');
-      print('Région: eu-west-3 (Paris)');
-      print('====================================');
+      _logger.i('====================================');
+      _logger.i('INFORMATIONS DE CONNEXION SUPABASE');
+      _logger.i('====================================');
+      _logger.i('URL: ${SupabaseConfig.supabaseUrl}');
+      _logger.i('Projet: zjhzwzgslkrociuootph');
+      _logger.i('Région: eu-west-3 (Paris)');
+      _logger.i('====================================');
     }
   }
 }

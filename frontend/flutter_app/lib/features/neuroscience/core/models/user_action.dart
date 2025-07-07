@@ -14,7 +14,7 @@ class UserAction extends Equatable {
 
   factory UserAction.fromPerformance(UserPerformance performance) {
     // Un exemple simple, peut être beaucoup plus complexe
-    return UserAction(
+    return const UserAction(
       type: 'completed_exercise',
       exerciseType: 'generic', // Placeholder
       expectedDuration: 0, // Placeholder

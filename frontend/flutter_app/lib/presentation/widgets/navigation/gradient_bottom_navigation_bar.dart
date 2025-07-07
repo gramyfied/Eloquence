@@ -21,7 +21,7 @@ class GradientBottomNavigationBar extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    final bgColor = backgroundColor ?? DarkTheme.backgroundMedium.withOpacity(0.8);
+    final bgColor = backgroundColor ?? DarkTheme.backgroundMedium.withAlpha(204);
     
     return Container(
       height: height,
@@ -31,7 +31,7 @@ class GradientBottomNavigationBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withAlpha(51),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -77,9 +77,9 @@ class GradientBottomNavigationBar extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                selectedColor.withOpacity(0.0),
-                selectedColor.withOpacity(0.1),
-                selectedColor.withOpacity(0.2),
+                selectedColor.withAlpha(0),
+                selectedColor.withAlpha(26),
+                selectedColor.withAlpha(51),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
@@ -112,7 +112,7 @@ class GradientBottomNavigationBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: selectedColor.withOpacity(0.5),
+                        color: selectedColor.withAlpha(128),
                         blurRadius: 4,
                         spreadRadius: 1,
                       ),
@@ -130,7 +130,7 @@ class GradientBottomNavigationBar extends StatelessWidget {
                 shadows: isSelected
                     ? [
                         Shadow(
-                          color: selectedColor.withOpacity(0.7),
+                          color: selectedColor.withAlpha(179),
                           blurRadius: 10,
                         ),
                       ]
@@ -149,7 +149,7 @@ class GradientBottomNavigationBar extends StatelessWidget {
                   shadows: isSelected
                       ? [
                           Shadow(
-                            color: selectedColor.withOpacity(0.7),
+                            color: selectedColor.withAlpha(179),
                             blurRadius: 5,
                           ),
                         ]

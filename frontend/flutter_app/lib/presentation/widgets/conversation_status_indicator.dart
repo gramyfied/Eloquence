@@ -173,14 +173,14 @@ class _ConversationStatusIndicatorState extends State<ConversationStatusIndicato
                   height: widget.size,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: stateColor.withOpacity(0.2),
+                    color: stateColor.withAlpha(51),
                     border: Border.all(
                       color: stateColor,
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: stateColor.withOpacity(0.3),
+                        color: stateColor.withAlpha(77),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),

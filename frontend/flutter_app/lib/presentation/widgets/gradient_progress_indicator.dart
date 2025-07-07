@@ -40,7 +40,7 @@ class GradientProgressIndicator extends StatelessWidget {
               height: size,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withAlpha(26),
               ),
             ),
           ),
@@ -159,7 +159,7 @@ class _GlowEffectPainter extends CustomPainter {
     
     // Dessiner l'effet de lueur
     final glowPaint = Paint()
-      ..color = Colors.white.withOpacity(0.7)
+      ..color = Colors.white.withAlpha(179)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth * 0.7
       ..strokeCap = StrokeCap.round

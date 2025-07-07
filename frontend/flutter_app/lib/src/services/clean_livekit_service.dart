@@ -43,7 +43,7 @@ class CleanLiveKitService extends ChangeNotifier {
       }
 
       // Configuration pour mobile (TEST: désactiver adaptiveStream et dynacast pour diagnostiquer les underruns)
-      final roomOptions = RoomOptions(
+      const roomOptions = RoomOptions(
         adaptiveStream: true, // Réactivé pour la performance
         dynacast: true,       // Réactivé pour la performance
         // Configuration optimisée pour mobile
@@ -82,7 +82,7 @@ class CleanLiveKitService extends ChangeNotifier {
           _logger.w('RoomReconnectingEvent: Reconnecting to LiveKit room...');
         });
 
-      final connectOptions = ConnectOptions(
+      const connectOptions = ConnectOptions(
         autoSubscribe: true,
         // Configuration ICE pour appareil physique ET Docker avec TURN servers
         rtcConfiguration: const RTCConfiguration(
@@ -179,7 +179,7 @@ class CleanLiveKitService extends ChangeNotifier {
         _logger.i('[DIAGNOSTIC] Local participant identity: ${_room!.localParticipant!.identity}');
         return;
       }
-      await Future.delayed(Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
     
     _logger.e('[DIAGNOSTIC] Local participant still null after 10 seconds!');
@@ -440,7 +440,7 @@ class CleanLiveKitService extends ChangeNotifier {
       _logger.i('🔊 [STATS] Track kind: ${audioTrack.kind}');
 
       // Retarder la récupération des stats pour laisser le temps au flux de s'établir
-      await Future.delayed(Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 3));
 
       if (_room != null) {
         final stats = await _room!.engine.subscriber?.pc?.getStats() ?? [];
@@ -501,7 +501,7 @@ class CleanLiveKitService extends ChangeNotifier {
       
       // Nouveau Timer périodique pour vérifier la continuité du track et les stats
       // Il va désormais logger les stats complètes à chaque itération
-      Timer.periodic(Duration(seconds: 5), (timer) async {
+      Timer.periodic(const Duration(seconds: 5), (timer) async {
         if (timer.tick <= 3) {
           _logger.d('🐛 🔊 [STATS - Périodique] Track actif: ${audioTrack.sid}, muted: ${audioTrack.muted}');
           if (_room != null) {

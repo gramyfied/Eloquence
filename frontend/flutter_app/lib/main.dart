@@ -30,7 +30,7 @@ void main() async {
   logger.i('main', '[DIAGNOSTIC] IP configurée: ${AppConfig.devServerIP}');
   
   try {
-    final testUrl = 'http://${AppConfig.devServerIP}:5002/health';
+    const testUrl = 'http://${AppConfig.devServerIP}:5002/health';
     logger.i('main', '[DIAGNOSTIC] Test de connexion à: $testUrl');
     
     final response = await http.get(

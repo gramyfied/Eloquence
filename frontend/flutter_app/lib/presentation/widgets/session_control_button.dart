@@ -108,7 +108,7 @@ class _SessionControlButtonState extends State<SessionControlButton> with Single
                     colors: widget.isSessionActive
                         ? [DarkTheme.accentCyan, DarkTheme.primaryBlue] // Session active - bleu/cyan
                         : widget.isConnecting
-                            ? [DarkTheme.primaryPurple.withOpacity(0.7), DarkTheme.primaryBlue.withOpacity(0.7)] // Connexion - atténué
+                            ? [DarkTheme.primaryPurple.withAlpha(179), DarkTheme.primaryBlue.withAlpha(179)] // Connexion - atténué
                             : [DarkTheme.primaryPurple, DarkTheme.primaryBlue], // Inactif - violet/bleu
                   ),
                   boxShadow: [
@@ -116,15 +116,15 @@ class _SessionControlButtonState extends State<SessionControlButton> with Single
                     BoxShadow(
                       color: (widget.isSessionActive
                           ? DarkTheme.accentCyan
-                          : DarkTheme.primaryPurple).withOpacity(0.5),
+                          : DarkTheme.primaryPurple).withAlpha(128),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
                     // Effet de lueur animé pour session active
                     if (widget.isSessionActive)
                       BoxShadow(
-                        color: DarkTheme.accentCyan.withOpacity(
-                          _glowAnimation.value,
+                        color: DarkTheme.accentCyan.withAlpha(
+                          (_glowAnimation.value * 255).toInt(),
                         ),
                         blurRadius: _blurAnimation.value,
                         spreadRadius: _spreadAnimation.value,
@@ -132,8 +132,8 @@ class _SessionControlButtonState extends State<SessionControlButton> with Single
                     // Seconde couche de lueur pour session active
                     if (widget.isSessionActive)
                       BoxShadow(
-                        color: DarkTheme.primaryBlue.withOpacity(
-                          _glowAnimation.value * 0.7,
+                        color: DarkTheme.primaryBlue.withAlpha(
+                          (_glowAnimation.value * 0.7 * 255).toInt(),
                         ),
                         blurRadius: _blurAnimation.value * 0.8,
                         spreadRadius: _spreadAnimation.value * 0.6,
@@ -152,7 +152,7 @@ class _SessionControlButtonState extends State<SessionControlButton> with Single
                           size: widget.size * 0.5,
                           shadows: [
                             Shadow(
-                              color: Colors.black.withOpacity(0.3),
+                              color: Colors.black.withAlpha(77),
                               blurRadius: 5,
                               offset: const Offset(0, 2),
                             ),
