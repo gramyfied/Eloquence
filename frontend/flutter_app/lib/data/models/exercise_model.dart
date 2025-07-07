@@ -1,5 +1,4 @@
 import 'package:eloquence_2_0/domain/entities/exercise.dart';
-import 'package:flutter/foundation.dart'; // Pour @required ou @non_nullable si nécessaire, mais souvent implicite
 
 class ExerciseModel extends Exercise {
   const ExerciseModel({
@@ -65,22 +64,6 @@ class ExerciseModel extends Exercise {
       durationInMinutes: entity.durationInMinutes,
       isCompleted: entity.isCompleted,
       lastAttemptDate: entity.lastAttemptDate,
-    );
-  }
-
-  // Convert an ExerciseType string to enum
-  static ExerciseType _parseExerciseType(String typeString) {
-    return ExerciseType.values.firstWhere(
-      (e) => e.toString().split('.').last == typeString,
-      orElse: () => ExerciseType.conversation, // Default if not found
-    );
-  }
-
-  // Convert an ExerciseDifficulty string to enum
-  static ExerciseDifficulty _parseExerciseDifficulty(String difficultyString) {
-    return ExerciseDifficulty.values.firstWhere(
-      (e) => e.toString().split('.').last == difficultyString,
-      orElse: () => ExerciseDifficulty.beginner, // Default if not found
     );
   }
 

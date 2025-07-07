@@ -83,7 +83,7 @@ class HabitFormationManager {
       }
       
       // 4. Générer un feedback de renforcement
-      final feedback = _generateReinforcementFeedback(profile, completionData);
+      _generateReinforcementFeedback(profile, completionData);
       
       // 5. Planifier le prochain rappel
       await _scheduleNextReminder(profile, completionData.habitLoop);

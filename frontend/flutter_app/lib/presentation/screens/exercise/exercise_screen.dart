@@ -6,7 +6,7 @@ import '../../widgets/glow_microphone_button.dart';
 // import '../../widgets/audio_visualizations/gradient_bar_visualizer.dart'; // Supprimé
 
 class ExerciseScreen extends ConsumerStatefulWidget {
-  final Function(_ExerciseScreenState)? onInit;
+  final Function(dynamic)? onInit;
   
   const ExerciseScreen({super.key, this.onInit});
   
@@ -17,16 +17,10 @@ class ExerciseScreen extends ConsumerStatefulWidget {
 class _ExerciseScreenState extends ConsumerState<ExerciseScreen> {
   bool _isRecording = false;
   bool _isProcessing = false;
-  late List<double> _amplitudes;
   
   @override
   void initState() {
     super.initState();
-    _amplitudes = AudioSimulationUtils.generateRandomAmplitudes(
-      count: 30,
-      minValue: 0.1,
-      maxValue: 0.3,
-    );
     
     // Appeler onInit si fourni
     widget.onInit?.call(this);
@@ -49,7 +43,7 @@ class _ExerciseScreenState extends ConsumerState<ExerciseScreen> {
       } else {
         _isRecording = true;
         // Générer de nouvelles amplitudes pour simuler l'audio
-        _amplitudes = AudioSimulationUtils.generateSpeechPattern(
+        AudioSimulationUtils.generateSpeechPattern(
           count: 30,
           intensity: 0.7,
           variability: 0.5,

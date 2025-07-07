@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:eloquence_2_0/core/utils/navigator_service.dart';
 
 import '../screens/main/main_screen.dart';
 import '../screens/exercise/exercise_screen.dart';
@@ -11,6 +12,7 @@ import '../screens/scenario/scenario_screen.dart';
 /// Provider pour le routeur de l'application
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: NavigatorService.navigatorKey,
     initialLocation: '/',
     routes: [
       GoRoute(

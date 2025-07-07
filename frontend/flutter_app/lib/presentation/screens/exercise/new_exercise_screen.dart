@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:eloquence_2_0/presentation/theme/eloquence_design_system.dart';
 import 'package:eloquence_2_0/presentation/widgets/eloquence_components.dart';
@@ -14,12 +13,12 @@ class NewExerciseScreen extends StatefulWidget {
   }) : super(key: key);
   
   @override
-  _NewExerciseScreenState createState() => _NewExerciseScreenState();
+  State<NewExerciseScreen> createState() => _NewExerciseScreenState();
 }
 
 class _NewExerciseScreenState extends State<NewExerciseScreen> {
   bool _isRecording = false;
-  bool _isAnalyzing = false;
+  final bool _isAnalyzing = false;
   
   @override
   Widget build(BuildContext context) {

@@ -289,23 +289,6 @@ class SessionNotifier extends StateNotifier<AsyncValue<SessionModel?>> {
   //   }
   // }
   
-  // Déconnecter les connexions existantes
-  Future<void> _disconnectExistingConnections() async {
-    logger.i(_tag, 'Déconnexion des connexions existantes avant nouvelle connexion');
-    
-    try {
-      // Déconnecter LiveKit - TODO: Remplacer par CleanAudioProvider
-      // final liveKitNotifier = _ref.read(liveKitConnectionProvider.notifier);
-      // await liveKitNotifier.disconnect();
-      final cleanAudioNotifier = _ref.read(cleanAudioProvider.notifier);
-      await cleanAudioNotifier.disconnect();
-      logger.i(_tag, 'Déconnexion LiveKit réussie via CleanAudioProvider');
-    } catch (e) {
-      logger.e(_tag, 'Erreur lors de la déconnexion LiveKit: $e');
-      // Continuer malgré l'erreur
-    }
-  }
-  
   // Supprimé: _connectWebSocket (anciennement 319-344)
   
   // Supprimé: _processWebSocketMessage (anciennement 347-391)

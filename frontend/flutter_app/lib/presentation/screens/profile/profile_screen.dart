@@ -219,7 +219,7 @@ class ProfileScreen extends ConsumerWidget {
             color: DarkTheme.backgroundLight,
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.3),
+                color: color.withAlpha(77),
                 blurRadius: 8,
                 spreadRadius: 2,
               ),

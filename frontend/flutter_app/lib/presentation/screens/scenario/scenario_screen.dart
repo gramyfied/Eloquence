@@ -51,8 +51,6 @@ class ScenarioScreen extends ConsumerStatefulWidget {
 
 class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
   static const String _tag = 'ScenarioScreen';
-  String _currentPrompt = '"Merci à tous d\'être présents aujourd\'hui."';
-  bool _showFeedback = false;
   bool _isDisposed = false;
   bool _isStreamingMode = true; // Mode streaming continu ACTIVÉ PAR DÉFAUT
   
@@ -112,11 +110,8 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
           // Mettre à jour le prompt si le message initial est disponible
           if (currentSession.initialMessage != null && currentSession.initialMessage!.containsKey('text')) {
             final initialMessageText = currentSession.initialMessage!['text'];
-            logger.i(_tag, 'Message initial pour le prompt: $initialMessageText');
+            logger.i(_tag, 'Message initial pour le prompt: initialMessageText');
             if (mounted && !_isDisposed) {
-              setState(() {
-                _currentPrompt = initialMessageText!;
-              });
               // Ajouter le message initial à la conversation via le provider
               ref.read(conversationMessagesProvider.notifier).addMessage("IA", initialMessageText!);
             }
@@ -332,8 +327,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
       // Mettre à jour le prompt (pour cet exemple, nous utilisons simplement le nom du scénario)
       if (mounted && !_isDisposed) {
         setState(() {
-          _currentPrompt = '"${scenario.name}"';
-          _showFeedback = false;
           _isStreamingMode = true; // S'assurer que le mode streaming est activé
         });
       }
@@ -503,7 +496,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     
     // Écouter les réponses IA en temps réel pour le prompt principal - TODO: Adapter ou supprimer
     // final lastIaMessage = ref.watch(liveKitConversationProvider.select((s) => s.lastMessage));
-    const String lastIaMessage = ""; // Placeholder
     final messages = ref.watch(conversationMessagesProvider); // Écouter la liste des messages
 
     // Utiliser l'état de CleanAudioProvider pour isRecording
@@ -518,14 +510,12 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
     final displayPrompt = _currentDisplayedPrompt;
 
     // Afficher le feedback si disponible et si on n'est pas en train d'enregistrer ou de traiter
-    final showFeedback = _showFeedback && !isActuallyRecording && !isProcessing; // Adapté
-
     final result = Scaffold(
       backgroundColor: Colors.transparent,
       // Ajout d'un bouton flottant pour changer d'exercice
       floatingActionButton: FloatingActionButton(
         onPressed: _showScenarioSelectionModal,
-        backgroundColor: DarkTheme.primaryPurple.withOpacity(0.8),
+        backgroundColor: DarkTheme.primaryPurple.withAlpha(204),
         mini: true,
         tooltip: 'Changer d\'exercice', // Bouton plus petit pour être moins intrusif
         child: const Icon(Icons.swap_horiz, color: Colors.white),
@@ -571,12 +561,12 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withAlpha(77),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _isStreamingMode
-                            ? DarkTheme.accentCyan.withOpacity(0.5)
-                            : DarkTheme.primaryBlue.withOpacity(0.3),
+                            ? DarkTheme.accentCyan.withAlpha(128)
+                            : DarkTheme.primaryBlue.withAlpha(77),
                         width: 1,
                       ),
                     ),
@@ -615,10 +605,10 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
                 flex: 4, // Donner encore plus d'espace à la zone de conversation
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withAlpha(77),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: DarkTheme.primaryBlue.withOpacity(0.3),
+                      color: DarkTheme.primaryBlue.withAlpha(77),
                       width: 1,
                     ),
                   ),
@@ -667,116 +657,6 @@ class _ScenarioScreenState extends ConsumerState<ScenarioScreen> {
 
     logger.performance(_tag, 'build', end: true);
     return result;
-  }
-
-  /// Construit le widget de feedback
-  Widget _buildFeedbackWidget(Map<String, dynamic> feedback) {
-    logger.v(_tag, 'Construction du widget de feedback');
-    logger.performance(_tag, 'buildFeedback', start: true);
-
-    final result = Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: DarkTheme.backgroundMedium,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DarkTheme.primaryPurple.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Analyse de votre performance',
-            style: TextStyle(
-              color: DarkTheme.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Prononciation
-          if (feedback.containsKey('pronunciation_scores'))
-            _buildScoreSection(
-              'Prononciation',
-              (feedback['pronunciation_scores'] as Map<String, dynamic>)['overall'] ?? 0.0,
-              DarkTheme.accentCyan,
-            ),
-
-          // Fluidité
-          if (feedback.containsKey('fluency_metrics'))
-            _buildScoreSection(
-              'Fluidité',
-              (feedback['fluency_metrics'] as Map<String, dynamic>)['speech_rate'] != null
-                  ? (feedback['fluency_metrics'] as Map<String, dynamic>)['speech_rate'] / 5.0
-                  : 0.0,
-              DarkTheme.primaryBlue,
-            ),
-
-          // Prosodie
-          if (feedback.containsKey('prosody_metrics'))
-            _buildScoreSection(
-              'Prosodie',
-              (feedback['prosody_metrics'] as Map<String, dynamic>)['pitch_variation'] != null
-                  ? (feedback['prosody_metrics'] as Map<String, dynamic>)['pitch_variation'] * 5.0
-                  : 0.0,
-              DarkTheme.primaryPurple,
-            ),
-        ],
-      ),
-    );
-
-    logger.performance(_tag, 'buildFeedback', end: true);
-    return result;
-  }
-
-  /// Construit une section de score
-  Widget _buildScoreSection(String title, double score, Color color) {
-    // Limiter le score entre 0 et 1
-    final normalizedScore = score.clamp(0.0, 1.0);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: DarkTheme.textSecondary,
-              fontSize: 14,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: normalizedScore,
-                    backgroundColor: color.withOpacity(0.2),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                    minHeight: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${(normalizedScore * 100).toInt()}%',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 
   @override

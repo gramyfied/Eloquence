@@ -110,14 +110,6 @@ class UserModelManager {
     // The previous logic was based on fields that no longer exist (e.g., recentPerformanceAverage).
     // A new approach is needed, possibly involving updating experienceLevel or other metrics.
   }
-  
-  /// Calcule la nouvelle moyenne de performance
-  double _calculateNewPerformanceAverage(double currentAverage, double newValue) {
-    // Utiliser une moyenne mobile pondérée
-    // Donner plus de poids à la performance la plus récente
-    const double weightOfNewValue = 0.3;
-    return (currentAverage * (1 - weightOfNewValue)) + (newValue * weightOfNewValue);
-  }
 }
 
 /// Modèle d'apprentissage de l'utilisateur

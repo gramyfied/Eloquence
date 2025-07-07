@@ -45,6 +45,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   device_info_plus: ^11.5.0
   jwt_decoder: ^2.0.1
+  collection: ^1.18.0
 
 dev_dependencies:
   flutter_test:

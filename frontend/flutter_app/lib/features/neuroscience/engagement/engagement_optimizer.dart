@@ -600,8 +600,6 @@ class InterventionSelector {
           intensity: 0.7,
           duration: Duration(days: 3),
         );
-      default:
-        return null;
     }
   }
   
@@ -632,8 +630,6 @@ class InterventionSelector {
           intensity: 0.8,
           duration: Duration(days: 7),
         );
-      default:
-        return null;
     }
   }
 }

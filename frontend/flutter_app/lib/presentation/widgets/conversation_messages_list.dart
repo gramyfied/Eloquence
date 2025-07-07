@@ -88,17 +88,17 @@ class ConversationMessagesList extends ConsumerWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isUser
-                        ? DarkTheme.accentCyan.withOpacity(0.2)
+                        ? DarkTheme.accentCyan.withAlpha(51)
                         : isSystem
-                            ? DarkTheme.primaryBlue.withOpacity(0.2)
-                            : DarkTheme.accentPink.withOpacity(0.2),
+                            ? DarkTheme.primaryBlue.withAlpha(51)
+                            : DarkTheme.accentPink.withAlpha(51),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isUser
-                          ? DarkTheme.accentCyan.withOpacity(0.5)
+                          ? DarkTheme.accentCyan.withAlpha(128)
                           : isSystem
-                              ? DarkTheme.primaryBlue.withOpacity(0.5)
-                              : DarkTheme.accentPink.withOpacity(0.5),
+                              ? DarkTheme.primaryBlue.withAlpha(128)
+                              : DarkTheme.accentPink.withAlpha(128),
                       width: 1,
                     ),
                   ),

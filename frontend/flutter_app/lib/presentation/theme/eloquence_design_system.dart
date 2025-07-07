@@ -94,7 +94,7 @@ class EloquenceBorders {
 class EloquenceShadows {
   static final List<BoxShadow> card = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withAlpha(26),
       blurRadius: 20,
       offset: const Offset(0, 8),
     ),

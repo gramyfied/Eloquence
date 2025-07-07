@@ -9,7 +9,6 @@ import 'user_model_manager.dart';
 import 'audio_processing_bridge.dart';
 import 'ui_feedback_bridge.dart';
 import 'models/user_action.dart';
-import 'models/user_context.dart';
 import 'models/user_performance.dart';
 import '../reward/models/reward_response.dart';
 import '../feedback/models/feedback_loop.dart';
@@ -199,10 +198,11 @@ class NeuroscienceEngine {
   }
   
   /// Génère une récompense basée sur le contexte utilisateur
-  RewardResponse generateReward(UserContext context) {
+  RewardResponse generateReward() {
     try {
       // Obtenir la performance utilisateur actuelle
       final performance = userModelManager.getCurrentPerformance();
+      final context = userModelManager.getCurrentContext();
       
       // Générer une récompense
       final reward = rewardSystem.generateReward(context, performance);

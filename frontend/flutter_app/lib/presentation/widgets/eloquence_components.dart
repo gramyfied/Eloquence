@@ -148,8 +148,8 @@ class _EloquenceMicrophoneState extends State<EloquenceMicrophone>
               gradient: EloquenceColors.haloGradient,
               boxShadow: [
                 BoxShadow(
-                  color: EloquenceColors.cyan.withOpacity(
-                    widget.isRecording ? _pulseAnimation.value : 0.3
+                  color: EloquenceColors.cyan.withAlpha(
+                    (widget.isRecording ? _pulseAnimation.value * 255 : 77).toInt()
                   ),
                   blurRadius: 40,
                   spreadRadius: 10,
@@ -206,7 +206,7 @@ class EloquenceBottomNav extends StatelessWidget {
           backgroundColor: EloquenceColors.glassBackground,
           type: BottomNavigationBarType.fixed,
           selectedItemColor: EloquenceColors.cyan,
-          unselectedItemColor: Colors.white.withOpacity(0.6),
+          unselectedItemColor: Colors.white.withAlpha(153),
           currentIndex: currentIndex,
           onTap: onTap,
           items: items,

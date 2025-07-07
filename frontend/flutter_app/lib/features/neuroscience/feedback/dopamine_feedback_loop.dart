@@ -190,7 +190,7 @@ class DopamineFeedbackLoop {
       futureBenefit: 'Amélioration de vos compétences vocales',
     );
     
-    return FeedbackLoop(
+    return const FeedbackLoop(
       type: FeedbackLoopType.dailyPractice,
       trigger: trigger,
       action: action,
@@ -251,7 +251,7 @@ class DailyPracticeFeedbackLoop implements FeedbackLoopTemplate {
       futureBenefit: 'Amélioration de vos compétences vocales',
     );
     
-    return FeedbackLoop(
+    return const FeedbackLoop(
       type: FeedbackLoopType.dailyPractice,
       trigger: trigger,
       action: action,
@@ -297,7 +297,7 @@ class SkillProgressionFeedbackLoop implements FeedbackLoopTemplate {
       futureBenefit: 'Augmentation notable d\'une compétence spécifique',
     );
     
-    return FeedbackLoop(
+    return const FeedbackLoop(
       type: FeedbackLoopType.skillProgression,
       trigger: trigger,
       action: action,
@@ -346,7 +346,7 @@ class ContextualPreparationFeedbackLoop implements FeedbackLoopTemplate {
       futureBenefit: 'Performance améliorée lors de votre présentation',
     );
     
-    return FeedbackLoop(
+    return const FeedbackLoop(
       type: FeedbackLoopType.contextualPreparation,
       trigger: trigger,
       action: action,
@@ -397,7 +397,7 @@ class PostPerformanceFeedbackLoop implements FeedbackLoopTemplate {
       futureBenefit: 'Amélioration ciblée pour vos futures performances',
     );
     
-    return FeedbackLoop(
+    return const FeedbackLoop(
       type: FeedbackLoopType.postPerformance,
       trigger: trigger,
       action: action,
@@ -448,7 +448,7 @@ class ExplorationFeedbackLoop implements FeedbackLoopTemplate {
       futureBenefit: 'Élargissement de votre répertoire de techniques vocales',
     );
     
-    return FeedbackLoop(
+    return const FeedbackLoop(
       type: FeedbackLoopType.exploration,
       trigger: trigger,
       action: action,

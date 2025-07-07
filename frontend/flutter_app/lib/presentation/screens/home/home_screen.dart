@@ -156,9 +156,9 @@ class HomeScreen extends StatelessWidget {
         width: 160,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
-          color: colors[type].withOpacity(0.1),
+          color: colors[type].withAlpha(26),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors[type].withOpacity(0.3)),
+          border: Border.all(color: colors[type].withAlpha(77)),
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -328,7 +328,7 @@ class HomeScreen extends StatelessWidget {
           final activity = activities[index];
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: activity['color'].withOpacity(0.2),
+              backgroundColor: activity['color'].withAlpha(51),
               child: Icon(
                 activity['icon'],
                 color: activity['color'],

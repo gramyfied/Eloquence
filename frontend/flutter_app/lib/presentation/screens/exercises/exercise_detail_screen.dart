@@ -97,7 +97,7 @@ class ExerciseDetailScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: typeColors[type].withOpacity(0.2),
+                  backgroundColor: typeColors[type].withAlpha(51),
                   child: Icon(
                     typeIcons[type],
                     color: typeColors[type],
@@ -125,7 +125,7 @@ class ExerciseDetailScreen extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: typeColors[type].withOpacity(0.1),
+                              color: typeColors[type].withAlpha(26),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -360,7 +360,7 @@ class ExerciseDetailScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha(13),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),

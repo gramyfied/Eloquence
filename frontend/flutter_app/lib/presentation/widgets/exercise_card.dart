@@ -82,7 +82,7 @@ class ExerciseCard extends StatelessWidget {
     };
 
     return Chip(
-      backgroundColor: difficultyColors[exercise.difficulty]!.withOpacity(0.2),
+      backgroundColor: difficultyColors[exercise.difficulty]!.withAlpha(51),
       label: Text(
         difficultyLabels[exercise.difficulty]!,
         style: TextStyle(
