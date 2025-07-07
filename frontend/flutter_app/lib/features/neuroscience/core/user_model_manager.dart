@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'models/user_profile.dart';
-import 'models/user_context.dart';
 import 'models/user_performance.dart';
+import 'models/user_context.dart'; // Pour Goal et TimeConstraint
 
 /// Gestionnaire du modèle utilisateur
 class UserModelManager {
@@ -20,11 +20,10 @@ class UserModelManager {
   
   /// Obtient le profil utilisateur actuel
   UserProfile get currentUserProfile {
-    _currentUserProfile ??= UserProfile(
-        id: 'default',
+    _currentUserProfile ??= const UserProfile(
+        userId: 'default_user',
         username: 'Utilisateur',
         experienceLevel: ExperienceLevel.beginner,
-        preferredLearningStyle: LearningStyle.visual,
       );
     return _currentUserProfile!;
   }
@@ -50,11 +49,10 @@ class UserModelManager {
     try {
       // TODO: Implémenter le chargement du profil utilisateur depuis le stockage local
       // Pour l'instant, utiliser un profil par défaut
-      _currentUserProfile = UserProfile(
-        id: 'default',
+      _currentUserProfile = const UserProfile(
+        userId: 'default_user',
         username: 'Utilisateur',
         experienceLevel: ExperienceLevel.beginner,
-        preferredLearningStyle: LearningStyle.visual,
       );
     } catch (e) {
       debugPrint('Error loading user profile: $e');
@@ -82,12 +80,13 @@ class UserModelManager {
   /// Obtient la performance utilisateur actuelle
   UserPerformance getCurrentPerformance() {
     _currentPerformance ??= UserPerformance(
-        id: 'default',
+        id: 'perf_${DateTime.now().millisecondsSinceEpoch}',
         exerciseType: 'default',
         durationInMinutes: 0,
-        completionRate: 0,
-        score: 0,
+        completionRate: 0.0,
+        score: 0.0,
         skillsData: const [],
+        timestamp: DateTime.now(),
       );
     return _currentPerformance!;
   }
@@ -106,19 +105,10 @@ class UserModelManager {
   /// Met à jour le profil utilisateur avec les données de performance
   void _updateUserProfileWithPerformance(UserPerformance performance) {
     if (_currentUserProfile == null) return;
-    
-    // Calculer la nouvelle moyenne de performance récente
-    final newAverage = _calculateNewPerformanceAverage(
-      _currentUserProfile!.recentPerformanceAverage,
-      performance.score / 100, // Normaliser le score entre 0 et 1
-    );
-    
-    // Mettre à jour le profil utilisateur
-    _currentUserProfile = _currentUserProfile!.copyWith(
-      daysSinceLastActivity: 0, // Réinitialiser car l'utilisateur est actif
-      recentPerformanceAverage: newAverage,
-      // Mettre à jour d'autres propriétés si nécessaire
-    );
+
+    // TODO: Re-implement user profile update based on performance.
+    // The previous logic was based on fields that no longer exist (e.g., recentPerformanceAverage).
+    // A new approach is needed, possibly involving updating experienceLevel or other metrics.
   }
   
   /// Calcule la nouvelle moyenne de performance

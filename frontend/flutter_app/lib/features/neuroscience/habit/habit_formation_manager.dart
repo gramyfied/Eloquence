@@ -67,19 +67,19 @@ class HabitFormationManager {
   Future<void> reinforceHabit(UserProfile profile, HabitCompletionData completionData) async {
     try {
       // 1. Mettre à jour le suivi des séries
-      await streakTracker.updateStreak(profile.id, completionData);
+      await streakTracker.updateStreak(profile.userId, completionData);
       
       // 2. Renforcer l'association signal-routine
       await cueManager.strengthenCueAssociation(
-        profile.id, 
+        profile.userId,
         completionData.habitLoop.cue,
         completionData.habitLoop.routine
       );
       
       // 3. Ajuster la difficulté de l'habitude si nécessaire
-      if (streakTracker.getStreak(profile.id) > 5) {
+      if (streakTracker.getStreak(profile.userId) > 5) {
         // L'habitude commence à se former, augmenter légèrement la difficulté
-        await routineBuilder.incrementRoutineDifficulty(profile.id, completionData.habitLoop.routine);
+        await routineBuilder.incrementRoutineDifficulty(profile.userId, completionData.habitLoop.routine);
       }
       
       // 4. Générer un feedback de renforcement
@@ -172,7 +172,7 @@ class HabitFormationManager {
   /// Génère un feedback de renforcement
   HabitReinforcementFeedback _generateReinforcementFeedback(UserProfile profile, HabitCompletionData completionData) {
     // Obtenir la série actuelle
-    final streak = streakTracker.getStreak(profile.id);
+    final streak = streakTracker.getStreak(profile.userId);
     
     // Déterminer le type de feedback
     FeedbackType type;

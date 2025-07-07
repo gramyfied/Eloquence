@@ -55,27 +55,18 @@ class EloquenceGlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: EloquenceRadii.card,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        filter: EloquenceEffects.blur,
         child: Container(
           width: width,
           height: height,
-          padding: padding ?? EdgeInsets.all(EloquenceSpacing.md),
+          padding: padding ?? const EdgeInsets.all(EloquenceSpacing.md),
           decoration: BoxDecoration(
             color: EloquenceColors.glassBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: EloquenceColors.glassBorder,
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
-            ],
+            borderRadius: EloquenceRadii.card,
+            border: EloquenceBorders.card,
+            boxShadow: EloquenceShadows.card,
           ),
           child: child,
         ),
@@ -281,98 +272,108 @@ class EloquenceProgressBar extends StatelessWidget {
 class EloquenceWaveforms extends StatefulWidget {
   final bool isActive;
   final int barCount;
-  
+
   const EloquenceWaveforms({
     Key? key,
     this.isActive = false,
     this.barCount = 25,
   }) : super(key: key);
-  
+
   @override
   _EloquenceWaveformsState createState() => _EloquenceWaveformsState();
 }
 
-class _EloquenceWaveformsState extends State<EloquenceWaveforms>
-    with TickerProviderStateMixin {
-  late List<AnimationController> _controllers;
-  late List<Animation<double>> _animations;
+class _EloquenceWaveformsState extends State<EloquenceWaveforms> {
   final Random _random = Random();
 
-  @override
-  void initState() {
-    super.initState();
-    _controllers = List.generate(widget.barCount, (index) {
-      return AnimationController(
-        duration: Duration(milliseconds: 400 + _random.nextInt(400)),
-        vsync: this,
-      );
-    });
-    
-    _animations = _controllers.map((controller) {
-      return Tween<double>(begin: 4.0, end: 40.0 + _random.nextDouble() * 20.0).animate(
-        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-      );
-    }).toList();
-
-    if (widget.isActive) {
-      _startAnimations();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant EloquenceWaveforms oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isActive != oldWidget.isActive) {
-      if (widget.isActive) {
-        _startAnimations();
-      } else {
-        _stopAnimations();
-      }
-    }
-  }
-
-  void _startAnimations() {
-    for (var controller in _controllers) {
-      controller.repeat(reverse: true);
-    }
-  }
-
-  void _stopAnimations() {
-    for (var controller in _controllers) {
-      controller.stop();
-      controller.animateTo(0.0, duration: const Duration(milliseconds: 200));
-    }
-  }
-
-  @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-  
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(widget.barCount, (index) {
-        return AnimatedBuilder(
-          animation: _animations[index],
-          builder: (context, child) {
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1.5),
-              width: 3,
-              height: widget.isActive ? _animations[index].value : 4,
-              decoration: BoxDecoration(
-                gradient: EloquenceColors.cyanVioletGradient,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            );
-          },
+        return _WaveformBar(
+          isActive: widget.isActive,
+          random: _random,
         );
       }),
+    );
+  }
+}
+
+class _WaveformBar extends StatefulWidget {
+  final bool isActive;
+  final Random random;
+
+  const _WaveformBar({
+    Key? key,
+    required this.isActive,
+    required this.random,
+  }) : super(key: key);
+
+  @override
+  __WaveformBarState createState() => __WaveformBarState();
+}
+
+class __WaveformBarState extends State<_WaveformBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 400 + widget.random.nextInt(400)),
+      vsync: this,
+    );
+
+    _animation = Tween<double>(
+      begin: 4.0,
+      end: 40.0 + widget.random.nextDouble() * 20.0,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    if (widget.isActive) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _WaveformBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive) {
+      if (widget.isActive) {
+        _controller.repeat(reverse: true);
+      } else {
+        _controller.stop();
+        _controller.animateTo(0.0, duration: const Duration(milliseconds: 200));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+          width: 3,
+          height: widget.isActive ? _animation.value : 4,
+          decoration: BoxDecoration(
+            gradient: EloquenceColors.cyanVioletGradient,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      },
     );
   }
 }

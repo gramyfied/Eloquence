@@ -114,7 +114,12 @@ class DopamineFeedbackLoop {
   /// Optimise la prédictibilité de la boucle
   void _optimizePredictability(FeedbackLoop loop, UserContext context) {
     // Équilibrer prévisibilité et surprise
-    final surpriseFactor = _calculateOptimalSurpriseFactor(context.userProfile);
+    if (context.userProfile == null) {
+      // Impossible de calculer le facteur de surprise sans profil utilisateur.
+      // Cette partie de l'optimisation sera sautée.
+      return;
+    }
+    final surpriseFactor = _calculateOptimalSurpriseFactor(context.userProfile!);
     
     // Nous ne pouvons pas modifier directement predictabilityRatio car c'est une propriété finale
     // Nous utiliserons cette information lors de la création de nouvelles boucles
@@ -145,7 +150,7 @@ class DopamineFeedbackLoop {
     // TODO: Implémenter l'optimisation de la progression perceptible
   }
   
-  /// Optimise le contraste et la saillance
+  /// Optimise le contraste et de la saillance
   void _optimizeContrastAndSalience(FeedbackLoop loop) {
     // TODO: Implémenter l'optimisation du contraste et de la saillance
   }
@@ -210,6 +215,98 @@ class DopamineOptimizationParams {
   
   /// Facteur de variabilité de magnitude
   final double magnitudeVariabilityFactor = 0.3;
+}
+
+/// Boucle de feedback pour la pratique quotidienne
+class DailyPracticeFeedbackLoop implements FeedbackLoopTemplate {
+  @override
+  FeedbackLoop customize(dynamic userProfile) {
+    // This is a simplified version based on the _createDefaultFeedbackLoop method
+    const trigger = Trigger(
+      type: TriggerType.external,
+      message: 'Temps pour votre pratique vocale !',
+      contextAwareness: false,
+    );
+    
+    const action = FeedbackAction(
+      type: 'BasicVocalExercise',
+      duration: 5,
+      complexity: 0.3,
+      focusArea: 'general',
+      setupRequired: false,
+      oneButtonStart: true,
+    );
+    
+    const reward = PointsReward(
+      points: 10,
+      pointsType: 'experience',
+      level: RewardLevel.micro,
+      baseMagnitude: 0.5,
+    );
+    
+    const investment = Investment(
+      type: 'BasicTracking',
+      effortRequired: 0.2,
+      timeRequired: 1,
+      futureBenefit: 'Amélioration de vos compétences vocales',
+    );
+    
+    return FeedbackLoop(
+      type: FeedbackLoopType.dailyPractice,
+      trigger: trigger,
+      action: action,
+      reward: reward,
+      investment: investment,
+      feedbackDelay: 300,
+      predictabilityRatio: 0.7,
+    );
+  }
+}
+
+/// Boucle de feedback pour la progression des compétences
+class SkillProgressionFeedbackLoop implements FeedbackLoopTemplate {
+  @override
+  FeedbackLoop customize(dynamic userProfile) {
+    // Placeholder implementation
+    const trigger = Trigger(
+      type: TriggerType.internal,
+      message: 'Prêt à améliorer une compétence ?',
+      contextAwareness: true,
+    );
+    
+    const action = FeedbackAction(
+      type: 'SkillAssessment',
+      duration: 7,
+      complexity: 0.5,
+      focusArea: 'specific_skill',
+      setupRequired: true,
+      oneButtonStart: false,
+    );
+    
+    const reward = PointsReward(
+      points: 50,
+      pointsType: 'skill_points',
+      level: RewardLevel.meso,
+      baseMagnitude: 0.6,
+    );
+    
+    const investment = Investment(
+      type: 'SkillFocus',
+      effortRequired: 0.4,
+      timeRequired: 2,
+      futureBenefit: 'Augmentation notable d\'une compétence spécifique',
+    );
+    
+    return FeedbackLoop(
+      type: FeedbackLoopType.skillProgression,
+      trigger: trigger,
+      action: action,
+      reward: reward,
+      investment: investment,
+      feedbackDelay: 400,
+      predictabilityRatio: 0.8,
+    );
+  }
 }
 
 /// Boucle de feedback pour la préparation contextuelle
