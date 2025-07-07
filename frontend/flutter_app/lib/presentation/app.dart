@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/theme/dark_theme.dart';
+import 'package:eloquence_2_0/presentation/theme/eloquence_design_system.dart';
 import 'providers/router_provider.dart';
 
 class EloquenceApp extends ConsumerWidget {
@@ -15,45 +15,15 @@ class EloquenceApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: const ColorScheme.dark(
-          primary: DarkTheme.primaryPurple,
-          secondary: DarkTheme.accentCyan,
-          surface: DarkTheme.surfaceDark,
-          error: DarkTheme.errorRed,
-        ),
-        scaffoldBackgroundColor: DarkTheme.backgroundDark,
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
-            color: DarkTheme.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-          displayMedium: TextStyle(
-            color: DarkTheme.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-          displaySmall: TextStyle(
-            color: DarkTheme.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-          headlineMedium: TextStyle(
-            color: DarkTheme.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-          titleLarge: TextStyle(
-            color: DarkTheme.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-          titleMedium: TextStyle(
-            color: DarkTheme.textPrimary,
-          ),
-          bodyLarge: TextStyle(
-            color: DarkTheme.textSecondary,
-          ),
-          bodyMedium: TextStyle(
-            color: DarkTheme.textSecondary,
-          ),
-        ),
+        scaffoldBackgroundColor: EloquenceColors.navy,
         fontFamily: 'Montserrat',
+        textTheme: const TextTheme(
+          headlineLarge: EloquenceTextStyles.headline1,
+          headlineMedium: EloquenceTextStyles.headline2,
+          bodyLarge: EloquenceTextStyles.body1,
+          bodyMedium: EloquenceTextStyles.body1,
+          labelSmall: EloquenceTextStyles.caption,
+        ),
       ),
       routerConfig: router,
     );
