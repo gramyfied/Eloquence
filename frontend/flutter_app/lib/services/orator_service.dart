@@ -1,0 +1,55 @@
+import '../models/orator_model.dart';
+import '../utils/constants.dart';
+
+final List<Orator> orators = [
+  Orator(
+    id: 'mlk',
+    name: 'Martin Luther King Jr.',
+    mainQuote: 'I have a dream that one day this nation will rise up and live out the true meaning of its creed.',
+    secondaryQuote: 'Darkness cannot drive out darkness; only light can do that.',
+    imagePath: 'assets/images/orators/mlk_portrait.jpg',
+    domain: 'Droits civiques',
+    period: '1929-1968',
+    accentColor: EloquenceColors.cyan,
+  ),
+  Orator(
+    id: 'churchill',
+    name: 'Winston Churchill',
+    mainQuote: 'We shall never surrender.',
+    secondaryQuote: 'Success is not final, failure is not fatal: it is the courage to continue that counts.',
+    imagePath: 'assets/images/orators/churchill_speaking.jpg',
+    domain: 'Leadership politique',
+    period: '1874-1965',
+    accentColor: EloquenceColors.violet,
+  ),
+  Orator(
+    id: 'mandela',
+    name: 'Nelson Mandela',
+    mainQuote: 'I have cherished the ideal of a democratic and free society in which all persons live together in harmony.',
+    secondaryQuote: 'It is an ideal for which I am prepared to die.',
+    imagePath: 'assets/images/orators/mandela_portrait.jpg',
+    domain: 'Réconciliation',
+    period: '1918-2013',
+    accentColor: EloquenceColors.cyan,
+  ),
+  Orator(
+    id: 'maya',
+    name: 'Maya Angelou',
+    mainQuote: 'If you don\'t like something, change it. If you can\'t change it, change your attitude.',
+    secondaryQuote: 'Here on the pulse of this new day, you may have the grace to look up and out.',
+    imagePath: 'assets/images/orators/maya_angelou_speaking.jpg',
+    domain: 'Poésie inspirante',
+    period: '1928-2014',
+    accentColor: EloquenceColors.violet,
+  ),
+  Orator(
+    id: 'jfk',
+    name: 'John F. Kennedy',
+    mainQuote: 'Ask not what your country can do for you — ask what you can do for your country.',
+    secondaryQuote: 'We choose to go to the moon not because it is easy, but because it is hard.',
+    imagePath: 'assets/images/orators/jfk_speech.jpg',
+    domain: 'Vision présidentielle',
+    period: '1917-1963',
+    accentColor: EloquenceColors.cyan,
+  ),
+];

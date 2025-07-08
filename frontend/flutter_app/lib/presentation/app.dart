@@ -1,31 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:eloquence_2_0/presentation/theme/eloquence_design_system.dart';
-import 'providers/router_provider.dart';
+import 'package:provider/provider.dart';
+import '../core/navigation/navigation_state.dart';
+import '../screens/home_screen.dart';
+import '../screens/exercises_screen.dart';
+import '../screens/exercise_detail_screen.dart';
+import '../screens/exercise_active_screen.dart';
+import '../presentation/screens/scenario/scenario_screen.dart';
+import '../screens/profile_screen.dart';
 
-class EloquenceApp extends ConsumerWidget {
-  const EloquenceApp({super.key});
+class App extends StatelessWidget {
+  const App({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-    
-    return MaterialApp.router(
-      title: 'Eloquence',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: EloquenceColors.navy,
-        fontFamily: 'Montserrat',
-        textTheme: const TextTheme(
-          headlineLarge: EloquenceTextStyles.headline1,
-          headlineMedium: EloquenceTextStyles.headline2,
-          bodyLarge: EloquenceTextStyles.body1,
-          bodyMedium: EloquenceTextStyles.body1,
-          labelSmall: EloquenceTextStyles.caption,
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => NavigationState(),
+      child: MaterialApp(
+        title: 'Eloquence',
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          primaryColor: const Color(0xFF1A1F2E),
+          fontFamily: 'Inter',
         ),
+        initialRoute: '/home',
+        routes: {
+          '/home': (context) => const HomeScreen(),
+          '/exercises': (context) => const ExercisesScreen(),
+          '/scenarios': (context) => const ScenarioScreen(),
+          '/profile': (context) => const ProfileScreen(),
+        },
+        onGenerateRoute: (settings) {
+          if (settings.name == '/exercise_detail') {
+            final args = settings.arguments as String;
+            return MaterialPageRoute(
+              builder: (context) {
+                return ExerciseDetailScreen(exerciseId: args);
+              },
+            );
+          }
+          if (settings.name == '/exercise_active') {
+            final args = settings.arguments as String;
+            return MaterialPageRoute(
+              builder: (context) {
+                return ExerciseActiveScreen(exerciseId: args);
+              },
+            );
+          }
+          return null;
+        },
       ),
-      routerConfig: router,
     );
   }
 }
