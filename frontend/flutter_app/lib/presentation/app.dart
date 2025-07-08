@@ -7,7 +7,7 @@ import '../screens/exercise_detail_screen.dart';
 import '../screens/exercise_active_screen.dart';
 import '../presentation/screens/scenario/scenario_screen.dart';
 import '../screens/profile_screen.dart';
-import '../features/confidence_boost/presentation/screens/confidence_boost_screen.dart';
+import '../features/confidence_boost/presentation/screens/confidence_boost_screen_simple.dart';
 
 class App extends StatelessWidget {
   const App({Key? key}) : super(key: key);
@@ -51,7 +51,7 @@ class App extends StatelessWidget {
             final args = settings.arguments as String; // userId
             return MaterialPageRoute(
               builder: (context) {
-                return ConfidenceBoostScreen(userId: args);
+                return ConfidenceBoostScreenSimple(userId: args);
               },
             );
           }
