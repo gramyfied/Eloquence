@@ -4,10 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:eloquence_2_0/core/utils/navigator_service.dart';
 
 import '../screens/main/main_screen.dart';
-import '../screens/exercises/exercises_list_screen.dart'; // Importer le nouvel écran
+import '../../screens/exercises_screen.dart'; // Utiliser le nouvel écran renommé
 import '../screens/profile/profile_screen.dart';
 import '../screens/scenario/scenario_screen.dart';
 import '../../features/confidence_boost/presentation/screens/confidence_boost_screen.dart';
+import '../../screens/exercise_detail_screen.dart'; // Import ExerciseDetailScreen
 // import '../screens/continuous_streaming_screen.dart'; // Supprimé
 
 /// Provider pour le routeur de l'application
@@ -22,7 +23,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'exercise',
-            builder: (context, state) => const ExercisesListScreen(), // Utiliser le nouvel écran
+            builder: (context, state) => const ExercisesScreen(), // Utiliser le nouvel écran
           ),
           GoRoute(
             path: 'scenario',
@@ -37,6 +38,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) {
               final userId = state.uri.queryParameters['userId'] ?? 'default-user';
               return ConfidenceBoostScreen(userId: userId);
+            },
+          ),
+          GoRoute(
+            path: 'exercise_detail/:id', // Define new route for exercise detail
+            builder: (context, state) {
+              final exerciseId = state.pathParameters['id']!;
+              return ExerciseDetailScreen(exerciseId: exerciseId);
             },
           ),
           // GoRoute(

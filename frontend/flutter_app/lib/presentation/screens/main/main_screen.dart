@@ -1,53 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/dark_theme.dart';
-import '../../widgets/navigation/gradient_bottom_navigation_bar.dart';
-import '../exercises/exercises_list_screen.dart'; // Utiliser la nouvelle liste
-import '../home/home_screen.dart'; // Importer HomeScreen
+import 'package:provider/provider.dart' as pf; // Alias Provider to pf
+import '../../../layers/navigation/main_navigation.dart';
+import '../../../core/navigation/navigation_state.dart';
+import '../../../screens/home_screen.dart';
+import '../../../screens/exercises_screen.dart';
 import '../profile/profile_screen.dart';
 import '../scenario/scenario_screen.dart';
+import '../../../core/theme/dark_theme.dart';
 
-final selectedTabProvider = StateProvider<int>((ref) => 0);
-
+// class MainScreen is rewritten to use MainNavigation and NavigationState
 class MainScreen extends ConsumerWidget {
-  const MainScreen({super.key});
-  
+  const MainScreen({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedTab = ref.watch(selectedTabProvider);
-    
-    // Liste des écrans dans l'ordre de la nav bar
-    final screens = [
-      const HomeScreen(),
-      const ExercisesListScreen(),
-      const ScenarioScreen(),
-      const ProfileScreen(),
-    ];
-    
-    // Éléments de navigation
-    final navigationItems = [
-      const BottomNavigationItem(
-        icon: Icons.home,
-        label: 'Accueil',
-        selectedColor: DarkTheme.accentCyan,
-      ),
-      const BottomNavigationItem(
-        icon: Icons.fitness_center,
-        label: 'Exercices',
-        selectedColor: DarkTheme.successGreen,
-      ),
-      const BottomNavigationItem(
-        icon: Icons.movie,
-        label: 'Scenario',
-        selectedColor: DarkTheme.primaryPurple,
-      ),
-      const BottomNavigationItem(
-        icon: Icons.person,
-        label: 'Profil',
-        selectedColor: DarkTheme.accentPink,
-      ),
-    ];
-    
+    // Current route from NavigationState (using Provider)
+    final navigationState = pf.Provider.of<NavigationState>(context);
+    final currentRoute = navigationState.currentRoute;
+
+    // Map routes to actual screen widgets
+    Widget _getPageForRoute(String route) {
+      switch (route) {
+        case '/home':
+          return const HomeScreen();
+        case '/exercises':
+          return const ExercisesScreen();
+        case '/profile':
+          return const ProfileScreen();
+        case '/scenarios':
+          return const ScenarioScreen();
+        default:
+          return const Column(
+            children: [
+              Text('Page non trouvée'),
+            ],
+          );
+      }
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -55,18 +46,18 @@ class MainScreen extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            // Écran actif
-            screens[selectedTab],
-            
-            // Barre de navigation
+            // Active screen based on currentRoute
+            _getPageForRoute(currentRoute),
+
+            // Main Navigation Bar below content
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: GradientBottomNavigationBar(
-                currentIndex: selectedTab,
-                onTap: (index) => ref.read(selectedTabProvider.notifier).state = index,
-                items: navigationItems,
+              child: MainNavigation(
+                onNavigationChanged: (newRoute) {
+                  navigationState.navigateTo(newRoute);
+                },
               ),
             ),
           ],

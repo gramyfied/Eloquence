@@ -120,6 +120,8 @@ class _MainNavigationState extends State<MainNavigation>
                 // Feedback tactile
                 HapticFeedback.lightImpact();
                 widget.onNavigationChanged(route);
+                // Navigation réelle
+                Navigator.pushNamed(context, route);
               },
               onTapDown: (_) {
                 setState(() {

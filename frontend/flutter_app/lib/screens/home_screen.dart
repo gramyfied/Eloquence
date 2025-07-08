@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/navigation/navigation_state.dart';
-import '../utils/constants.dart';
-import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
 
 class HomeScreen extends StatelessWidget {
