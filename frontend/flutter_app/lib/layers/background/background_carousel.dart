@@ -102,23 +102,26 @@ class _BackgroundCarouselState extends State<BackgroundCarousel>
           // Carrousel principal
           Expanded(
             flex: 3,
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: widget.isInteractive
-                  ? (index) {
-                      setState(() {
-                        _currentIndex = index;
-                      });
-                      _notifyOratorChanged(orators[index]);
-                    }
-                  : null,
-              physics: widget.isInteractive
-                  ? const PageScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              itemCount: orators.length,
-              itemBuilder: (context, index) {
-                return _buildOratorCard(orators[index], index == _currentIndex);
-              },
+            child: IgnorePointer(
+              ignoring: !widget.isInteractive,
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: widget.isInteractive
+                    ? (index) {
+                        setState(() {
+                          _currentIndex = index;
+                        });
+                        _notifyOratorChanged(orators[index]);
+                      }
+                    : null,
+                physics: widget.isInteractive
+                    ? const PageScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                itemCount: orators.length,
+                itemBuilder: (context, index) {
+                  return _buildOratorCard(orators[index], index == _currentIndex);
+                },
+              ),
             ),
           ),
 

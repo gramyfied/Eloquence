@@ -5,6 +5,7 @@ import '../core/navigation/navigation_state.dart';
 import '../layers/background/background_carousel.dart';
 import '../layers/navigation/glassmorphism_overlay.dart';
 import '../layers/navigation/main_navigation.dart';
+import '../utils/constants.dart';
 
 class LayeredScaffold extends StatefulWidget {
   final Widget content;
@@ -109,69 +110,57 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedBuilder(
-        animation: _carouselController,
-        builder: (context, child) {
-          return Stack(
-            children: [
-              // Layer 1: Carrousel d'arrière-plan (sans flou direct)
-              _buildBackgroundCarousel(),
-
-              // Layer 2: Filtre de flou appliqué sur le carrousel
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: _carouselBlur.value,
-                      sigmaY: _carouselBlur.value,
-                    ),
-                    child: Container(
-                      color: Colors.black.withOpacity(0.0),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Layer 3: Contenu principal
-              _buildMainContent(),
-
-              // Layer 4: Navigation principale (si activée)
-              if (widget.showNavigation) _buildMainNavigation(),
-            ],
-          );
-        },
+      backgroundColor: EloquenceColors.navy,
+      body: Stack(
+        children: [
+          // Carrousel d'arrière-plan avec effets
+          _buildBackgroundCarousel(),
+          
+          // Contenu principal avec filtre de flou
+          _buildMainContent(),
+          
+          // Navigation principale (si activée)
+          if (widget.showNavigation) _buildMainNavigation(),
+        ],
       ),
     );
   }
 
   Widget _buildBackgroundCarousel() {
     return Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: widget.onCarouselTap,
-        child: AnimatedOpacity(
-          opacity: _carouselOpacity.value,
-          duration: const Duration(milliseconds: 800),
-          child: BackgroundCarousel(
-            isInteractive:
-                widget.carouselState == CarouselVisibilityState.full,
-            autoScroll:
-                widget.carouselState != CarouselVisibilityState.minimal,
-          ),
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _carouselController,
+          builder: (context, child) {
+            return Opacity(
+              opacity: _carouselOpacity.value,
+              child: BackgroundCarousel(
+                isInteractive:
+                    widget.carouselState == CarouselVisibilityState.full,
+                autoScroll:
+                    widget.carouselState != CarouselVisibilityState.minimal,
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _buildMainNavigation() {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: GlassmorphismOverlay(
-        opacity: _calculateNavigationOpacity(),
-        child: MainNavigation(
-          onNavigationChanged: (route, context) {
-            context.read<NavigationState>().navigateTo(route, context);
-          },
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: IgnorePointer(
+        ignoring: false, // La navigation doit être interactive
+        child: GlassmorphismOverlay(
+          opacity: _calculateNavigationOpacity(),
+          child: MainNavigation(
+            onNavigationChanged: (route, context) {
+              context.read<NavigationState>().navigateTo(route, context);
+            },
+          ),
         ),
       ),
     );
@@ -179,7 +168,29 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
 
   Widget _buildMainContent() {
     return Positioned.fill(
-      child: widget.content,
+      child: IgnorePointer(
+        ignoring: false, // Le contenu principal doit être interactif
+        child: AnimatedBuilder(
+          animation: _carouselController,
+          builder: (context, child) {
+            return BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: _carouselBlur.value,
+                sigmaY: _carouselBlur.value,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: EloquenceColors.navy.withOpacity(0.1),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: widget.content,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
