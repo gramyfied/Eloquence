@@ -13,23 +13,17 @@ class ExerciseActiveScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Rediriger vers l'exercice spécialisé si c'est confidence_boost
     if (exerciseId == 'confidence_boost') {
-      // Utiliser un userId par défaut ou récupérer depuis le contexte
-      const userId = 'default_user'; // TODO: Récupérer l'userId réel depuis l'authentification
+      const userId = 'default_user';
       
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/confidence_boost',
-          arguments: userId,
-        );
-      });
-      
-      // Afficher un écran de chargement pendant la redirection
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+      // Navigation immédiate sans callback
+      Navigator.pushReplacementNamed(
+        context,
+        '/confidence_boost',
+        arguments: userId,
       );
+      
+      // Widget minimal (ne sera pas affiché)
+      return const SizedBox.shrink();
     }
     return Consumer<NavigationState>(
       builder: (context, navigationState, child) {
