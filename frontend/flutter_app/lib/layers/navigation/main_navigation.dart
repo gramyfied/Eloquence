@@ -5,7 +5,7 @@ import '../../core/navigation/navigation_state.dart';
 import '../../utils/constants.dart';
 
 class MainNavigation extends StatefulWidget {
-  final Function(String) onNavigationChanged;
+  final Function(String, BuildContext) onNavigationChanged;
 
   const MainNavigation({
     Key? key,
@@ -119,7 +119,7 @@ class _MainNavigationState extends State<MainNavigation>
               onTap: () {
                 // Feedback tactile
                 HapticFeedback.lightImpact();
-                widget.onNavigationChanged(route);
+                widget.onNavigationChanged(route, context);
                 // Navigation gérée par NavigationState via onNavigationChanged
               },
               onTapDown: (_) {
