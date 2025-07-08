@@ -4,6 +4,7 @@ import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
+import '../test_screen.dart';
 
 class ExercisesScreen extends StatelessWidget {
   const ExercisesScreen({Key? key}) : super(key: key);
@@ -118,67 +119,90 @@ class ExercisesScreen extends StatelessWidget {
     Color accentColor,
     String exerciseId,
   ) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/exercise_detail',
-          arguments: exerciseId,
-        );
-      },
-      child: EloquenceGlassCard(
-        borderRadius: 16,
-        borderColor: accentColor,
-        opacity: 0.15,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          print('=== Exercise card tapped ===');
+          print('Title: $title');
+          print('Exercise ID: $exerciseId');
+          
+          try {
+            final navigationState = context.read<NavigationState>();
+            print('NavigationState obtained: $navigationState');
+            
+            navigationState.navigateTo(
+              '/exercise_detail',
+              context,
+              {
+                'exerciseId': exerciseId,
+                'title': title,
+                'description': description,
+                'icon': icon.codePoint.toString(),
+                'accentColor': accentColor.value.toString(),
+              },
+            );
+            print('Navigation called successfully');
+          } catch (e) {
+            print('Error during navigation: $e');
+            print('Stack trace: ${StackTrace.current}');
+          }
+        },
+        child: EloquenceGlassCard(
+          borderRadius: 16,
+          borderColor: accentColor,
+          opacity: 0.15,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: accentColor,
+                    size: 28,
+                  ),
                 ),
-                child: Icon(
-                  icon,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.7),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
                   color: accentColor,
-                  size: 28,
+                  size: 16,
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.7),
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: accentColor,
-                size: 16,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

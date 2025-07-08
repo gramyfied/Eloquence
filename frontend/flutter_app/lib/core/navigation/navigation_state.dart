@@ -28,7 +28,7 @@ class NavigationState extends ChangeNotifier {
     }
   }
 
-  void navigateTo(String route, [BuildContext? context]) {
+  void navigateTo(String route, [BuildContext? context, Object? arguments]) {
     if (_currentRoute != route) {
       _currentRoute = route;
 
@@ -52,10 +52,10 @@ class NavigationState extends ChangeNotifier {
       }
 
       updateCarouselState(newCarouselState);
-
+      
       // Navigation réelle si context fourni
       if (context != null) {
-        Navigator.pushNamed(context, route);
+        Navigator.pushNamed(context, route, arguments: arguments);
       }
     }
   }

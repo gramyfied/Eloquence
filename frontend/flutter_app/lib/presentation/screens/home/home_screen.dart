@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../core/navigation/navigation_state.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -13,35 +14,35 @@ class HomeScreen extends StatelessWidget {
         'description': 'Boostez votre confiance en 1 minute.',
         'icon': Icons.star,
         'color': Colors.amber,
-        'onTap': () => context.go('/confidence-boost'),
+        'onTap': () => context.read<NavigationState>().navigateTo('/confidence-boost', context, 'user123'), // Utilisateur par défaut pour la démo
       },
       {
         'title': 'Exercice 1',
         'description': 'Description courte de l\'exercice 1',
         'icon': Icons.record_voice_over,
         'color': Colors.blue,
-        'onTap': () => context.go('/exercises/0'),
+        'onTap': () => context.read<NavigationState>().navigateTo('/exercise_detail', context, '0'),
       },
       {
         'title': 'Exercice 2',
         'description': 'Description courte de l\'exercice 2',
         'icon': Icons.speed,
         'color': Colors.green,
-        'onTap': () => context.go('/exercises/1'),
+        'onTap': () => context.read<NavigationState>().navigateTo('/exercise_detail', context, '1'),
       },
       {
         'title': 'Exercice 3',
         'description': 'Description courte de l\'exercice 3',
         'icon': Icons.waves,
         'color': Colors.orange,
-        'onTap': () => context.go('/exercises/2'),
+        'onTap': () => context.read<NavigationState>().navigateTo('/exercise_detail', context, '2'),
       },
       {
         'title': 'Exercice 4',
         'description': 'Description courte de l\'exercice 4',
         'icon': Icons.chat,
         'color': Colors.purple,
-        'onTap': () => context.go('/exercises/3'),
+        'onTap': () => context.read<NavigationState>().navigateTo('/exercise_detail', context, '3'),
       },
     ];
 
@@ -51,7 +52,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
-            onPressed: () => context.go('/profile'),
+            onPressed: () => context.read<NavigationState>().navigateTo('/profile', context),
           ),
         ],
       ),
@@ -81,7 +82,7 @@ class HomeScreen extends StatelessWidget {
             // Section des exercices recommandés
             _buildSectionHeader(
               'Exercices recommandés',
-              onSeeAll: () => context.go('/exercises'),
+              onSeeAll: () => context.read<NavigationState>().navigateTo('/exercises', context),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -135,7 +136,7 @@ class HomeScreen extends StatelessWidget {
         ],
         onTap: (index) {
           if (index == 1) {
-            context.go('/exercise'); // Corriger la route
+            context.read<NavigationState>().navigateTo('/exercises', context);
           }
         },
       ),
