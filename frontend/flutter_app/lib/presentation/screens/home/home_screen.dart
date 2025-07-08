@@ -6,6 +6,45 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Définir une liste statique d'exercices pour l'affichage
+    final exercises = [
+      {
+        'title': 'Confiance Express',
+        'description': 'Boostez votre confiance en 1 minute.',
+        'icon': Icons.star,
+        'color': Colors.amber,
+        'onTap': () => context.go('/confidence-boost'),
+      },
+      {
+        'title': 'Exercice 1',
+        'description': 'Description courte de l\'exercice 1',
+        'icon': Icons.record_voice_over,
+        'color': Colors.blue,
+        'onTap': () => context.go('/exercises/0'),
+      },
+      {
+        'title': 'Exercice 2',
+        'description': 'Description courte de l\'exercice 2',
+        'icon': Icons.speed,
+        'color': Colors.green,
+        'onTap': () => context.go('/exercises/1'),
+      },
+      {
+        'title': 'Exercice 3',
+        'description': 'Description courte de l\'exercice 3',
+        'icon': Icons.waves,
+        'color': Colors.orange,
+        'onTap': () => context.go('/exercises/2'),
+      },
+      {
+        'title': 'Exercice 4',
+        'description': 'Description courte de l\'exercice 4',
+        'icon': Icons.chat,
+        'color': Colors.purple,
+        'onTap': () => context.go('/exercises/3'),
+      },
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Eloquence'),
@@ -49,14 +88,16 @@ class HomeScreen extends StatelessWidget {
               height: 180,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: 5,
+                itemCount: exercises.length,
                 itemBuilder: (context, index) {
+                  final exercise = exercises[index];
                   return _buildExerciseCard(
                     context,
-                    title: 'Exercice ${index + 1}',
-                    description: 'Description courte de l\'exercice ${index + 1}',
-                    type: index % 5,
-                    onTap: () => context.go('/exercises/$index'),
+                    title: exercise['title'] as String,
+                    description: exercise['description'] as String,
+                    icon: exercise['icon'] as IconData,
+                    color: exercise['color'] as Color,
+                    onTap: exercise['onTap'] as VoidCallback,
                   );
                 },
               ),
@@ -94,7 +135,7 @@ class HomeScreen extends StatelessWidget {
         ],
         onTap: (index) {
           if (index == 1) {
-            context.go('/exercises');
+            context.go('/exercise'); // Corriger la route
           }
         },
       ),
@@ -131,42 +172,27 @@ class HomeScreen extends StatelessWidget {
     BuildContext context, {
     required String title,
     required String description,
-    required int type,
+    required IconData icon,
+    required Color color,
     required VoidCallback onTap,
   }) {
-    final List<Color> colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.red,
-    ];
-    
-    final List<IconData> icons = [
-      Icons.record_voice_over,
-      Icons.speed,
-      Icons.waves,
-      Icons.chat,
-      Icons.present_to_all,
-    ];
-    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
-          color: colors[type].withAlpha(26),
+          color: color.withAlpha(26),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors[type].withAlpha(77)),
+          border: Border.all(color: color.withAlpha(77)),
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              icons[type],
-              color: colors[type],
+              icon,
+              color: color,
               size: 32,
             ),
             const SizedBox(height: 16),
@@ -199,7 +225,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${5 + type * 5} min',
+                  '1 min', // Durée fixe pour la démo
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.black54,

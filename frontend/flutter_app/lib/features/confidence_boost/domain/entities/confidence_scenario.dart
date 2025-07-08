@@ -1,0 +1,180 @@
+import 'package:equatable/equatable.dart';
+
+/// Représente un scénario de confiance pour l'exercice Confidence Boost Express
+/// CONFORME AUX SPÉCIFICATIONS EXACTES DU PROMPT
+class ConfidenceScenario extends Equatable {
+  final String id;
+  final String title;
+  final String description;
+  final String prompt;
+  final ConfidenceScenarioType type;
+  final int durationSeconds;
+  final List<String> tips;
+  final List<String> keywords;
+  final String difficulty; // 'beginner', 'intermediate', 'advanced'
+  final String icon;
+
+  const ConfidenceScenario({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.prompt,
+    required this.type,
+    required this.durationSeconds,
+    required this.tips,
+    required this.keywords,
+    required this.difficulty,
+    required this.icon,
+  });
+
+  @override
+  List<Object?> get props => [
+        id,
+        title,
+        description,
+        prompt,
+        type,
+        durationSeconds,
+        tips,
+        keywords,
+        difficulty,
+        icon,
+      ];
+
+  /// Factory pour créer les scénarios exacts spécifiés dans le prompt
+  static List<ConfidenceScenario> getDefaultScenarios() {
+    return [
+      const ConfidenceScenario(
+        id: 'team_meeting',
+        title: 'Réunion d\'équipe',
+        description: 'Pratiquez votre discours pour une réunion avec vos collègues.',
+        prompt: 'Présentez brièvement un projet sur lequel vous travaillez actuellement à votre équipe. Expliquez les objectifs principaux, les défis rencontrés et les prochaines étapes prévues. Vous avez 3 minutes.',
+        type: ConfidenceScenarioType.teamMeeting,
+        durationSeconds: 180,
+        difficulty: 'beginner',
+        icon: '👥',
+        tips: [
+          'Structurez votre présentation en 3 parties',
+          'Utilisez des exemples concrets',
+          'Maintenez un contact visuel',
+          'Parlez avec assurance'
+        ],
+        keywords: ['projet', 'objectifs', 'défis', 'étapes', 'équipe'],
+      ),
+      
+      const ConfidenceScenario(
+        id: 'client_presentation',
+        title: 'Présentation client',
+        description: 'Présentez une solution à un client potentiel.',
+        prompt: 'Vous présentez une solution innovante à un client potentiel. Expliquez clairement le problème que vous résolvez, votre solution unique et les bénéfices concrets pour leur entreprise. Soyez persuasif et professionnel.',
+        type: ConfidenceScenarioType.clientPresentation,
+        durationSeconds: 240,
+        difficulty: 'intermediate',
+        icon: '💼',
+        tips: [
+          'Identifiez clairement le problème',
+          'Présentez votre solution unique',
+          'Quantifiez les bénéfices',
+          'Soyez persuasif mais authentique'
+        ],
+        keywords: ['solution', 'problème', 'bénéfices', 'innovation', 'entreprise'],
+      ),
+      
+      const ConfidenceScenario(
+        id: 'elevator_pitch',
+        title: 'Elevator Pitch',
+        description: 'Présentez votre startup en 90 secondes.',
+        prompt: 'Vous êtes dans un ascenseur avec un investisseur potentiel. Présentez votre startup de manière concise : votre vision, le problème que vous résolvez, votre solution, le marché et pourquoi ils devraient investir. Vous avez 90 secondes maximum.',
+        type: ConfidenceScenarioType.elevatorPitch,
+        durationSeconds: 90,
+        difficulty: 'advanced',
+        icon: '🚀',
+        tips: [
+          'Soyez concis et impactant',
+          'Commencez par le problème',
+          'Présentez votre solution unique',
+          'Terminez par un appel à l\'action'
+        ],
+        keywords: ['startup', 'vision', 'marché', 'investissement', 'solution'],
+      ),
+      
+      const ConfidenceScenario(
+        id: 'team_motivation',
+        title: 'Motivation d\'équipe',
+        description: 'Motivez votre équipe avant un projet important.',
+        prompt: 'Votre équipe commence un projet crucial pour l\'entreprise. Motivez-les en expliquant l\'importance du projet, les objectifs à atteindre et pourquoi vous avez confiance en leur capacité à réussir. Inspirez-les !',
+        type: ConfidenceScenarioType.teamMotivation,
+        durationSeconds: 150,
+        difficulty: 'intermediate',
+        icon: '⚡',
+        tips: [
+          'Exprimez votre confiance en l\'équipe',
+          'Expliquez l\'importance du projet',
+          'Fixez des objectifs clairs',
+          'Inspirez par votre énergie'
+        ],
+        keywords: ['motivation', 'projet', 'objectifs', 'confiance', 'réussir'],
+      ),
+      
+      const ConfidenceScenario(
+        id: 'product_demo',
+        title: 'Démonstration produit',
+        description: 'Présentez les fonctionnalités de votre produit.',
+        prompt: 'Présentez votre produit à des prospects. Expliquez ses fonctionnalités principales, ses avantages uniques et comment il peut résoudre leurs problèmes spécifiques. Rendez votre présentation engageante et mémorable.',
+        type: ConfidenceScenarioType.productDemo,
+        durationSeconds: 200,
+        difficulty: 'intermediate',
+        icon: '📱',
+        tips: [
+          'Montrez les fonctionnalités clés',
+          'Mettez en avant les avantages',
+          'Utilisez des cas d\'usage concrets',
+          'Rendez la démo interactive'
+        ],
+        keywords: ['produit', 'fonctionnalités', 'avantages', 'problèmes', 'solution'],
+      ),
+    ];
+  }
+}
+
+/// Types de scénarios de confiance EXACTS selon les spécifications
+enum ConfidenceScenarioType {
+  teamMeeting,
+  clientPresentation,
+  elevatorPitch,
+  teamMotivation,
+  productDemo,
+}
+
+/// Extension pour obtenir des informations sur les types
+extension ConfidenceScenarioTypeExtension on ConfidenceScenarioType {
+  String get displayName {
+    switch (this) {
+      case ConfidenceScenarioType.teamMeeting:
+        return 'Réunion d\'équipe';
+      case ConfidenceScenarioType.clientPresentation:
+        return 'Présentation client';
+      case ConfidenceScenarioType.elevatorPitch:
+        return 'Elevator Pitch';
+      case ConfidenceScenarioType.teamMotivation:
+        return 'Motivation d\'équipe';
+      case ConfidenceScenarioType.productDemo:
+        return 'Démonstration produit';
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case ConfidenceScenarioType.teamMeeting:
+        return '👥';
+      case ConfidenceScenarioType.clientPresentation:
+        return '💼';
+      case ConfidenceScenarioType.elevatorPitch:
+        return '🚀';
+      case ConfidenceScenarioType.teamMotivation:
+        return '⚡';
+      case ConfidenceScenarioType.productDemo:
+        return '📱';
+    }
+  }
+}

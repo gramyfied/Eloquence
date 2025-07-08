@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/dark_theme.dart';
 import '../../widgets/navigation/gradient_bottom_navigation_bar.dart';
-import '../exercise/exercise_screen.dart';
+import '../exercises/exercises_list_screen.dart'; // Utiliser la nouvelle liste
+import '../home/home_screen.dart'; // Importer HomeScreen
 import '../profile/profile_screen.dart';
 import '../scenario/scenario_screen.dart';
-// import '../continuous_streaming_screen.dart'; // Supprimé
 
 final selectedTabProvider = StateProvider<int>((ref) => 0);
 
@@ -16,20 +16,25 @@ class MainScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTab = ref.watch(selectedTabProvider);
     
-    // Liste des écrans
+    // Liste des écrans dans l'ordre de la nav bar
     final screens = [
-      const ExerciseScreen(),
+      const HomeScreen(),
+      const ExercisesListScreen(),
       const ScenarioScreen(),
       const ProfileScreen(),
-      // const ContinuousStreamingScreen(), // Supprimé
     ];
     
     // Éléments de navigation
     final navigationItems = [
       const BottomNavigationItem(
-        icon: Icons.mic,
-        label: 'Exercise',
+        icon: Icons.home,
+        label: 'Accueil',
         selectedColor: DarkTheme.accentCyan,
+      ),
+      const BottomNavigationItem(
+        icon: Icons.fitness_center,
+        label: 'Exercices',
+        selectedColor: DarkTheme.successGreen,
       ),
       const BottomNavigationItem(
         icon: Icons.movie,
@@ -38,14 +43,9 @@ class MainScreen extends ConsumerWidget {
       ),
       const BottomNavigationItem(
         icon: Icons.person,
-        label: 'Profile',
+        label: 'Profil',
         selectedColor: DarkTheme.accentPink,
       ),
-      // const BottomNavigationItem(
-      //   icon: Icons.stream,
-      //   label: 'Streaming',
-      //   selectedColor: DarkTheme.primaryBlue,
-      // ), // Supprimé
     ];
     
     return Scaffold(

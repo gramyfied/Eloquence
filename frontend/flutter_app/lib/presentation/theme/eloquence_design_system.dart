@@ -14,6 +14,11 @@ class EloquenceColors {
   static const Color glassBorder = Color(0x5200D4FF);     // rgba(0, 212, 255, 0.32)
   static const Color glassWhite = Color(0x1AFFFFFF);      // rgba(255, 255, 255, 0.1)
   
+  // Couleurs supplémentaires
+  static const Color white = Colors.white;
+  static const Color backgroundDark = navy;
+  static const Color error = Color(0xFFFF5252);
+  
   // Dégradés obligatoires
   static const LinearGradient cyanVioletGradient = LinearGradient(
     colors: [cyan, violet],
@@ -56,6 +61,28 @@ class EloquenceTextStyles {
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: Color(0xB3FFFFFF), // white avec opacité 0.7
+    letterSpacing: 0.5,
+  );
+  
+  // Alias pour la compatibilité
+  static const TextStyle h2 = headline2;
+  static const TextStyle h3 = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+    letterSpacing: -0.2,
+  );
+  static const TextStyle bodyLarge = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.normal,
+    color: Colors.white,
+    letterSpacing: 0,
+  );
+  static const TextStyle bodyMedium = body1;
+  static const TextStyle buttonLarge = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
     letterSpacing: 0.5,
   );
 }

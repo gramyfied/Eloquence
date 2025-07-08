@@ -7,18 +7,31 @@ class ExercisesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Simuler des données d'exercices
-    final exercises = List.generate(
-      10,
-      (index) => {
-        'id': '$index',
-        'title': 'Exercice ${index + 1}',
-        'description': 'Description de l\'exercice ${index + 1}. Cet exercice vous aidera à améliorer votre expression orale.',
-        'type': index % 5,
-        'difficulty': index % 4,
-        'duration': 5 + (index % 4) * 5,
-        'isCompleted': index < 3,
+    final exercises = [
+      {
+        'id': 'confidence-boost',
+        'title': 'Confidence Boost Express',
+        'description': 'Boostez votre confiance en 30 secondes ! Choisissez un scénario et exprimez-vous avec assurance.',
+        'type': 5, // Type 5 pour confidence (6ème élément dans la liste)
+        'difficulty': 0, // Débutant
+        'duration': 1, // 1 minute (30s d'enregistrement + préparation)
+        'isCompleted': false,
+        'isSpecial': true,
       },
-    );
+      ...List.generate(
+        10,
+        (index) => {
+          'id': '$index',
+          'title': 'Exercice ${index + 1}',
+          'description': 'Description de l\'exercice ${index + 1}. Cet exercice vous aidera à améliorer votre expression orale.',
+          'type': index % 5,
+          'difficulty': index % 4,
+          'duration': 5 + (index % 4) * 5,
+          'isCompleted': index < 3,
+          'isSpecial': false,
+        },
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -66,6 +79,7 @@ class ExercisesScreen extends StatelessWidget {
                 _buildCategoryChip('Intonation'),
                 _buildCategoryChip('Conversation'),
                 _buildCategoryChip('Présentation'),
+                _buildCategoryChip('Confiance'),
               ],
             ),
           ),
@@ -80,7 +94,14 @@ class ExercisesScreen extends StatelessWidget {
                 return _buildExerciseCard(
                   context,
                   exercise: exercise,
-                  onTap: () => context.go('/exercises/${exercise['id']}'),
+                  onTap: () {
+                    if (exercise['id'] == 'confidence-boost') {
+                      // Navigation spéciale pour Confidence Boost Express
+                      context.go('/confidence-boost?userId=default-user');
+                    } else {
+                      context.go('/exercises/${exercise['id']}');
+                    }
+                  },
                 );
               },
             ),
@@ -121,6 +142,7 @@ class ExercisesScreen extends StatelessWidget {
       Colors.orange,
       Colors.purple,
       Colors.red,
+      const Color(0xFF00D4FF), // Cyan pour Confidence Boost
     ];
     
     final List<String> typeLabels = [
@@ -129,6 +151,7 @@ class ExercisesScreen extends StatelessWidget {
       'Intonation',
       'Conversation',
       'Présentation',
+      'Confiance', // Nouveau label
     ];
     
     final List<IconData> typeIcons = [
@@ -137,6 +160,7 @@ class ExercisesScreen extends StatelessWidget {
       Icons.waves,
       Icons.chat,
       Icons.present_to_all,
+      Icons.rocket_launch, // Icône pour Confidence Boost
     ];
     
     final List<String> difficultyLabels = [
@@ -156,12 +180,16 @@ class ExercisesScreen extends StatelessWidget {
     final int type = exercise['type'] as int;
     final int difficulty = exercise['difficulty'] as int;
     final bool isCompleted = exercise['isCompleted'] as bool;
+    final bool isSpecial = exercise['isSpecial'] as bool? ?? false;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: isSpecial
+          ? const BorderSide(color: Color(0xFF00D4FF), width: 2)
+          : BorderSide.none,
       ),
       child: InkWell(
         onTap: onTap,
@@ -174,10 +202,14 @@ class ExercisesScreen extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: typeColors[type].withAlpha(51),
+                    backgroundColor: isSpecial
+                      ? const Color(0xFF00D4FF).withAlpha(51)
+                      : typeColors[type].withAlpha(51),
                     child: Icon(
                       typeIcons[type],
-                      color: typeColors[type],
+                      color: isSpecial
+                        ? const Color(0xFF00D4FF)
+                        : typeColors[type],
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -251,18 +283,37 @@ class ExercisesScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Chip(
-                    label: Text(
-                      typeLabels[type],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: typeColors[type],
+                  if (isSpecial)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00D4FF), Color(0xFF8B5CF6)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Text(
+                        '⚡ NOUVEAU',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else
+                    Chip(
+                      label: Text(
+                        typeLabels[type],
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: typeColors[type],
+                        ),
+                      ),
+                      backgroundColor: typeColors[type].withAlpha(26),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    backgroundColor: typeColors[type].withAlpha(26),
-                    padding: EdgeInsets.zero,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
                   const Spacer(),
                   if (!isCompleted)
                     OutlinedButton(
