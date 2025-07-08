@@ -169,8 +169,8 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
       child: GlassmorphismOverlay(
         opacity: _calculateNavigationOpacity(),
         child: MainNavigation(
-          onNavigationChanged: (route) {
-            context.read<NavigationState>().navigateTo(route);
+          onNavigationChanged: (route, context) {
+            context.read<NavigationState>().navigateTo(route, context);
           },
         ),
       ),

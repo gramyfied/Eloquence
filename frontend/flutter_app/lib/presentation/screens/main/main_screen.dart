@@ -55,8 +55,8 @@ class MainScreen extends ConsumerWidget {
               right: 0,
               bottom: 0,
               child: MainNavigation(
-                onNavigationChanged: (newRoute) {
-                  navigationState.navigateTo(newRoute);
+                onNavigationChanged: (newRoute, context) {
+                  navigationState.navigateTo(newRoute, context);
                 },
               ),
             ),

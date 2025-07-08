@@ -28,7 +28,7 @@ class NavigationState extends ChangeNotifier {
     }
   }
 
-  void navigateTo(String route) {
+  void navigateTo(String route, [BuildContext? context]) {
     if (_currentRoute != route) {
       _currentRoute = route;
 
@@ -52,7 +52,11 @@ class NavigationState extends ChangeNotifier {
       }
 
       updateCarouselState(newCarouselState);
-      // notifyListeners() is called by updateCarouselState
+
+      // Navigation réelle si context fourni
+      if (context != null) {
+        Navigator.pushNamed(context, route);
+      }
     }
   }
 
@@ -63,13 +67,13 @@ class NavigationState extends ChangeNotifier {
     }
   }
 
-  void startExercise(String exerciseId) {
-    navigateTo('/exercise_active');
+  void startExercise(String exerciseId, [BuildContext? context]) {
+    navigateTo('/exercise_active', context);
     // Logique spécifique au démarrage d'exercice
   }
 
-  void endExercise() {
-    navigateTo('/exercises');
+  void endExercise([BuildContext? context]) {
+    navigateTo('/exercises', context);
     // Logique spécifique à la fin d'exercice
   }
 }
