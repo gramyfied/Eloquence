@@ -135,13 +135,7 @@ class ExercisesScreen extends StatelessWidget {
             navigationState.navigateTo(
               '/exercise_detail',
               context,
-              {
-                'exerciseId': exerciseId,
-                'title': title,
-                'description': description,
-                'icon': icon.codePoint.toString(),
-                'accentColor': accentColor.value.toString(),
-              },
+              exerciseId,
             );
             print('Navigation called successfully');
           } catch (e) {
