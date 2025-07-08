@@ -5,7 +5,8 @@ enum ExerciseType {
   fluency,
   intonation,
   conversation,
-  presentation
+  presentation,
+  confidence_boost
 }
 
 enum ExerciseDifficulty {

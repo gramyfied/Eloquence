@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:async'; // Ajout de l'import pour StreamController
+import 'dart:io'; // Import pour File
+import 'dart:typed_data'; // Import pour Uint8List
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 // import 'package:web_socket_channel/io.dart'; // Supprimé car non utilisé
@@ -7,7 +9,6 @@ import '../../core/config/app_config.dart';
 import '../../core/utils/logger_service.dart';
 import '../models/scenario_model.dart';
 import '../models/session_model.dart';
-// import 'dart:io'; // Supprimé car non utilisé
 // import 'package:flutter/foundation.dart'; // Supprimé car non utilisé
 
 class ApiService {
@@ -403,6 +404,124 @@ class ApiService {
       logger.e(_tag, 'Erreur lors de la connexion à l\'ancien endpoint: $e');
       logger.performance(_tag, 'endSession', end: true);
       return false;
+    }
+  }
+
+  // Transcrire un fichier audio avec Whisper
+  Future<String> transcribeAudio(String audioFilePath) async {
+    logger.i(_tag, 'Transcription audio avec Whisper: $audioFilePath');
+    logger.performance(_tag, 'transcribeAudio', start: true);
+
+    try {
+      // Lire le fichier audio
+      final file = File(audioFilePath);
+      if (!await file.exists()) {
+        throw Exception('Fichier audio introuvable: $audioFilePath');
+      }
+
+      // Créer une requête multipart pour envoyer le fichier
+      final uri = Uri.parse('$baseUrl/api/transcribe');
+      final request = http.MultipartRequest('POST', uri);
+      
+      // Ajouter les headers d'authentification
+      request.headers.addAll(headers);
+      
+      // Ajouter le fichier audio
+      request.files.add(await http.MultipartFile.fromPath(
+        'audio',
+        audioFilePath,
+        filename: 'recording.wav',
+      ));
+
+      // Envoyer la requête
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        logger.i(_tag, 'Transcription réussie');
+        
+        final responseData = json.decode(response.body);
+        final transcription = responseData['transcription'] ?? '';
+        
+        logger.performance(_tag, 'transcribeAudio', end: true);
+        return transcription;
+      } else {
+        logger.e(_tag, 'Erreur ${response.statusCode} lors de la transcription: ${response.body}');
+        logger.performance(_tag, 'transcribeAudio', end: true);
+        throw Exception('Erreur lors de la transcription audio');
+      }
+    } catch (e) {
+      logger.e(_tag, 'Exception lors de la transcription: $e');
+      logger.performance(_tag, 'transcribeAudio', end: true);
+      rethrow;
+    }
+  }
+
+  // Générer une réponse avec Mistral
+  Future<String> generateResponse(String prompt) async {
+    logger.i(_tag, 'Génération de réponse avec Mistral');
+    logger.performance(_tag, 'generateResponse', start: true);
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/generate'),
+        headers: headers,
+        body: json.encode({
+          'prompt': prompt,
+          'model': 'mistral',
+          'temperature': 0.7,
+          'max_tokens': 500,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        logger.i(_tag, 'Réponse générée avec succès');
+        
+        final responseData = json.decode(response.body);
+        final generatedText = responseData['response'] ?? '';
+        
+        logger.performance(_tag, 'generateResponse', end: true);
+        return generatedText;
+      } else {
+        logger.e(_tag, 'Erreur ${response.statusCode} lors de la génération: ${response.body}');
+        logger.performance(_tag, 'generateResponse', end: true);
+        throw Exception('Erreur lors de la génération de réponse');
+      }
+    } catch (e) {
+      logger.e(_tag, 'Exception lors de la génération: $e');
+      logger.performance(_tag, 'generateResponse', end: true);
+      rethrow;
+    }
+  }
+
+  // Synthétiser de l'audio à partir du texte
+  Future<Uint8List> synthesizeAudio(String text) async {
+    logger.i(_tag, 'Synthèse audio pour le texte: "${text.substring(0, (text.length > 50) ? 50 : text.length)}..."');
+    logger.performance(_tag, 'synthesizeAudio', start: true);
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/synthesize'),
+        headers: headers,
+        body: json.encode({
+          'text': text,
+          'voice': 'eloquence-voice', // Voix personnalisée
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        logger.i(_tag, 'Synthèse audio réussie');
+        logger.performance(_tag, 'synthesizeAudio', end: true);
+        return response.bodyBytes;
+      } else {
+        logger.e(_tag, 'Erreur ${response.statusCode} lors de la synthèse audio: ${response.body}');
+        logger.performance(_tag, 'synthesizeAudio', end: true);
+        throw Exception('Erreur lors de la synthèse audio');
+      }
+    } catch (e) {
+      logger.e(_tag, 'Exception lors de la synthèse audio: $e');
+      logger.performance(_tag, 'synthesizeAudio', end: true);
+      rethrow;
     }
   }
 }
