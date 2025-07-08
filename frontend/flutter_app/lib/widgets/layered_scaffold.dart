@@ -144,17 +144,14 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
 
   Widget _buildBackgroundCarousel() {
     return Positioned.fill(
-      child: GestureDetector(
-        onTap: widget.onCarouselTap,
-        child: AnimatedOpacity(
-          opacity: _carouselOpacity.value,
-          duration: const Duration(milliseconds: 800),
-          child: BackgroundCarousel(
-            isInteractive:
-                widget.carouselState == CarouselVisibilityState.full,
-            autoScroll:
-                widget.carouselState != CarouselVisibilityState.minimal,
-          ),
+      child: AnimatedOpacity(
+        opacity: _carouselOpacity.value,
+        duration: const Duration(milliseconds: 800),
+        child: BackgroundCarousel(
+          isInteractive:
+              widget.carouselState == CarouselVisibilityState.full,
+          autoScroll:
+              widget.carouselState != CarouselVisibilityState.minimal,
         ),
       ),
     );
