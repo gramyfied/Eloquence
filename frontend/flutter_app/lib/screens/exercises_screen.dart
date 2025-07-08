@@ -1,0 +1,193 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../core/navigation/navigation_state.dart';
+import '../utils/constants.dart';
+import '../widgets/glassmorphism_card.dart';
+import '../widgets/layered_scaffold.dart';
+
+class ExercisesScreen extends StatelessWidget {
+  const ExercisesScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<NavigationState>(
+      builder: (context, navigationState, child) {
+        return LayeredScaffold(
+          carouselState: CarouselVisibilityState.medium,
+          showNavigation: true,
+          onCarouselTap: () {
+            // Retour à l'accueil pour voir le carrousel en plein
+            context.read<NavigationState>().navigateTo('/home');
+          },
+          content: Container(
+            padding: const EdgeInsets.only(
+              top: 120,
+              bottom: 120,
+              left: 20,
+              right: 20,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header avec titre
+                EloquenceGlassCard(
+                  borderRadius: 16,
+                  borderColor: EloquenceColors.cyan,
+                  opacity: 0.2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.fitness_center,
+                          color: EloquenceColors.cyan,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Exercices d\'éloquence',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Liste des exercices
+                Expanded(
+                  child: ListView(
+                    children: [
+                      _buildExerciseCard(
+                        context,
+                        'Confidence Boost Express',
+                        'Gagnez en assurance en 3 minutes',
+                        Icons.trending_up,
+                        EloquenceColors.cyan,
+                        'confidence_boost',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        'Pitch Perfect',
+                        'Maîtrisez l\'art du pitch en 90 secondes',
+                        Icons.rocket_launch,
+                        EloquenceColors.violet,
+                        'pitch_perfect',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        'Interview Master',
+                        'Brillez en entretien professionnel',
+                        Icons.work,
+                        EloquenceColors.cyan,
+                        'interview_master',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        'Debate Champion',
+                        'Argumentez avec force et conviction',
+                        Icons.gavel,
+                        EloquenceColors.violet,
+                        'debate_champion',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildExerciseCard(
+    BuildContext context,
+    String title,
+    String description,
+    IconData icon,
+    Color accentColor,
+    String exerciseId,
+  ) {
+    return EloquenceGlassCard(
+      borderRadius: 16,
+      borderColor: accentColor,
+      opacity: 0.15,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            context.read<NavigationState>().navigateTo('/exercise_detail');
+            // Navigation vers le détail de l'exercice
+            Navigator.pushNamed(
+              context,
+              '/exercise_detail',
+              arguments: exerciseId,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: accentColor,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.7),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: accentColor,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
