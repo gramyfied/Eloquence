@@ -179,7 +179,14 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
 
   Widget _buildMainContent() {
     return Positioned.fill(
-      child: widget.content,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          // Gestionnaire vide pour s'assurer que les événements tactiles
+          // sont correctement propagés au contenu enfant
+        },
+        child: widget.content,
+      ),
     );
   }
 
