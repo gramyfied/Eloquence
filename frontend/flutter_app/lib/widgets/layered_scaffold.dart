@@ -119,13 +119,15 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
 
               // Layer 2: Filtre de flou appliqué sur le carrousel
               Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: _carouselBlur.value,
-                    sigmaY: _carouselBlur.value,
-                  ),
-                  child: Container(
-                    color: Colors.black.withOpacity(0.0),
+                child: IgnorePointer(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: _carouselBlur.value,
+                      sigmaY: _carouselBlur.value,
+                    ),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.0),
+                    ),
                   ),
                 ),
               ),
@@ -144,14 +146,18 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
 
   Widget _buildBackgroundCarousel() {
     return Positioned.fill(
-      child: AnimatedOpacity(
-        opacity: _carouselOpacity.value,
-        duration: const Duration(milliseconds: 800),
-        child: BackgroundCarousel(
-          isInteractive:
-              widget.carouselState == CarouselVisibilityState.full,
-          autoScroll:
-              widget.carouselState != CarouselVisibilityState.minimal,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: widget.onCarouselTap,
+        child: AnimatedOpacity(
+          opacity: _carouselOpacity.value,
+          duration: const Duration(milliseconds: 800),
+          child: BackgroundCarousel(
+            isInteractive:
+                widget.carouselState == CarouselVisibilityState.full,
+            autoScroll:
+                widget.carouselState != CarouselVisibilityState.minimal,
+          ),
         ),
       ),
     );
