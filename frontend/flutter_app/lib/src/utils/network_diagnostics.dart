@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
-import '../services/clean_livekit_service.dart';
 import '../../core/config/app_config.dart';
 
 class NetworkDiagnostics {

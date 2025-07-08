@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart'; // Add GoRouter import
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
@@ -127,13 +128,7 @@ class ExercisesScreen extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            context.read<NavigationState>().navigateTo('/exercise_detail');
-            // Navigation vers le détail de l'exercice
-            Navigator.pushNamed(
-              context,
-              '/exercise_detail',
-              arguments: exerciseId,
-            );
+            context.push('/exercise_detail/$exerciseId'); // Use GoRouter push
           },
           child: Padding(
             padding: const EdgeInsets.all(20),
