@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,10 +9,12 @@ import '../../../../src/services/clean_livekit_service.dart';
 import '../../data/datasources/confidence_local_datasource.dart';
 import '../../data/datasources/confidence_remote_datasource.dart';
 import '../../data/repositories/confidence_repository_impl.dart';
-import '../../data/services/confidence_analysis_service.dart';
+import '../../data/services/confidence_livekit_integration.dart';
 import '../../data/services/text_support_generator.dart';
-import '../../domain/entities/confidence_models.dart' as ConfidenceModels;
-import '../../domain/entities/confidence_scenario.dart' as ConfidenceScenarios;
+import '../../data/services/confidence_analysis_backend_service.dart';
+import '../../data/services/prosody_analysis_interface.dart';
+import '../../domain/entities/confidence_models.dart' as confidence_models;
+import '../../domain/entities/confidence_scenario.dart' as confidence_scenarios;
 import '../../domain/entities/confidence_session.dart';
 import '../../domain/repositories/confidence_repository.dart';
 
@@ -69,44 +72,57 @@ final confidenceRepositoryProvider = Provider<ConfidenceRepository>((ref) {
   );
 });
 
-// Provider pour le service d'analyse
-final confidenceAnalysisServiceProvider = Provider<ConfidenceAnalysisService>((ref) {
-  final apiService = ref.watch(apiServiceProvider);
+// Provider pour le service d'intégration LiveKit
+final confidenceLiveKitIntegrationProvider = Provider<ConfidenceLiveKitIntegration>((ref) {
   final livekitService = ref.watch(livekitServiceProvider);
-  return ConfidenceAnalysisService(
-    apiService: apiService,
+  final apiService = ref.watch(apiServiceProvider);
+  return ConfidenceLiveKitIntegration(
     livekitService: livekitService,
+    apiService: apiService,
   );
 });
 
+// Provider pour le service d'analyse backend (Whisper + Mistral)
+final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBackendService>((ref) {
+  return ConfidenceAnalysisBackendService();
+});
+
+// Provider pour l'interface d'analyse prosodique (Kaldi futur)
+final prosodyAnalysisInterfaceProvider = Provider<ProsodyAnalysisInterface>((ref) {
+  return FallbackProsodyAnalysis(); // Utilise le fallback en attendant Kaldi
+});
+
 // Provider pour récupérer les scénarios
-final confidenceScenariosProvider = FutureProvider<List<ConfidenceScenarios.ConfidenceScenario>>((ref) async {
+final confidenceScenariosProvider = FutureProvider<List<confidence_scenarios.ConfidenceScenario>>((ref) async {
   final repository = ref.watch(confidenceRepositoryProvider);
   return await repository.getScenarios();
 });
 
 
 final confidenceBoostProvider = ChangeNotifierProvider((ref) {
-  // Ici, vous pouvez passer les dépendances nécessaires au provider
-  // Par exemple, le service LiveKit, le service d'analyse, etc.
   return ConfidenceBoostProvider(
-    livekitIntegration: ref.watch(livekitServiceProvider),
-    // Assurez-vous que les autres dépendances sont fournies
-    analysisService: ref.watch(confidenceAnalysisServiceProvider),
+    livekitService: ref.watch(livekitServiceProvider),
+    livekitIntegration: ref.watch(confidenceLiveKitIntegrationProvider),
     repository: ref.watch(confidenceRepositoryProvider),
+    backendAnalysisService: ref.watch(confidenceAnalysisBackendServiceProvider),
+    prosodyAnalysisInterface: ref.watch(prosodyAnalysisInterfaceProvider),
   );
 });
 
 
 class ConfidenceBoostProvider with ChangeNotifier {
-  final CleanLiveKitService livekitIntegration;
-  final ConfidenceAnalysisService analysisService;
+  final CleanLiveKitService livekitService;
+  final ConfidenceLiveKitIntegration livekitIntegration;
   final ConfidenceRepository repository;
+  final ConfidenceAnalysisBackendService backendAnalysisService;
+  final ProsodyAnalysisInterface prosodyAnalysisInterface;
 
   ConfidenceBoostProvider({
+    required this.livekitService,
     required this.livekitIntegration,
-    required this.analysisService,
     required this.repository,
+    required this.backendAnalysisService,
+    required this.prosodyAnalysisInterface,
   }) {
     logger.i("ConfidenceBoostProvider created!");
   }
@@ -114,21 +130,21 @@ class ConfidenceBoostProvider with ChangeNotifier {
   final logger = Logger();
 
   // NOUVEAUX états
-  ConfidenceModels.TextSupport? _currentTextSupport;
-  ConfidenceModels.SupportType _selectedSupportType = ConfidenceModels.SupportType.fillInBlanks;
+  confidence_models.TextSupport? _currentTextSupport;
+  confidence_models.SupportType _selectedSupportType = confidence_models.SupportType.fillInBlanks;
   bool _isGeneratingSupport = false;
-  ConfidenceModels.ConfidenceAnalysis? _lastAnalysis;
+  confidence_models.ConfidenceAnalysis? _lastAnalysis;
 
   // Getters
-  ConfidenceModels.TextSupport? get currentTextSupport => _currentTextSupport;
-  ConfidenceModels.SupportType get selectedSupportType => _selectedSupportType;
+  confidence_models.TextSupport? get currentTextSupport => _currentTextSupport;
+  confidence_models.SupportType get selectedSupportType => _selectedSupportType;
   bool get isGeneratingSupport => _isGeneratingSupport;
-  ConfidenceModels.ConfidenceAnalysis? get lastAnalysis => _lastAnalysis;
+  confidence_models.ConfidenceAnalysis? get lastAnalysis => _lastAnalysis;
 
   // NOUVELLE méthode pour générer le support texte
   Future<void> generateTextSupport({
-    required ConfidenceScenarios.ConfidenceScenario scenario,
-    required ConfidenceModels.SupportType type,
+    required confidence_scenarios.ConfidenceScenario scenario,
+    required confidence_models.SupportType type,
   }) async {
     logger.i("Generating text support for scenario: ${scenario.title}, type: $type");
     _isGeneratingSupport = true;
@@ -153,27 +169,119 @@ class ConfidenceBoostProvider with ChangeNotifier {
     }
   }
 
-  // NOUVELLE méthode pour analyser la performance
+  // MÉTHODE PHASE 3 : Analyse backend avec Whisper + Mistral
   Future<void> analyzePerformance({
-    required ConfidenceScenarios.ConfidenceScenario scenario,
-    required ConfidenceModels.TextSupport textSupport,
+    required confidence_scenarios.ConfidenceScenario scenario,
+    required confidence_models.TextSupport textSupport,
     required Duration recordingDuration,
+    Uint8List? audioData, // Données audio de l'enregistrement
   }) async {
-    logger.i("Analyzing performance for scenario: ${scenario.title}");
-    logger.d("DEBUG: scenario type = ${scenario.runtimeType}");
+    logger.i("PHASE 3: Analysing performance via backend - Scenario: ${scenario.title}");
+    
     try {
-      // Utiliser votre ConfidenceLiveKitIntegration existant
-      final analysis = await livekitIntegration.requestConfidenceAnalysis(
+      // 1. Vérifier la disponibilité du service backend
+      final isBackendAvailable = await backendAnalysisService.isServiceAvailable();
+      logger.i("Backend service available: $isBackendAvailable");
+      
+      if (isBackendAvailable && audioData != null) {
+        // 2. Analyser via le pipeline Whisper + Mistral
+        final analysis = await backendAnalysisService.analyzeAudioRecording(
+          audioData: audioData,
+          scenario: scenario,
+          userContext: 'Session d\'analyse de performance - Support: ${textSupport.type.name}',
+          recordingDurationSeconds: recordingDuration.inSeconds,
+        );
+        
+        if (analysis != null) {
+          logger.i("Backend analysis completed successfully");
+          _lastAnalysis = analysis;
+          
+          // 3. Enrichir avec l'analyse prosodique (Kaldi) si disponible
+          try {
+            final prosodyResult = await prosodyAnalysisInterface.analyzeProsody(
+              audioData: audioData,
+              scenario: scenario,
+            );
+            
+            // Combiner les résultats si l'analyse prosodique a réussi
+            if (prosodyResult != null) {
+              logger.i("Prosody analysis completed - enhancing feedback");
+              // Enrichir le feedback avec les données prosodiques
+              final enrichedFeedback = "${analysis.feedback}\n\n"
+                  "🎵 **Analyse Prosodique** :\n"
+                  "• Débit de parole: ${prosodyResult.speechRate.wordsPerMinute.toStringAsFixed(0)} mots/min\n"
+                  "• Variation intonation: ${(prosodyResult.intonation.f0Range).toStringAsFixed(0)} Hz\n"
+                  "• Pauses détectées: ${prosodyResult.pauses.totalPauses} pauses";
+              
+              _lastAnalysis = confidence_models.ConfidenceAnalysis(
+                overallScore: analysis.overallScore,
+                confidenceScore: analysis.confidenceScore,
+                fluencyScore: prosodyResult.speechRate.fluencyScore, // Utiliser le score prosodique
+                clarityScore: analysis.clarityScore,
+                energyScore: prosodyResult.energy.normalizedEnergyScore, // Utiliser l'énergie prosodique
+                feedback: enrichedFeedback,
+              );
+            }
+          } catch (e) {
+            logger.w("Prosody analysis failed, continuing with backend-only results: $e");
+          }
+          
+          notifyListeners();
+          return;
+        }
+      }
+      
+      // 4. Fallback vers LiveKit si backend indisponible
+      logger.w("Falling back to LiveKit integration");
+      final success = await livekitIntegration.startSession(
         scenario: scenario,
-        recordingDurationSeconds: recordingDuration.inSeconds,
+        userContext: 'Session d\'analyse de performance (fallback)',
+        preferredSupportType: textSupport.type,
       );
 
-      logger.d("DEBUG: analysis type = ${analysis.runtimeType}");
-      logger.d("DEBUG: _lastAnalysis type = ${_lastAnalysis.runtimeType}");
-      _lastAnalysis = analysis;
-      notifyListeners();
-    } catch (e) {
-      logger.e('Erreur analyse: $e');
+      if (success) {
+        await livekitIntegration.startRecording();
+        await Future.delayed(recordingDuration);
+        await livekitIntegration.stopRecordingAndAnalyze();
+        
+        livekitIntegration.analysisStream.listen((analysis) {
+          logger.i("LiveKit fallback analysis completed");
+          _lastAnalysis = analysis;
+          notifyListeners();
+        });
+      } else {
+        // 5. Dernier fallback : CleanLiveKitService
+        logger.w("Final fallback to CleanLiveKitService");
+        final analysis = await livekitService.requestConfidenceAnalysis(
+          scenario: scenario,
+          recordingDurationSeconds: recordingDuration.inSeconds,
+        );
+        _lastAnalysis = analysis;
+        notifyListeners();
+      }
+      
+    } catch (e, stackTrace) {
+      logger.e('Critical error in performance analysis: $e', error: e, stackTrace: stackTrace);
+      
+      // Fallback d'urgence avec analyse locale
+      try {
+        final fallbackAnalysis = confidence_models.ConfidenceAnalysis(
+          overallScore: 70.0,
+          confidenceScore: 0.70,
+          fluencyScore: 0.65,
+          clarityScore: 0.75,
+          energyScore: 0.70,
+          feedback: "⚠️ **Analyse Hors-ligne** : L'analyse complète n'est pas disponible.\n\n"
+              "🎯 **Scénario** : ${scenario.title}\n"
+              "⏱️ **Durée** : ${recordingDuration.inSeconds}s d'enregistrement\n\n"
+              "💡 **Conseils** : ${scenario.tips.take(2).join(' • ')}"
+        );
+        
+        _lastAnalysis = fallbackAnalysis;
+        notifyListeners();
+      } catch (fallbackError) {
+        logger.e('Even fallback analysis failed: $fallbackError');
+      }
     }
   }
 }

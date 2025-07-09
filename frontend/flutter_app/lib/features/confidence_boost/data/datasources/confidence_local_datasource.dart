@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../domain/entities/confidence_models.dart';
+import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_session.dart';
 
@@ -132,7 +134,7 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
       title: json['title'],
       description: json['description'],
       prompt: json['prompt'],
-      type: ConfidenceScenarioType.values[json['type']],
+      type: ConfidenceScenarioTypeExtension.fromJson(json['type']),
       durationSeconds: json['durationSeconds'],
       tips: List<String>.from(json['tips']),
       keywords: List<String>.from(json['keywords']),
@@ -173,6 +175,7 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
 
   Map<String, dynamic> _analysisToJson(ConfidenceAnalysis analysis) {
     return {
+      'overallScore': analysis.overallScore,
       'confidenceScore': analysis.confidenceScore,
       'fluencyScore': analysis.fluencyScore,
       'clarityScore': analysis.clarityScore,
@@ -189,17 +192,18 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
 
   ConfidenceAnalysis _analysisFromJson(Map<String, dynamic> json) {
     return ConfidenceAnalysis(
-      confidenceScore: json['confidenceScore'].toDouble(),
-      fluencyScore: json['fluencyScore'].toDouble(),
-      clarityScore: json['clarityScore'].toDouble(),
-      energyScore: json['energyScore'].toDouble(),
-      wordCount: json['wordCount'],
-      speakingRate: json['speakingRate'].toDouble(),
-      keywordsUsed: List<String>.from(json['keywordsUsed']),
-      transcription: json['transcription'],
-      feedback: json['feedback'],
-      strengths: List<String>.from(json['strengths']),
-      improvements: List<String>.from(json['improvements']),
+      overallScore: (json['overallScore'] ?? 0.0).toDouble(),
+      confidenceScore: (json['confidenceScore'] ?? 0.0).toDouble(),
+      fluencyScore: (json['fluencyScore'] ?? 0.0).toDouble(),
+      clarityScore: (json['clarityScore'] ?? 0.0).toDouble(),
+      energyScore: (json['energyScore'] ?? 0.0).toDouble(),
+      wordCount: json['wordCount'] ?? 0,
+      speakingRate: (json['speakingRate'] ?? 0.0).toDouble(),
+      keywordsUsed: List<String>.from(json['keywordsUsed'] ?? []),
+      transcription: json['transcription'] ?? '',
+      feedback: json['feedback'] ?? '',
+      strengths: List<String>.from(json['strengths'] ?? []),
+      improvements: List<String>.from(json['improvements'] ?? []),
     );
   }
 

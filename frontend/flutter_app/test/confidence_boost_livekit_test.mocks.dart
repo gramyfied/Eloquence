@@ -4,16 +4,22 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i6;
-import 'dart:typed_data' as _i9;
-import 'dart:ui' as _i10;
+import 'dart:typed_data' as _i7;
+import 'dart:ui' as _i9;
 
-import 'package:eloquence_2_0/data/models/scenario_model.dart' as _i7;
-import 'package:eloquence_2_0/data/models/session_model.dart' as _i2;
-import 'package:eloquence_2_0/data/services/api_service.dart' as _i4;
-import 'package:eloquence_2_0/src/services/clean_livekit_service.dart' as _i8;
+import 'package:eloquence_2_0/data/models/scenario_model.dart' as _i12;
+import 'package:eloquence_2_0/data/models/session_model.dart' as _i3;
+import 'package:eloquence_2_0/data/services/api_service.dart' as _i10;
+import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart'
+    as _i13;
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart'
+    as _i2;
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart'
+    as _i8;
+import 'package:eloquence_2_0/src/services/clean_livekit_service.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i5;
-import 'package:web_socket_channel/web_socket_channel.dart' as _i3;
+import 'package:mockito/src/dummies.dart' as _i11;
+import 'package:web_socket_channel/web_socket_channel.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -29,8 +35,9 @@ import 'package:web_socket_channel/web_socket_channel.dart' as _i3;
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
 
-class _FakeSessionModel_0 extends _i1.SmartFake implements _i2.SessionModel {
-  _FakeSessionModel_0(
+class _FakeConfidenceAnalysis_0 extends _i1.SmartFake
+    implements _i2.ConfidenceAnalysis {
+  _FakeConfidenceAnalysis_0(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -39,9 +46,8 @@ class _FakeSessionModel_0 extends _i1.SmartFake implements _i2.SessionModel {
         );
 }
 
-class _FakeWebSocketChannel_1 extends _i1.SmartFake
-    implements _i3.WebSocketChannel {
-  _FakeWebSocketChannel_1(
+class _FakeSessionModel_1 extends _i1.SmartFake implements _i3.SessionModel {
+  _FakeSessionModel_1(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -50,181 +56,22 @@ class _FakeWebSocketChannel_1 extends _i1.SmartFake
         );
 }
 
-/// A class which mocks [ApiService].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockApiService extends _i1.Mock implements _i4.ApiService {
-  MockApiService() {
-    _i1.throwOnMissingStub(this);
-  }
-
-  @override
-  String get baseUrl => (super.noSuchMethod(
-        Invocation.getter(#baseUrl),
-        returnValue: _i5.dummyValue<String>(
-          this,
-          Invocation.getter(#baseUrl),
-        ),
-      ) as String);
-
-  @override
-  String get apiKey => (super.noSuchMethod(
-        Invocation.getter(#apiKey),
-        returnValue: _i5.dummyValue<String>(
-          this,
-          Invocation.getter(#apiKey),
-        ),
-      ) as String);
-
-  @override
-  Map<String, String> get headers => (super.noSuchMethod(
-        Invocation.getter(#headers),
-        returnValue: <String, String>{},
-      ) as Map<String, String>);
-
-  @override
-  _i6.Future<List<_i7.ScenarioModel>> getScenarios({
-    String? type,
-    String? difficulty,
-    String? language = 'fr',
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #getScenarios,
-          [],
-          {
-            #type: type,
-            #difficulty: difficulty,
-            #language: language,
-          },
-        ),
-        returnValue:
-            _i6.Future<List<_i7.ScenarioModel>>.value(<_i7.ScenarioModel>[]),
-      ) as _i6.Future<List<_i7.ScenarioModel>>);
-
-  @override
-  _i6.Future<_i7.ScenarioModel?> getScenario(String? scenarioId) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #getScenario,
-          [scenarioId],
-        ),
-        returnValue: _i6.Future<_i7.ScenarioModel?>.value(),
-      ) as _i6.Future<_i7.ScenarioModel?>);
-
-  @override
-  bool isApiAuthError(dynamic error) => (super.noSuchMethod(
-        Invocation.method(
-          #isApiAuthError,
-          [error],
-        ),
-        returnValue: false,
-      ) as bool);
-
-  @override
-  _i6.Future<_i2.SessionModel> startSession(
-    String? scenarioId,
-    String? userId, {
-    String? language = 'fr',
-    String? goal,
-    String? agentProfileId,
-    bool? isMultiAgent = false,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #startSession,
-          [
-            scenarioId,
-            userId,
-          ],
-          {
-            #language: language,
-            #goal: goal,
-            #agentProfileId: agentProfileId,
-            #isMultiAgent: isMultiAgent,
-          },
-        ),
-        returnValue: _i6.Future<_i2.SessionModel>.value(_FakeSessionModel_0(
-          this,
-          Invocation.method(
-            #startSession,
-            [
-              scenarioId,
-              userId,
-            ],
-            {
-              #language: language,
-              #goal: goal,
-              #agentProfileId: agentProfileId,
-              #isMultiAgent: isMultiAgent,
-            },
-          ),
-        )),
-      ) as _i6.Future<_i2.SessionModel>);
-
-  @override
-  _i6.Future<_i3.WebSocketChannel> connectWebSocket(String? sessionId) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #connectWebSocket,
-          [sessionId],
-        ),
-        returnValue:
-            _i6.Future<_i3.WebSocketChannel>.value(_FakeWebSocketChannel_1(
-          this,
-          Invocation.method(
-            #connectWebSocket,
-            [sessionId],
-          ),
-        )),
-      ) as _i6.Future<_i3.WebSocketChannel>);
-
-  @override
-  _i6.Future<bool> endSession(String? sessionId) => (super.noSuchMethod(
-        Invocation.method(
-          #endSession,
-          [sessionId],
-        ),
-        returnValue: _i6.Future<bool>.value(false),
-      ) as _i6.Future<bool>);
-
-  @override
-  _i6.Future<String> transcribeAudio(String? audioFilePath) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #transcribeAudio,
-          [audioFilePath],
-        ),
-        returnValue: _i6.Future<String>.value(_i5.dummyValue<String>(
-          this,
-          Invocation.method(
-            #transcribeAudio,
-            [audioFilePath],
-          ),
-        )),
-      ) as _i6.Future<String>);
-
-  @override
-  _i6.Future<String> generateResponse(String? prompt) => (super.noSuchMethod(
-        Invocation.method(
-          #generateResponse,
-          [prompt],
-        ),
-        returnValue: _i6.Future<String>.value(_i5.dummyValue<String>(
-          this,
-          Invocation.method(
-            #generateResponse,
-            [prompt],
-          ),
-        )),
-      ) as _i6.Future<String>);
+class _FakeWebSocketChannel_2 extends _i1.SmartFake
+    implements _i4.WebSocketChannel {
+  _FakeWebSocketChannel_2(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
 }
 
 /// A class which mocks [CleanLiveKitService].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockCleanLiveKitService extends _i1.Mock
-    implements _i8.CleanLiveKitService {
+    implements _i5.CleanLiveKitService {
   MockCleanLiveKitService() {
     _i1.throwOnMissingStub(this);
   }
@@ -236,10 +83,10 @@ class MockCleanLiveKitService extends _i1.Mock
       ) as bool);
 
   @override
-  _i6.Stream<_i9.Uint8List> get onAudioReceivedStream => (super.noSuchMethod(
+  _i6.Stream<_i7.Uint8List> get onAudioReceivedStream => (super.noSuchMethod(
         Invocation.getter(#onAudioReceivedStream),
-        returnValue: _i6.Stream<_i9.Uint8List>.empty(),
-      ) as _i6.Stream<_i9.Uint8List>);
+        returnValue: _i6.Stream<_i7.Uint8List>.empty(),
+      ) as _i6.Stream<_i7.Uint8List>);
 
   @override
   bool get hasListeners => (super.noSuchMethod(
@@ -303,7 +150,35 @@ class MockCleanLiveKitService extends _i1.Mock
       );
 
   @override
-  void addListener(_i10.VoidCallback? listener) => super.noSuchMethod(
+  _i6.Future<_i2.ConfidenceAnalysis> requestConfidenceAnalysis({
+    required _i8.ConfidenceScenario? scenario,
+    required int? recordingDurationSeconds,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #requestConfidenceAnalysis,
+          [],
+          {
+            #scenario: scenario,
+            #recordingDurationSeconds: recordingDurationSeconds,
+          },
+        ),
+        returnValue:
+            _i6.Future<_i2.ConfidenceAnalysis>.value(_FakeConfidenceAnalysis_0(
+          this,
+          Invocation.method(
+            #requestConfidenceAnalysis,
+            [],
+            {
+              #scenario: scenario,
+              #recordingDurationSeconds: recordingDurationSeconds,
+            },
+          ),
+        )),
+      ) as _i6.Future<_i2.ConfidenceAnalysis>);
+
+  @override
+  void addListener(_i9.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #addListener,
           [listener],
@@ -312,7 +187,7 @@ class MockCleanLiveKitService extends _i1.Mock
       );
 
   @override
-  void removeListener(_i10.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i9.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #removeListener,
           [listener],
@@ -328,4 +203,241 @@ class MockCleanLiveKitService extends _i1.Mock
         ),
         returnValueForMissingStub: null,
       );
+}
+
+/// A class which mocks [ApiService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockApiService extends _i1.Mock implements _i10.ApiService {
+  MockApiService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  String get baseUrl => (super.noSuchMethod(
+        Invocation.getter(#baseUrl),
+        returnValue: _i11.dummyValue<String>(
+          this,
+          Invocation.getter(#baseUrl),
+        ),
+      ) as String);
+
+  @override
+  String get apiKey => (super.noSuchMethod(
+        Invocation.getter(#apiKey),
+        returnValue: _i11.dummyValue<String>(
+          this,
+          Invocation.getter(#apiKey),
+        ),
+      ) as String);
+
+  @override
+  Map<String, String> get headers => (super.noSuchMethod(
+        Invocation.getter(#headers),
+        returnValue: <String, String>{},
+      ) as Map<String, String>);
+
+  @override
+  _i6.Future<List<_i12.ScenarioModel>> getScenarios({
+    String? type,
+    String? difficulty,
+    String? language = 'fr',
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getScenarios,
+          [],
+          {
+            #type: type,
+            #difficulty: difficulty,
+            #language: language,
+          },
+        ),
+        returnValue:
+            _i6.Future<List<_i12.ScenarioModel>>.value(<_i12.ScenarioModel>[]),
+      ) as _i6.Future<List<_i12.ScenarioModel>>);
+
+  @override
+  _i6.Future<_i12.ScenarioModel?> getScenario(String? scenarioId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getScenario,
+          [scenarioId],
+        ),
+        returnValue: _i6.Future<_i12.ScenarioModel?>.value(),
+      ) as _i6.Future<_i12.ScenarioModel?>);
+
+  @override
+  bool isApiAuthError(dynamic error) => (super.noSuchMethod(
+        Invocation.method(
+          #isApiAuthError,
+          [error],
+        ),
+        returnValue: false,
+      ) as bool);
+
+  @override
+  _i6.Future<_i3.SessionModel> startSession(
+    String? scenarioId,
+    String? userId, {
+    String? language = 'fr',
+    String? goal,
+    String? agentProfileId,
+    bool? isMultiAgent = false,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #startSession,
+          [
+            scenarioId,
+            userId,
+          ],
+          {
+            #language: language,
+            #goal: goal,
+            #agentProfileId: agentProfileId,
+            #isMultiAgent: isMultiAgent,
+          },
+        ),
+        returnValue: _i6.Future<_i3.SessionModel>.value(_FakeSessionModel_1(
+          this,
+          Invocation.method(
+            #startSession,
+            [
+              scenarioId,
+              userId,
+            ],
+            {
+              #language: language,
+              #goal: goal,
+              #agentProfileId: agentProfileId,
+              #isMultiAgent: isMultiAgent,
+            },
+          ),
+        )),
+      ) as _i6.Future<_i3.SessionModel>);
+
+  @override
+  _i6.Future<_i4.WebSocketChannel> connectWebSocket(String? sessionId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #connectWebSocket,
+          [sessionId],
+        ),
+        returnValue:
+            _i6.Future<_i4.WebSocketChannel>.value(_FakeWebSocketChannel_2(
+          this,
+          Invocation.method(
+            #connectWebSocket,
+            [sessionId],
+          ),
+        )),
+      ) as _i6.Future<_i4.WebSocketChannel>);
+
+  @override
+  _i6.Future<bool> endSession(String? sessionId) => (super.noSuchMethod(
+        Invocation.method(
+          #endSession,
+          [sessionId],
+        ),
+        returnValue: _i6.Future<bool>.value(false),
+      ) as _i6.Future<bool>);
+
+  @override
+  _i6.Future<String> transcribeAudio(String? audioFilePath) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #transcribeAudio,
+          [audioFilePath],
+        ),
+        returnValue: _i6.Future<String>.value(_i11.dummyValue<String>(
+          this,
+          Invocation.method(
+            #transcribeAudio,
+            [audioFilePath],
+          ),
+        )),
+      ) as _i6.Future<String>);
+
+  @override
+  _i6.Future<String> generateResponse(String? prompt) => (super.noSuchMethod(
+        Invocation.method(
+          #generateResponse,
+          [prompt],
+        ),
+        returnValue: _i6.Future<String>.value(_i11.dummyValue<String>(
+          this,
+          Invocation.method(
+            #generateResponse,
+            [prompt],
+          ),
+        )),
+      ) as _i6.Future<String>);
+
+  @override
+  _i6.Future<_i7.Uint8List> synthesizeAudio(String? text) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #synthesizeAudio,
+          [text],
+        ),
+        returnValue: _i6.Future<_i7.Uint8List>.value(_i7.Uint8List(0)),
+      ) as _i6.Future<_i7.Uint8List>);
+}
+
+/// A class which mocks [MistralApiService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockMistralApiService extends _i1.Mock implements _i13.MistralApiService {
+  MockMistralApiService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i6.Future<String> generateText({
+    required String? prompt,
+    int? maxTokens = 500,
+    double? temperature = 0.7,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #generateText,
+          [],
+          {
+            #prompt: prompt,
+            #maxTokens: maxTokens,
+            #temperature: temperature,
+          },
+        ),
+        returnValue: _i6.Future<String>.value(_i11.dummyValue<String>(
+          this,
+          Invocation.method(
+            #generateText,
+            [],
+            {
+              #prompt: prompt,
+              #maxTokens: maxTokens,
+              #temperature: temperature,
+            },
+          ),
+        )),
+      ) as _i6.Future<String>);
+
+  @override
+  _i6.Future<Map<String, dynamic>> analyzeContent({
+    required String? prompt,
+    int? maxTokens = 800,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #analyzeContent,
+          [],
+          {
+            #prompt: prompt,
+            #maxTokens: maxTokens,
+          },
+        ),
+        returnValue:
+            _i6.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      ) as _i6.Future<Map<String, dynamic>>);
 }

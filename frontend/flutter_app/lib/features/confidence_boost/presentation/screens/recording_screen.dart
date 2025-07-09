@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
+import '../providers/confidence_boost_provider.dart';
 
-class RecordingScreen extends StatefulWidget {
+class RecordingScreen extends ConsumerStatefulWidget {
   final ConfidenceScenario scenario;
   final TextSupport textSupport;
   final String sessionId;
@@ -20,16 +23,17 @@ class RecordingScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _RecordingScreenState createState() => _RecordingScreenState();
+  ConsumerState<RecordingScreen> createState() => _RecordingScreenState();
 }
 
-class _RecordingScreenState extends State<RecordingScreen>
+class _RecordingScreenState extends ConsumerState<RecordingScreen>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _waveController;
   bool _isRecording = false;
   Duration _recordingDuration = Duration.zero;
   Timer? _timer;
+  Uint8List? _audioData;
 
   @override
   void initState() {
@@ -69,34 +73,54 @@ class _RecordingScreenState extends State<RecordingScreen>
           style: EloquenceTextStyles.headline2,
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(EloquenceSpacing.lg),
-        child: Column(
-          children: [
-            // Support texte affiché
-            _buildTextSupportDisplay(),
-
-            SizedBox(height: EloquenceSpacing.xl),
-
-            // Timer
-            Text(
-              _formatDuration(_recordingDuration),
-              style: ConfidenceBoostTextStyles.timerDisplay,
+      body: Column(
+        children: [
+          // Section fixe du texte en haut
+          Expanded(
+            flex: 3,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(EloquenceSpacing.lg),
+              child: _buildTextSupportDisplay(),
             ),
+          ),
+          
+          // Section des contrôles en bas (fixe)
+          Container(
+            padding: const EdgeInsets.all(EloquenceSpacing.lg),
+            decoration: BoxDecoration(
+              color: EloquenceColors.navy,
+              border: Border(
+                top: BorderSide(
+                  color: EloquenceColors.glassBackground,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Timer
+                Text(
+                  _formatDuration(_recordingDuration),
+                  style: ConfidenceBoostTextStyles.timerDisplay,
+                ),
 
-            SizedBox(height: EloquenceSpacing.xl),
+                SizedBox(height: EloquenceSpacing.md),
 
-            // Waveform visualizer
-            _buildWaveformVisualizer(),
+                // Waveform visualizer
+                _buildWaveformVisualizer(),
 
-            Spacer(),
+                // Status d'analyse
+                _buildAnalysisStatus(),
 
-            // Bouton d'enregistrement
-            _buildRecordButton(),
+                SizedBox(height: EloquenceSpacing.md),
 
-            SizedBox(height: EloquenceSpacing.xl),
-          ],
-        ),
+                // Bouton d'enregistrement
+                _buildRecordButton(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -117,11 +141,15 @@ class _RecordingScreenState extends State<RecordingScreen>
             children: [
               Icon(Icons.text_snippet, color: EloquenceColors.cyan, size: 20),
               SizedBox(width: EloquenceSpacing.sm),
-              Text(
-                'Support : ${_getSupportTypeName(widget.textSupport.type)}',
-                style: EloquenceTextStyles.body1.copyWith(
-                  color: EloquenceColors.cyan,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Support : ${_getSupportTypeName(widget.textSupport.type)}',
+                  style: EloquenceTextStyles.body1.copyWith(
+                    color: EloquenceColors.cyan,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -311,6 +339,43 @@ class _RecordingScreenState extends State<RecordingScreen>
     );
   }
 
+  Widget _buildAnalysisStatus() {
+    final provider = ref.watch(confidenceBoostProvider);
+    
+    if (provider.isGeneratingSupport) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: EloquenceSpacing.md),
+        padding: const EdgeInsets.all(EloquenceSpacing.md),
+        decoration: BoxDecoration(
+          color: EloquenceColors.cyan.withOpacity(0.1),
+          borderRadius: EloquenceRadii.card,
+          border: Border.all(color: EloquenceColors.cyan.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: EloquenceColors.cyan,
+              ),
+            ),
+            SizedBox(width: EloquenceSpacing.sm),
+            Text(
+              'Analyse en cours...',
+              style: EloquenceTextStyles.body1.copyWith(
+                color: EloquenceColors.cyan,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return SizedBox.shrink();
+  }
+
   void _toggleRecording() {
     setState(() {
       _isRecording = !_isRecording;
@@ -332,6 +397,9 @@ class _RecordingScreenState extends State<RecordingScreen>
         _recordingDuration = Duration(seconds: timer.tick);
       });
     });
+
+    // L'enregistrement réel sera géré par le système audio natif
+    // Ici on démarre juste l'interface visuelle
   }
 
   void _stopRecording() {
@@ -339,7 +407,29 @@ class _RecordingScreenState extends State<RecordingScreen>
     _waveController.stop();
     _timer?.cancel();
 
-    widget.onRecordingComplete(_recordingDuration);
+    // Simuler des données audio pour les tests
+    _audioData = Uint8List.fromList(List.generate(1024, (index) => index % 256));
+
+    // Déclencher l'analyse avec le provider en utilisant les bons paramètres
+    final provider = ref.read(confidenceBoostProvider.notifier);
+    provider.analyzePerformance(
+      scenario: widget.scenario,
+      textSupport: widget.textSupport,
+      recordingDuration: _recordingDuration,
+      audioData: _audioData,
+    ).then((_) {
+      // Analyse terminée, retourner à l'écran précédent
+      widget.onRecordingComplete(_recordingDuration);
+    }).catchError((error) {
+      // Gérer les erreurs d'analyse
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de l\'analyse: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      widget.onRecordingComplete(_recordingDuration);
+    });
   }
 
   String _formatDuration(Duration duration) {

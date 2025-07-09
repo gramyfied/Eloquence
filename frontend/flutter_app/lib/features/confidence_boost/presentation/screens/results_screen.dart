@@ -79,16 +79,22 @@ class _ResultsScreenState extends State<ResultsScreen>
 
   void _startAnimationSequence() async {
     // 1. Animation du score principal
-    _scoreController.forward();
+    if (mounted) {
+      _scoreController.forward();
+    }
 
     // 2. Animation des métriques après 500ms
     await Future.delayed(const Duration(milliseconds: 500));
-    _metricsController.forward();
+    if (mounted) {
+      _metricsController.forward();
+    }
 
     // 3. Confettis et badge si score élevé
     if (widget.analysis.overallScore >= 80) {
       await Future.delayed(const Duration(milliseconds: 1000));
-      _triggerCelebration();
+      if (mounted) {
+        _triggerCelebration();
+      }
     }
   }
 
@@ -135,7 +141,7 @@ class _ResultsScreenState extends State<ResultsScreen>
               padding: const EdgeInsets.all(EloquenceSpacing.lg),
               child: Column(
                 children: [
-                  // Header
+                  // Header fixe
                   Row(
                     children: [
                       IconButton(
@@ -153,30 +159,41 @@ class _ResultsScreenState extends State<ResultsScreen>
                     ],
                   ),
 
-                  SizedBox(height: EloquenceSpacing.xl),
+                  // Contenu scrollable
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          SizedBox(height: EloquenceSpacing.xl),
 
-                  // Score principal animé
-                  _buildAnimatedScoreCircle(),
+                          // Score principal animé
+                          _buildAnimatedScoreCircle(),
 
-                  SizedBox(height: EloquenceSpacing.xl),
+                          SizedBox(height: EloquenceSpacing.xl),
 
-                  // Métriques détaillées
-                  _buildMetricsSection(),
+                          // Métriques détaillées
+                          _buildMetricsSection(),
 
-                  SizedBox(height: EloquenceSpacing.xl),
+                          SizedBox(height: EloquenceSpacing.xl),
 
-                  // Badge de réussite (si applicable)
-                  if (_showBadge) _buildAchievementBadge(),
+                          // Badge de réussite (si applicable)
+                          if (_showBadge) _buildAchievementBadge(),
 
-                  Spacer(),
+                          SizedBox(height: EloquenceSpacing.xl),
 
-                  // Feedback textuel
-                  _buildFeedbackSection(),
+                          // Feedback textuel
+                          _buildFeedbackSection(),
 
-                  SizedBox(height: EloquenceSpacing.xl),
+                          SizedBox(height: EloquenceSpacing.xl),
 
-                  // Boutons d'action
-                  _buildActionButtons(),
+                          // Boutons d'action
+                          _buildActionButtons(),
+
+                          SizedBox(height: EloquenceSpacing.lg), // Padding bas
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

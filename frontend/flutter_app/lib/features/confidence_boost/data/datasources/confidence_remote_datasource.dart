@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/logger_service.dart';
 import '../../../../data/services/api_service.dart';
+import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_session.dart';
 
@@ -111,6 +112,7 @@ class ConfidenceRemoteDataSourceImpl implements ConfidenceRemoteDataSource {
       await Future.delayed(const Duration(seconds: 2)); // Simulation du temps d'analyse
       
       return ConfidenceAnalysis(
+        overallScore: 0.84, // Valeur moyenne simulée
         confidenceScore: 0.85,
         fluencyScore: 0.82,
         clarityScore: 0.88,
@@ -143,7 +145,7 @@ class ConfidenceRemoteDataSourceImpl implements ConfidenceRemoteDataSource {
       title: json['title'],
       description: json['description'],
       prompt: json['prompt'],
-      type: _parseScenarioType(json['type']),
+      type: ConfidenceScenarioTypeExtension.fromJson(json['type']),
       durationSeconds: json['duration_seconds'],
       tips: List<String>.from(json['tips'] ?? []),
       keywords: List<String>.from(json['keywords'] ?? []),
@@ -161,6 +163,7 @@ class ConfidenceRemoteDataSourceImpl implements ConfidenceRemoteDataSource {
     ConfidenceAnalysis? analysis;
     if (json['confidence_score'] != null) {
       analysis = ConfidenceAnalysis(
+        overallScore: (json['confidence_score'] as num).toDouble(), // Utiliser confidence_score comme fallback
         confidenceScore: (json['confidence_score'] as num).toDouble(),
         fluencyScore: (json['fluency_score'] as num).toDouble(),
         clarityScore: (json['clarity_score'] as num).toDouble(),
@@ -189,30 +192,13 @@ class ConfidenceRemoteDataSourceImpl implements ConfidenceRemoteDataSource {
     );
   }
 
-  ConfidenceScenarioType _parseScenarioType(String type) {
-    switch (type) {
-      case 'team_meeting':
-        return ConfidenceScenarioType.teamMeeting;
-      case 'client_presentation':
-        return ConfidenceScenarioType.clientPresentation;
-      case 'elevator_pitch':
-        return ConfidenceScenarioType.elevatorPitch;
-      case 'team_motivation':
-        return ConfidenceScenarioType.teamMotivation;
-      case 'product_demo':
-        return ConfidenceScenarioType.productDemo;
-      default:
-        return ConfidenceScenarioType.teamMeeting;
-    }
-  }
-
   ConfidenceScenario _createPlaceholderScenario() {
     return const ConfidenceScenario(
       id: 'placeholder',
       title: 'Scénario non disponible',
       description: 'Le scénario original n\'est plus disponible',
       prompt: 'Exprimez-vous librement',
-      type: ConfidenceScenarioType.teamMeeting,
+      type: ConfidenceScenarioType.presentation,
       durationSeconds: 30,
       tips: [],
       keywords: [],
