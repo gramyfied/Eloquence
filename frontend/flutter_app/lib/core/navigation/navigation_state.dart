@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/orator_model.dart';
 import '../../services/orator_service.dart';
+
+final navigationStateProvider = ChangeNotifierProvider<NavigationState>((ref) {
+  return NavigationState();
+});
 
 enum CarouselVisibilityState {
   full(1.0),        // Navigation libre - 100% visible

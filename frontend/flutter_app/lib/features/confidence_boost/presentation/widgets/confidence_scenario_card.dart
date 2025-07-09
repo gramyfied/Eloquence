@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../../../presentation/widgets/eloquence_components.dart';
 import '../../domain/entities/confidence_scenario.dart';
+import 'animated_tap_effect.dart';
 
 class ConfidenceScenarioCard extends StatelessWidget {
   final ConfidenceScenario scenario;
   final VoidCallback onTap;
-  
+
   const ConfidenceScenarioCard({
     Key? key,
     required this.scenario,
     required this.onTap,
   }) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AnimatedTapEffect(
       onTap: onTap,
       child: EloquenceGlassCard(
         child: Row(

@@ -34,6 +34,13 @@ class EloquenceColors {
   );
 }
 
+// AJOUTS MINIMAUX Autorisés pour Confidence Boost
+extension ConfidenceBoostColors on EloquenceColors {
+  static const Color successGreen = Color(0xFF4ECDC4);       // Scores élevés
+  static const Color warningOrange = Color(0xFFFFB347);      // Scores moyens
+  static const Color celebrationGold = Color(0xFFFFD700);    // Badges/confettis
+}
+
 // Typography System OBLIGATOIRE
 class EloquenceTextStyles {
   static const TextStyle headline1 = TextStyle(
@@ -84,6 +91,17 @@ class EloquenceTextStyles {
     fontWeight: FontWeight.w600,
     color: Colors.white,
     letterSpacing: 0.5,
+  );
+}
+
+// AJOUTEZ SEULEMENT ces styles spécialisés
+extension ConfidenceBoostTextStyles on EloquenceTextStyles {
+  static const TextStyle scoreDisplay = TextStyle(
+    fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: -1.0,
+  );
+  static const TextStyle timerDisplay = TextStyle(
+    fontFamily: 'JetBrains Mono', fontSize: 36, fontWeight: FontWeight.w600,
+    color: Colors.white, letterSpacing: 2.0,
   );
 }
 

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import '../../features/confidence_boost/domain/entities/confidence_models.dart';
+import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -588,5 +590,21 @@ class CleanLiveKitService extends ChangeNotifier {
     _room?.dispose();
     _audioStreamController.close();
     super.dispose();
+  }
+
+  Future<ConfidenceAnalysis> requestConfidenceAnalysis({
+    required ConfidenceScenario scenario,
+    required int recordingDurationSeconds,
+  }) async {
+    // Simule une analyse pour l'instant
+    await Future.delayed(const Duration(seconds: 2));
+    return ConfidenceAnalysis(
+      overallScore: 0.85,
+      confidenceScore: 0.8,
+      fluencyScore: 0.88,
+      clarityScore: 0.82,
+      energyScore: 0.9,
+      feedback: 'Excellente performance ! Votre confiance transparaît naturellement.',
+    );
   }
 }

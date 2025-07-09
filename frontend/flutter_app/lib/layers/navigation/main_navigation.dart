@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/navigation/navigation_state.dart';
 import '../../utils/constants.dart';
 
-class MainNavigation extends StatefulWidget {
-  final Function(String, BuildContext) onNavigationChanged;
+class MainNavigation extends ConsumerStatefulWidget {
+  final Function(String) onNavigationChanged;
 
   const MainNavigation({
     Key? key,
@@ -13,10 +13,10 @@ class MainNavigation extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  ConsumerState<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation>
+class _MainNavigationState extends ConsumerState<MainNavigation>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -46,7 +46,7 @@ class _MainNavigationState extends State<MainNavigation>
 
   @override
   Widget build(BuildContext context) {
-    final currentRoute = context.watch<NavigationState>().currentRoute;
+    final currentRoute = ref.watch(navigationStateProvider).currentRoute;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -119,7 +119,7 @@ class _MainNavigationState extends State<MainNavigation>
               onTap: () {
                 // Feedback tactile
                 HapticFeedback.lightImpact();
-                widget.onNavigationChanged(route, context);
+                widget.onNavigationChanged(route);
                 // Navigation gérée par NavigationState via onNavigationChanged
               },
               onTapDown: (_) {

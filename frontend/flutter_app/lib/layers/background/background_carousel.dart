@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/orator_model.dart';
 import '../../services/orator_service.dart';
 import '../../utils/constants.dart';
@@ -8,7 +8,7 @@ import '../../widgets/glassmorphism_card.dart';
 import '../../widgets/quote_display.dart';
 import '../../core/navigation/navigation_state.dart';
 
-class BackgroundCarousel extends StatefulWidget {
+class BackgroundCarousel extends ConsumerStatefulWidget {
   final bool isInteractive;
   final bool autoScroll;
 
@@ -19,10 +19,10 @@ class BackgroundCarousel extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _BackgroundCarouselState createState() => _BackgroundCarouselState();
+  ConsumerState<BackgroundCarousel> createState() => _BackgroundCarouselState();
 }
 
-class _BackgroundCarouselState extends State<BackgroundCarousel>
+class _BackgroundCarouselState extends ConsumerState<BackgroundCarousel>
     with TickerProviderStateMixin {
   late PageController _pageController;
   Timer? _autoScrollTimer;
@@ -220,6 +220,6 @@ class _BackgroundCarouselState extends State<BackgroundCarousel>
 
   void _notifyOratorChanged(Orator orator) {
     // Notifier le changement d'orateur au niveau global
-    context.read<NavigationState>().updateCurrentOrator(orator);
+    ref.read(navigationStateProvider.notifier).updateCurrentOrator(orator);
   }
 }

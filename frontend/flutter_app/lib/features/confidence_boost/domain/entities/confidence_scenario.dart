@@ -42,6 +42,51 @@ class ConfidenceScenario extends Equatable {
       ];
 
   /// Factory pour créer les scénarios exacts spécifiés dans le prompt
+  static ConfidenceScenario professional() {
+    return const ConfidenceScenario(
+        id: 'professional_presentation',
+        title: 'Présentation Professionnelle',
+        description: 'Présentez votre projet avec assurance',
+        prompt: 'Présentez votre projet à des collègues ou à des supérieurs hiérarchiques.',
+        type: ConfidenceScenarioType.clientPresentation, // A adapter si un type plus précis existe
+        durationSeconds: 180,
+        tips: ['Structurez votre discours', 'Soyez clair et concis', 'Utilisez des visuels'],
+        keywords: ['projet', 'résultats', 'stratégie'],
+        difficulty: 'Débutant',
+        icon: 'business_center',
+    );
+  }
+
+  static ConfidenceScenario interview() {
+    return const ConfidenceScenario(
+        id: 'job_interview',
+        title: 'Entretien d\'Embauche',
+        description: 'Brillez lors de votre prochain entretien',
+        prompt: 'Répondez à la question "Parlez-moi de vous" de manière percutante.',
+        type: ConfidenceScenarioType.elevatorPitch, // A adapter
+        durationSeconds: 120,
+        tips: ['Mettez en avant vos forces', 'Soyez authentique', 'Préparez des questions'],
+        keywords: ['compétences', 'expérience', 'motivation'],
+        difficulty: 'Intermédiaire',
+        icon: 'work',
+    );
+  }
+
+  static ConfidenceScenario publicSpeaking() {
+    return const ConfidenceScenario(
+        id: 'public_speaking',
+        title: 'Prise de Parole Publique',
+        description: 'Captivez votre audience avec confiance',
+        prompt: 'Donnez un discours inspirant sur un sujet qui vous passionne.',
+        type: ConfidenceScenarioType.productDemo, // A adapter
+        durationSeconds: 300,
+        tips: ['Utilisez le storytelling', 'Modulez votre voix', 'Interagissez avec le public'],
+        keywords: ['passion', 'message', 'audience'],
+        difficulty: 'Avancé',
+        icon: 'mic',
+    );
+  }
+
   static List<ConfidenceScenario> getDefaultScenarios() {
     return [
       const ConfidenceScenario(
