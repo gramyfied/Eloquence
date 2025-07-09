@@ -10,14 +10,15 @@ import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_scenario.dart';
 import 'package:logger/logger.dart';
 import '../../domain/entities/confidence_models.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Service pour l'analyse backend utilisant Whisper + Mistral sur Scaleway
 class ConfidenceAnalysisBackendService {
   static const String _tag = 'ConfidenceAnalysisBackendService';
   static final Logger _logger = Logger();
   
-  // Configuration Scaleway
-  static const String _baseUrl = 'https://api.eloquence-demo.com'; // À configurer
+  // Configuration backend depuis .env
+  static String get _baseUrl => dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000';
   static const String _analysisEndpoint = '/api/confidence-analysis';
   static const Duration _timeout = Duration(minutes: 2);
   

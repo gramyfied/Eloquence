@@ -57,26 +57,37 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
   }
 
   void _onRecordingComplete(Duration duration) async {
+    if (!mounted) return;
+    
     setState(() {
       _recordingDuration = duration;
     });
+    
     if (_selectedScenario != null && _selectedTextSupport != null) {
       await ref.read(confidenceBoostProvider.notifier).analyzePerformance(
             scenario: _selectedScenario!,
             textSupport: _selectedTextSupport!,
             recordingDuration: _recordingDuration,
           );
+      
+      if (!mounted) return;
+      
       setState(() {
         _analysisResult = ref.read(confidenceBoostProvider).lastAnalysis;
       });
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
+      
+      if (mounted) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
   void _onRestart() {
+    if (!mounted) return;
+    
     setState(() {
       _selectedScenario = null;
       _selectedTextSupport = null;
