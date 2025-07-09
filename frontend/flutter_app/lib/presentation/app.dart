@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../core/navigation/navigation_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../screens/home_screen.dart';
 import '../screens/exercises_screen.dart';
 import '../screens/exercise_detail_screen.dart';
 import '../screens/exercise_active_screen.dart';
 import '../presentation/screens/profile/profile_screen.dart';
-import '../features/confidence_boost/presentation/screens/confidence_boost_screen_simple.dart';
+import '../features/confidence_boost/presentation/screens/confidence_boost_main_screen.dart';
 
 class App extends StatelessWidget {
   const App({Key? key}) : super(key: key);
@@ -45,10 +44,9 @@ class App extends StatelessWidget {
           );
         }
         if (settings.name == '/confidence_boost') {
-          final args = settings.arguments as String; // userId
           return MaterialPageRoute(
             builder: (context) {
-              return ConfidenceBoostScreenSimple(userId: args);
+              return const ConfidenceBoostMainScreen();
             },
           );
         }

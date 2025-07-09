@@ -1,13 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/navigation/navigation_state.dart';
 import '../layers/background/background_carousel.dart';
 import '../layers/navigation/glassmorphism_overlay.dart';
 import '../layers/navigation/main_navigation.dart';
 import '../utils/constants.dart';
 
-class LayeredScaffold extends StatefulWidget {
+class LayeredScaffold extends ConsumerStatefulWidget {
   final Widget content;
   final CarouselVisibilityState carouselState;
   final bool showNavigation;
@@ -22,10 +22,10 @@ class LayeredScaffold extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _LayeredScaffoldState createState() => _LayeredScaffoldState();
+  ConsumerState<LayeredScaffold> createState() => _LayeredScaffoldState();
 }
 
-class _LayeredScaffoldState extends State<LayeredScaffold>
+class _LayeredScaffoldState extends ConsumerState<LayeredScaffold>
     with TickerProviderStateMixin {
   late AnimationController _carouselController;
   late Animation<double> _carouselOpacity;
@@ -157,8 +157,8 @@ class _LayeredScaffoldState extends State<LayeredScaffold>
         child: GlassmorphismOverlay(
           opacity: _calculateNavigationOpacity(),
           child: MainNavigation(
-            onNavigationChanged: (route, context) {
-              context.read<NavigationState>().navigateTo(route, context);
+            onNavigationChanged: (route) {
+              ref.read(navigationStateProvider).navigateTo(route, context);
             },
           ),
         ),

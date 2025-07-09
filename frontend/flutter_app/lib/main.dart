@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'package:provider/provider.dart'; // Import Provider
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:logging/logging.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
 import 'presentation/app.dart';
-import 'core/navigation/navigation_state.dart'; // Import NavigationState
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,9 +35,8 @@ void main() async {
   }
 
   runApp(
-    ChangeNotifierProvider<NavigationState>(
-      create: (context) => NavigationState(),
-      child: const App(),
+    const ProviderScope(
+      child: App(),
     ),
   );
 }

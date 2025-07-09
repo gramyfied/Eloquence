@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart' as pf; // Alias Provider to pf
 import '../../../layers/navigation/main_navigation.dart';
 import '../../../core/navigation/navigation_state.dart';
 import '../../../screens/home_screen.dart';
@@ -15,9 +14,8 @@ class MainScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Current route from NavigationState (using Provider)
-    final navigationState = pf.Provider.of<NavigationState>(context);
-    final currentRoute = navigationState.currentRoute;
+    // Current route from NavigationState (using Riverpod)
+    final currentRoute = ref.watch(navigationStateProvider).currentRoute;
 
     // Map routes to actual screen widgets
     Widget _getPageForRoute(String route) {
@@ -55,8 +53,8 @@ class MainScreen extends ConsumerWidget {
               right: 0,
               bottom: 0,
               child: MainNavigation(
-                onNavigationChanged: (newRoute, context) {
-                  navigationState.navigateTo(newRoute, context);
+                onNavigationChanged: (newRoute) {
+                  ref.read(navigationStateProvider.notifier).navigateTo(newRoute, context);
                 },
               ),
             ),

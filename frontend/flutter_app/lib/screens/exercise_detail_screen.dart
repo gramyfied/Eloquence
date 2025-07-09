@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
 
-class ExerciseDetailScreen extends StatelessWidget {
+class ExerciseDetailScreen extends ConsumerWidget {
   final String exerciseId;
 
   const ExerciseDetailScreen({Key? key, required this.exerciseId})
       : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<NavigationState>(
-      builder: (context, navigationState, child) {
-        return LayeredScaffold(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return LayeredScaffold(
           carouselState: CarouselVisibilityState.subtle,
           showNavigation: false, // Navigation cachée pendant l'exercice
           onCarouselTap: () {
             // Tap sur le carrousel pour revenir aux exercices
-            context.read<NavigationState>().navigateTo('/exercises');
+            ref.read(navigationStateProvider).navigateTo('/exercises');
             Navigator.pop(context);
           },
           content: Container(
@@ -34,7 +32,7 @@ class ExerciseDetailScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () {
-                        context.read<NavigationState>().navigateTo('/exercises');
+                        ref.read(navigationStateProvider).navigateTo('/exercises');
                         Navigator.pop(context);
                       },
                       icon: const Icon(
@@ -113,8 +111,8 @@ class ExerciseDetailScreen extends StatelessWidget {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(30),
                         onTap: () {
-                          context
-                              .read<NavigationState>()
+                          ref
+                              .read(navigationStateProvider)
                               .startExercise(exerciseId);
                           // Navigation vers l'exercice actif
                           Navigator.pushNamed(
@@ -165,7 +163,5 @@ class ExerciseDetailScreen extends StatelessWidget {
             ),
           ),
         );
-      },
-    );
   }
 }

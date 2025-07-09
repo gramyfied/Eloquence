@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
 import '../test_screen.dart';
 
-class ExercisesScreen extends StatelessWidget {
+class ExercisesScreen extends ConsumerWidget {
   const ExercisesScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<NavigationState>(
-      builder: (context, navigationState, child) {
-        return LayeredScaffold(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return LayeredScaffold(
           carouselState: CarouselVisibilityState.medium,
           showNavigation: true,
           onCarouselTap: () {
             // Retour à l'accueil pour voir le carrousel en plein
-            context.read<NavigationState>().navigateTo('/home');
+            ref.read(navigationStateProvider).navigateTo('/home');
           },
           content: Container(
             padding: const EdgeInsets.only(
@@ -67,6 +65,7 @@ class ExercisesScreen extends StatelessWidget {
                     children: [
                       _buildExerciseCard(
                         context,
+                        ref,
                         'Confidence Boost Express',
                         'Gagnez en assurance en 3 minutes',
                         Icons.trending_up,
@@ -76,6 +75,7 @@ class ExercisesScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       _buildExerciseCard(
                         context,
+                        ref,
                         'Pitch Perfect',
                         'Maîtrisez l\'art du pitch en 90 secondes',
                         Icons.rocket_launch,
@@ -85,6 +85,7 @@ class ExercisesScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       _buildExerciseCard(
                         context,
+                        ref,
                         'Interview Master',
                         'Brillez en entretien professionnel',
                         Icons.work,
@@ -94,6 +95,7 @@ class ExercisesScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       _buildExerciseCard(
                         context,
+                        ref,
                         'Debate Champion',
                         'Argumentez avec force et conviction',
                         Icons.gavel,
@@ -107,12 +109,11 @@ class ExercisesScreen extends StatelessWidget {
             ),
           ),
         );
-      },
-    );
   }
 
   Widget _buildExerciseCard(
     BuildContext context,
+    WidgetRef ref,
     String title,
     String description,
     IconData icon,
@@ -129,7 +130,7 @@ class ExercisesScreen extends StatelessWidget {
           print('Exercise ID: $exerciseId');
           
           try {
-            final navigationState = context.read<NavigationState>();
+            final navigationState = ref.read(navigationStateProvider);
             print('NavigationState obtained: $navigationState');
             
             navigationState.navigateTo(

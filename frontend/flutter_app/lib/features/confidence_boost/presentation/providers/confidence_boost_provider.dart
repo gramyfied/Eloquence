@@ -1,15 +1,33 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/config/supabase_config.dart';
+import 'package:logger/logger.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../src/services/clean_livekit_service.dart';
 import '../../data/datasources/confidence_local_datasource.dart';
 import '../../data/datasources/confidence_remote_datasource.dart';
 import '../../data/repositories/confidence_repository_impl.dart';
 import '../../data/services/confidence_analysis_service.dart';
-import '../../domain/entities/confidence_scenario.dart';
+import '../../data/services/text_support_generator.dart';
+import '../../domain/entities/confidence_models.dart' as ConfidenceModels;
+import '../../domain/entities/confidence_scenario.dart' as ConfidenceScenarios;
 import '../../domain/entities/confidence_session.dart';
 import '../../domain/repositories/confidence_repository.dart';
+
+// ... (providers existants inchangés) ...
+
+// Provider pour les statistiques utilisateur
+final confidenceStatsProvider = FutureProvider.family<ConfidenceStats, String>((ref, userId) async {
+  final repository = ref.watch(confidenceRepositoryProvider);
+  return await repository.getUserStats(userId);
+});
+
+// Provider pour l'historique des sessions
+final userConfidenceSessionsProvider = FutureProvider.family<List<ConfidenceSession>, String>((ref, userId) async {
+  final repository = ref.watch(confidenceRepositoryProvider);
+  return await repository.getUserSessions(userId);
+});
 
 // Provider pour SharedPreferences
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -62,156 +80,103 @@ final confidenceAnalysisServiceProvider = Provider<ConfidenceAnalysisService>((r
 });
 
 // Provider pour récupérer les scénarios
-final confidenceScenariosProvider = FutureProvider<List<ConfidenceScenario>>((ref) async {
+final confidenceScenariosProvider = FutureProvider<List<ConfidenceScenarios.ConfidenceScenario>>((ref) async {
   final repository = ref.watch(confidenceRepositoryProvider);
   return await repository.getScenarios();
 });
 
-// Provider pour récupérer un scénario aléatoire
-final randomConfidenceScenarioProvider = FutureProvider<ConfidenceScenario>((ref) async {
-  final repository = ref.watch(confidenceRepositoryProvider);
-  return await repository.getRandomScenario();
-});
 
-// Provider pour les statistiques utilisateur
-final confidenceStatsProvider = FutureProvider.family<ConfidenceStats, String>((ref, userId) async {
-  final repository = ref.watch(confidenceRepositoryProvider);
-  return await repository.getUserStats(userId);
-});
-
-// Provider pour l'historique des sessions
-final userConfidenceSessionsProvider = FutureProvider.family<List<ConfidenceSession>, String>((ref, userId) async {
-  final repository = ref.watch(confidenceRepositoryProvider);
-  return await repository.getUserSessions(userId);
-});
-
-// État de la session en cours
-class ConfidenceSessionState {
-  final ConfidenceSession? currentSession;
-  final bool isRecording;
-  final int recordingSeconds;
-  final bool isAnalyzing;
-  final String? error;
-
-  const ConfidenceSessionState({
-    this.currentSession,
-    this.isRecording = false,
-    this.recordingSeconds = 0,
-    this.isAnalyzing = false,
-    this.error,
-  });
-
-  ConfidenceSessionState copyWith({
-    ConfidenceSession? currentSession,
-    bool? isRecording,
-    int? recordingSeconds,
-    bool? isAnalyzing,
-    String? error,
-  }) {
-    return ConfidenceSessionState(
-      currentSession: currentSession ?? this.currentSession,
-      isRecording: isRecording ?? this.isRecording,
-      recordingSeconds: recordingSeconds ?? this.recordingSeconds,
-      isAnalyzing: isAnalyzing ?? this.isAnalyzing,
-      error: error,
-    );
-  }
-}
-
-// Provider pour gérer l'état de la session en cours
-class ConfidenceSessionNotifier extends StateNotifier<ConfidenceSessionState> {
-  final ConfidenceRepository repository;
-  final ConfidenceAnalysisService analysisService;
-  final String userId;
-
-  ConfidenceSessionNotifier({
-    required this.repository,
-    required this.analysisService,
-    required this.userId,
-  }) : super(const ConfidenceSessionState());
-
-  // Démarrer une nouvelle session
-  Future<void> startSession(ConfidenceScenario scenario) async {
-    try {
-      state = state.copyWith(error: null);
-      
-      final session = await repository.startSession(
-        userId: userId,
-        scenario: scenario,
-      );
-      
-      state = state.copyWith(currentSession: session);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
-  }
-
-  // Démarrer l'enregistrement
-  void startRecording() {
-    if (state.currentSession == null) return;
-    state = state.copyWith(isRecording: true, recordingSeconds: 0);
-  }
-
-  // Mettre à jour le temps d'enregistrement
-  void updateRecordingTime(int seconds) {
-    if (!state.isRecording) return;
-    state = state.copyWith(recordingSeconds: seconds);
-  }
-
-  // Arrêter l'enregistrement et analyser
-  Future<void> stopRecordingAndAnalyze(String audioFilePath) async {
-    if (state.currentSession == null || !state.isRecording) return;
-
-    try {
-      state = state.copyWith(isRecording: false, isAnalyzing: true, error: null);
-
-      // Analyser l'audio
-      final analysis = await analysisService.analyzeRecording(
-        audioFilePath: audioFilePath,
-        scenario: state.currentSession!.scenario,
-        recordingDurationSeconds: state.recordingSeconds,
-      );
-
-      // Compléter la session
-      final completedSession = await repository.completeSession(
-        sessionId: state.currentSession!.id,
-        audioFilePath: audioFilePath,
-        recordingDurationSeconds: state.recordingSeconds,
-        analysis: analysis,
-      );
-
-      state = state.copyWith(
-        currentSession: completedSession,
-        isAnalyzing: false,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        isAnalyzing: false,
-        error: e.toString(),
-      );
-    }
-  }
-
-  // Réinitialiser la session
-  void resetSession() {
-    state = const ConfidenceSessionState();
-  }
-
-  // Alias pour la compatibilité
-  void reset() => resetSession();
-}
-
-// Provider pour la session en cours
-final confidenceSessionProvider = StateNotifierProvider.family<ConfidenceSessionNotifier, ConfidenceSessionState, String>((ref, userId) {
-  final repository = ref.watch(confidenceRepositoryProvider);
-  final analysisService = ref.watch(confidenceAnalysisServiceProvider);
-  
-  return ConfidenceSessionNotifier(
-    repository: repository,
-    analysisService: analysisService,
-    userId: userId,
+final confidenceBoostProvider = ChangeNotifierProvider((ref) {
+  // Ici, vous pouvez passer les dépendances nécessaires au provider
+  // Par exemple, le service LiveKit, le service d'analyse, etc.
+  return ConfidenceBoostProvider(
+    livekitIntegration: ref.watch(livekitServiceProvider),
+    // Assurez-vous que les autres dépendances sont fournies
+    analysisService: ref.watch(confidenceAnalysisServiceProvider),
+    repository: ref.watch(confidenceRepositoryProvider),
   );
 });
+
+
+class ConfidenceBoostProvider with ChangeNotifier {
+  final CleanLiveKitService livekitIntegration;
+  final ConfidenceAnalysisService analysisService;
+  final ConfidenceRepository repository;
+
+  ConfidenceBoostProvider({
+    required this.livekitIntegration,
+    required this.analysisService,
+    required this.repository,
+  }) {
+    logger.i("ConfidenceBoostProvider created!");
+  }
+
+  final logger = Logger();
+
+  // NOUVEAUX états
+  ConfidenceModels.TextSupport? _currentTextSupport;
+  ConfidenceModels.SupportType _selectedSupportType = ConfidenceModels.SupportType.fillInBlanks;
+  bool _isGeneratingSupport = false;
+  ConfidenceModels.ConfidenceAnalysis? _lastAnalysis;
+
+  // Getters
+  ConfidenceModels.TextSupport? get currentTextSupport => _currentTextSupport;
+  ConfidenceModels.SupportType get selectedSupportType => _selectedSupportType;
+  bool get isGeneratingSupport => _isGeneratingSupport;
+  ConfidenceModels.ConfidenceAnalysis? get lastAnalysis => _lastAnalysis;
+
+  // NOUVELLE méthode pour générer le support texte
+  Future<void> generateTextSupport({
+    required ConfidenceScenarios.ConfidenceScenario scenario,
+    required ConfidenceModels.SupportType type,
+  }) async {
+    logger.i("Generating text support for scenario: ${scenario.title}, type: $type");
+    _isGeneratingSupport = true;
+    notifyListeners();
+
+    try {
+      // Utiliser Mistral via votre pipeline LiveKit existant
+      final generator = TextSupportGenerator();
+      final support = await generator.generateSupport(
+        scenario: scenario,
+        type: type,
+        difficulty: scenario.difficulty,
+      );
+
+      _currentTextSupport = support;
+      _selectedSupportType = type;
+    } catch (e) {
+      logger.e('Erreur génération support: $e');
+    } finally {
+      _isGeneratingSupport = false;
+      notifyListeners();
+    }
+  }
+
+  // NOUVELLE méthode pour analyser la performance
+  Future<void> analyzePerformance({
+    required ConfidenceScenarios.ConfidenceScenario scenario,
+    required ConfidenceModels.TextSupport textSupport,
+    required Duration recordingDuration,
+  }) async {
+    logger.i("Analyzing performance for scenario: ${scenario.title}");
+    logger.d("DEBUG: scenario type = ${scenario.runtimeType}");
+    try {
+      // Utiliser votre ConfidenceLiveKitIntegration existant
+      final analysis = await livekitIntegration.requestConfidenceAnalysis(
+        scenario: scenario,
+        recordingDurationSeconds: recordingDuration.inSeconds,
+      );
+
+      logger.d("DEBUG: analysis type = ${analysis.runtimeType}");
+      logger.d("DEBUG: _lastAnalysis type = ${_lastAnalysis.runtimeType}");
+      _lastAnalysis = analysis;
+      notifyListeners();
+    } catch (e) {
+      logger.e('Erreur analyse: $e');
+    }
+  }
+}
 
 // Provider pour vérifier si l'utilisateur peut débloquer un badge
 final badgeCheckProvider = FutureProvider.family<List<String>, String>((ref, userId) async {
