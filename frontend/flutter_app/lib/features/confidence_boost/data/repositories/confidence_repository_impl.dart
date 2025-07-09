@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:uuid/uuid.dart';
+import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_session.dart';
 import '../../domain/repositories/confidence_repository.dart';
@@ -79,7 +80,7 @@ class ConfidenceRepositoryImpl implements ConfidenceRepository {
     required String sessionId,
     required String audioFilePath,
     required int recordingDurationSeconds,
-    required ConfidenceAnalysis analysis,
+    required confidence_models.ConfidenceAnalysis analysis,
   }) async {
     final session = await localDataSource.getSession(sessionId);
     if (session == null) {
@@ -175,7 +176,7 @@ class ConfidenceRepositoryImpl implements ConfidenceRepository {
     final consecutiveDays = _calculateConsecutiveDays(completedSessions);
 
     // Compter les types de scénarios
-    final scenarioTypeCount = <ConfidenceScenarioType, int>{};
+    final scenarioTypeCount = <confidence_models.ConfidenceScenarioType, int>{};
     for (final session in completedSessions) {
       scenarioTypeCount[session.scenario.type] = 
           (scenarioTypeCount[session.scenario.type] ?? 0) + 1;
@@ -242,7 +243,7 @@ class ConfidenceRepositoryImpl implements ConfidenceRepository {
     }
 
     // Badge "Polyvalent" - Avoir essayé tous les types de scénarios
-    if (stats.scenarioTypeCount.length == ConfidenceScenarioType.values.length - 1) {
+    if (stats.scenarioTypeCount.length == confidence_models.ConfidenceScenarioType.values.length - 1) {
       // -1 car on n'a pas encore compté la session actuelle
       badges.add('versatile_speaker');
     }

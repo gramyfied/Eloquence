@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../../../presentation/widgets/eloquence_components.dart';
+import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_session.dart';
 
 class ConfidenceResultsView extends StatefulWidget {
@@ -172,7 +173,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
     );
   }
   
-  Widget _buildDetailedScores(ConfidenceAnalysis analysis) {
+  Widget _buildDetailedScores(confidence_models.ConfidenceAnalysis analysis) {
     return EloquenceGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,7 +280,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
     );
   }
   
-  Widget _buildFeedback(ConfidenceAnalysis analysis) {
+  Widget _buildFeedback(confidence_models.ConfidenceAnalysis analysis) {
     return EloquenceGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,7 +308,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
               color: EloquenceColors.white.withOpacity(0.9),
             ),
           ),
-          if (analysis.improvementSuggestions.isNotEmpty) ...[
+          if (analysis.improvements.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(
               'Suggestions d\'amélioration',
@@ -317,7 +318,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
               ),
             ),
             const SizedBox(height: 12),
-            ...analysis.improvementSuggestions.map((suggestion) => Padding(
+            ...analysis.improvements.map((suggestion) => Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,7 +466,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
     );
   }
   
-  double _calculateOverallScore(ConfidenceAnalysis analysis) {
+  double _calculateOverallScore(confidence_models.ConfidenceAnalysis analysis) {
     return (analysis.confidenceScore + 
             analysis.fluencyScore + 
             analysis.clarityScore + 

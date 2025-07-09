@@ -1,3 +1,4 @@
+import '../entities/confidence_models.dart' as confidence_models;
 import '../entities/confidence_scenario.dart';
 import '../entities/confidence_session.dart';
 
@@ -26,7 +27,7 @@ abstract class ConfidenceRepository {
     required String sessionId,
     required String audioFilePath,
     required int recordingDurationSeconds,
-    required ConfidenceAnalysis analysis,
+    required confidence_models.ConfidenceAnalysis analysis,
   });
 
   /// Récupère l'historique des sessions d'un utilisateur
@@ -52,7 +53,7 @@ class ConfidenceStats {
   final double averageEnergyScore;
   final int totalRecordingSeconds;
   final List<String> unlockedBadges;
-  final Map<ConfidenceScenarioType, int> scenarioTypeCount;
+  final Map<confidence_models.ConfidenceScenarioType, int> scenarioTypeCount;
   final DateTime? lastSessionDate;
 
   const ConfidenceStats({

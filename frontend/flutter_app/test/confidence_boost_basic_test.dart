@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_session.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 
 void main() {
   group('ConfidenceScenario Tests', () {
@@ -10,7 +12,7 @@ void main() {
         title: 'Test Scenario',
         description: 'Description test',
         prompt: 'Présentez-vous en 30 secondes',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 30,
         tips: ['Tip 1', 'Tip 2'],
         keywords: ['confiance', 'présentation'],
@@ -20,7 +22,7 @@ void main() {
 
       expect(scenario.id, 'test-1');
       expect(scenario.title, 'Test Scenario');
-      expect(scenario.type, ConfidenceScenarioType.teamMeeting);
+      expect(scenario.type, confidence_models.ConfidenceScenarioType.meeting);
       expect(scenario.durationSeconds, 30);
       expect(scenario.tips.length, 2);
       expect(scenario.keywords.length, 2);
@@ -43,39 +45,40 @@ void main() {
   group('ConfidenceScenarioType Tests', () {
     test('devrait retourner le bon nom d\'affichage', () {
       expect(
-        ConfidenceScenarioType.teamMeeting.displayName,
+        confidence_models.ConfidenceScenarioType.meeting.displayName,
         'Réunion d\'équipe',
       );
       expect(
-        ConfidenceScenarioType.clientPresentation.displayName,
+        confidence_models.ConfidenceScenarioType.presentation.displayName,
         'Présentation client',
       );
       expect(
-        ConfidenceScenarioType.elevatorPitch.displayName,
+        confidence_models.ConfidenceScenarioType.pitch.displayName,
         'Elevator Pitch',
       );
       expect(
-        ConfidenceScenarioType.teamMotivation.displayName,
+        confidence_models.ConfidenceScenarioType.meeting.displayName, // Pas de correspondance directe, utiliser meeting
         'Motivation d\'équipe',
       );
       expect(
-        ConfidenceScenarioType.productDemo.displayName,
+        confidence_models.ConfidenceScenarioType.presentation.displayName, // Pas de correspondance directe, utiliser presentation
         'Démonstration produit',
       );
     });
 
     test('devrait retourner la bonne icône', () {
-      expect(ConfidenceScenarioType.teamMeeting.icon, '👥');
-      expect(ConfidenceScenarioType.clientPresentation.icon, '💼');
-      expect(ConfidenceScenarioType.elevatorPitch.icon, '🚀');
-      expect(ConfidenceScenarioType.teamMotivation.icon, '⚡');
-      expect(ConfidenceScenarioType.productDemo.icon, '📱');
+      expect(confidence_models.ConfidenceScenarioType.meeting.icon, '👥');
+      expect(confidence_models.ConfidenceScenarioType.presentation.icon, '💼');
+      expect(confidence_models.ConfidenceScenarioType.pitch.icon, '🚀');
+      expect(confidence_models.ConfidenceScenarioType.meeting.icon, '⚡'); // Pas de correspondance directe, utiliser meeting
+      expect(confidence_models.ConfidenceScenarioType.presentation.icon, '📱'); // Pas de correspondance directe, utiliser presentation
     });
   });
 
   group('ConfidenceAnalysis Tests', () {
     test('devrait créer une analyse correctement', () {
       final analysis = ConfidenceAnalysis(
+        overallScore: 0.8,
         confidenceScore: 0.85,
         fluencyScore: 0.78,
         clarityScore: 0.82,
@@ -102,6 +105,7 @@ void main() {
 
     test('devrait calculer le score global correctement', () {
       final analysis = ConfidenceAnalysis(
+        overallScore: 0.75,
         confidenceScore: 0.80,
         fluencyScore: 0.70,
         clarityScore: 0.90,
@@ -128,7 +132,7 @@ void main() {
         title: 'Test',
         description: 'Desc',
         prompt: 'Prompt',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 30,
         tips: [],
         keywords: [],
@@ -165,7 +169,7 @@ void main() {
         title: 'Test',
         description: 'Desc',
         prompt: 'Prompt',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 30,
         tips: [],
         keywords: [],
@@ -174,6 +178,7 @@ void main() {
       );
 
       final analysis = ConfidenceAnalysis(
+        overallScore: 0.8,
         confidenceScore: 0.85,
         fluencyScore: 0.78,
         clarityScore: 0.82,
@@ -213,7 +218,7 @@ void main() {
         title: 'Same Title',
         description: 'Same description',
         prompt: 'Same prompt',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 60,
         tips: ['Same tip'],
         keywords: ['same'],
@@ -226,7 +231,7 @@ void main() {
         title: 'Same Title',
         description: 'Same description',
         prompt: 'Same prompt',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 60,
         tips: ['Same tip'],
         keywords: ['same'],
@@ -244,7 +249,7 @@ void main() {
         title: 'Title 1',
         description: 'Description 1',
         prompt: 'Prompt 1',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 60,
         tips: ['Tip 1'],
         keywords: ['keyword1'],
@@ -257,7 +262,7 @@ void main() {
         title: 'Title 1',
         description: 'Description 1',
         prompt: 'Prompt 1',
-        type: ConfidenceScenarioType.teamMeeting,
+        type: confidence_models.ConfidenceScenarioType.meeting,
         durationSeconds: 60,
         tips: ['Tip 1'],
         keywords: ['keyword1'],
