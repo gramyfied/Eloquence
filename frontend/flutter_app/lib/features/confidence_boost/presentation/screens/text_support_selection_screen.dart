@@ -125,7 +125,12 @@ class TextSupportSelectionScreen extends StatelessWidget {
                 Icon(icon, color: EloquenceColors.cyan, size: 24),
                 SizedBox(width: EloquenceSpacing.sm),
                 Expanded(
-                  child: Text(title, style: EloquenceTextStyles.headline2),
+                  child: Text(
+                    title,
+                    style: EloquenceTextStyles.headline2.copyWith(
+                      height: 1.2, // Contrôle de la hauteur de ligne
+                    ),
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -149,7 +154,12 @@ class TextSupportSelectionScreen extends StatelessWidget {
             SizedBox(height: EloquenceSpacing.sm),
             Text(
               description,
-              style: EloquenceTextStyles.body1.copyWith(color: Colors.white70),
+              style: EloquenceTextStyles.body1.copyWith(
+                color: Colors.white70,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

@@ -121,11 +121,22 @@ class ScenarioSelectionScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: EloquenceTextStyles.headline2),
+                  Text(
+                    title,
+                    style: EloquenceTextStyles.headline2.copyWith(
+                      height: 1.2, // Contrôle de la hauteur de ligne
+                    ),
+                  ),
                   SizedBox(height: EloquenceSpacing.xs),
-                  Text(description, style: EloquenceTextStyles.body1.copyWith(
-                    color: Colors.white70,
-                  )),
+                  Text(
+                    description,
+                    style: EloquenceTextStyles.body1.copyWith(
+                      color: Colors.white70,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
