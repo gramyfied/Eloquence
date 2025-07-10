@@ -95,12 +95,30 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
         
         print("🚀 DEBUG: Navigating to results page...");
         if (mounted) {
-          print("🔍 DEBUG: PageView children count before navigation: ${(_analysisResult != null) ? 'ResultsScreen included' : 'ResultsScreen NOT included'}");
-          _pageController.nextPage(
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOut,
-          );
-          print("✅ DEBUG: Navigation to results initiated");
+          // ✅ CORRECTION: Attendre le rebuild avant navigation
+          print("🔄 DEBUG: Waiting for rebuild to complete before navigation...");
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              int childrenCount = _getChildrenCount();
+              print("📊 DEBUG: PageView children count AFTER rebuild: $childrenCount");
+              print("🔍 DEBUG: ResultsScreen exists AFTER rebuild: ${_analysisResult != null}");
+              
+              // Navigation maintenant que la ResultsScreen existe
+              print("✅ DEBUG: Calling nextPage() AFTER rebuild - page should exist");
+              _pageController.nextPage(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOut,
+              );
+              print("🎯 DEBUG: Navigation to results completed successfully");
+              
+              // Vérification finale
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  print("📍 DEBUG: Final page index: ${_pageController.page?.round() ?? 'unknown'}");
+                }
+              });
+            }
+          });
         }
       } else {
         print("❌ DEBUG: No analysis result available - navigation blocked");
@@ -125,6 +143,15 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
 
   void _onExit() {
     Navigator.of(context).pop();
+  }
+
+  // Méthode helper pour compter les children du PageView
+  int _getChildrenCount() {
+    int count = 1; // ScenarioSelectionScreen toujours présent
+    if (_selectedScenario != null) count++; // TextSupportSelectionScreen
+    if (_selectedScenario != null && _selectedTextSupport != null) count++; // RecordingScreen
+    if (_analysisResult != null) count++; // ResultsScreen
+    return count;
   }
 
   @override

@@ -1,6 +1,6 @@
-import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
+import '../../lib/features/confidence_boost/data/services/mistral_api_service.dart';
 
-class FakeMistralApiService implements MistralApiService {
+class FakeMistralApiService extends MistralApiService {
   bool shouldFail = false;
   String? customResponse;
 
