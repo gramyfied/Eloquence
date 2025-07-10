@@ -4,9 +4,10 @@ import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../../../presentation/widgets/eloquence_components.dart';
 import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_session.dart';
+import '../../domain/entities/gamification_models.dart' as gamification;
 
 class ConfidenceResultsView extends StatefulWidget {
-  final ConfidenceSession session;
+  final SessionRecord session;
   final VoidCallback onRetry;
   final VoidCallback onComplete;
   
@@ -77,7 +78,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
   
   @override
   Widget build(BuildContext context) {
-    final analysis = widget.session.analysis!;
+    final analysis = widget.session.analysis;
     final overallScore = _calculateOverallScore(analysis);
     
     return SingleChildScrollView(
@@ -100,7 +101,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
           const SizedBox(height: 32),
           
           // Badges débloqués
-          if (widget.session.unlockedBadges.isNotEmpty)
+          if (widget.session.newBadges.isNotEmpty)
             _buildUnlockedBadges(),
           
           const SizedBox(height: 40),
@@ -365,9 +366,9 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
           height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: widget.session.unlockedBadges.length,
+            itemCount: widget.session.newBadges.length,
             itemBuilder: (context, index) {
-              final badge = widget.session.unlockedBadges[index];
+              final badge = widget.session.newBadges[index];
               return AnimatedBuilder(
                 animation: _badgeAnimation,
                 builder: (context, child) {
@@ -473,50 +474,14 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
             analysis.energyScore) / 4;
   }
   
-  String _getBadgeEmoji(String badge) {
-    switch (badge) {
-      case 'first_confidence':
-        return '🎯';
-      case 'confidence_streak_3':
-        return '🔥';
-      case 'confidence_streak_7':
-        return '⚡';
-      case 'perfect_score':
-        return '⭐';
-      case 'early_bird':
-        return '🌅';
-      case 'night_owl':
-        return '🌙';
-      case 'speed_demon':
-        return '🚀';
-      case 'variety_seeker':
-        return '🎨';
-      default:
-        return '🏆';
-    }
+  String _getBadgeEmoji(gamification.Badge badge) {
+    // Pour l'instant, on retourne un emoji par défaut.
+    // Idéalement, l'icône serait un chemin d'asset.
+    return '🏆';
   }
   
-  String _getBadgeName(String badge) {
-    switch (badge) {
-      case 'first_confidence':
-        return 'Premier pas';
-      case 'confidence_streak_3':
-        return 'Série de 3';
-      case 'confidence_streak_7':
-        return 'Semaine parfaite';
-      case 'perfect_score':
-        return 'Score parfait';
-      case 'early_bird':
-        return 'Lève-tôt';
-      case 'night_owl':
-        return 'Oiseau de nuit';
-      case 'speed_demon':
-        return 'Rapide';
-      case 'variety_seeker':
-        return 'Explorateur';
-      default:
-        return 'Badge';
-    }
+  String _getBadgeName(gamification.Badge badge) {
+    return badge.name;
   }
 }
 

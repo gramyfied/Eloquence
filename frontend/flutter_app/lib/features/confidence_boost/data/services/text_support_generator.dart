@@ -4,8 +4,17 @@ import 'mistral_api_service.dart';
 import '../../../../core/utils/logger_service.dart';
 
 class TextSupportGenerator {
-  final MistralApiService _mistralService = MistralApiService();
+  final MistralApiService _mistralService;
   static const String _tag = 'TextSupportGenerator';
+
+  // Constructeur avec injection de dépendance obligatoire
+  TextSupportGenerator({required MistralApiService mistralService})
+      : _mistralService = mistralService;
+
+  // Factory pour la production (avec service par défaut)
+  factory TextSupportGenerator.create() {
+    return TextSupportGenerator(mistralService: MistralApiService());
+  }
 
   Future<TextSupport> generateSupport({
     required ConfidenceScenario scenario,

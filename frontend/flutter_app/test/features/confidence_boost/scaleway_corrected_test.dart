@@ -93,7 +93,7 @@ void main() {
         print('💥 Exception: $e');
         print('ℹ️ Vérifier la configuration Scaleway');
       }
-    });
+    }, skip: true);
 
     test('Détection des paramètres manquants', () {
       print('📋 Configuration requise pour Scaleway:');

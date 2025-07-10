@@ -116,7 +116,7 @@ class ConfidenceAnalysisBackendService {
           'title': scenario.title,
           'description': scenario.description,
           'prompt': scenario.prompt,
-          'type': scenario.type.toJson(),
+          'type': scenario.type.name,
           'difficulty': scenario.difficulty,
           'keywords': scenario.keywords,
           'tips': scenario.tips,

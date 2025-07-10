@@ -42,6 +42,10 @@ dependencies:
   livekit_client: ^2.4.8
   flutter_webrtc: ^0.14.2
   
+  # Persistance
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
   # Utilitaires
   flutter_dotenv: ^5.1.0
   device_info_plus: ^11.5.0
@@ -57,7 +61,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   mockito: ^5.4.0
-  build_runner: ^2.3.3
+  build_runner: ^2.4.6 # Version à jour
+  hive_generator: ^2.0.1
   flutter_driver:
     sdk: flutter
   integration_test:

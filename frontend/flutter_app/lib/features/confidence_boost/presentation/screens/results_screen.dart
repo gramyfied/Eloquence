@@ -90,7 +90,7 @@ class _ResultsScreenState extends State<ResultsScreen>
     }
 
     // 3. Confettis et badge si score élevé
-    if (widget.analysis.overallScore >= 80) {
+    if (widget.analysis.overallScore >= 65) {
       await Future.delayed(const Duration(milliseconds: 1000));
       if (mounted) {
         _triggerCelebration();
@@ -243,7 +243,7 @@ class _ResultsScreenState extends State<ResultsScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${(_scoreAnimation.value * 100).round()}', // Score sur 100
+                    '${_scoreAnimation.value.round()}', // Score déjà sur base 100
                     style: ConfidenceBoostTextStyles.scoreDisplay,
                   ),
                   Text(

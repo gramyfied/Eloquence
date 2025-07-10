@@ -57,6 +57,7 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
   }
 
   void _onRecordingComplete(Duration duration) async {
+    print("🎙️ DEBUG: Recording completed, duration: ${duration.inSeconds}s");
     if (!mounted) return;
     
     setState(() {
@@ -64,24 +65,49 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
     });
     
     if (_selectedScenario != null && _selectedTextSupport != null) {
+      print("🔄 DEBUG: Starting analysis for scenario: ${_selectedScenario!.title}");
+      
       await ref.read(confidenceBoostProvider.notifier).analyzePerformance(
             scenario: _selectedScenario!,
             textSupport: _selectedTextSupport!,
             recordingDuration: _recordingDuration,
           );
       
-      if (!mounted) return;
+      print("✅ DEBUG: Analysis completed, checking results...");
       
-      setState(() {
-        _analysisResult = ref.read(confidenceBoostProvider).lastAnalysis;
-      });
-      
-      if (mounted) {
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
+      if (!mounted) {
+        print("⚠️ DEBUG: Widget disposed during analysis");
+        return;
       }
+      
+      final analysisResult = ref.read(confidenceBoostProvider).lastAnalysis;
+      print("📊 DEBUG: Analysis result available: ${analysisResult != null}");
+      print("🔍 DEBUG: Provider state: ${ref.read(confidenceBoostProvider)}");
+      print("🔍 DEBUG: Local _analysisResult: ${_analysisResult != null}");
+      
+      if (analysisResult != null) {
+        print("📈 DEBUG: Analysis score: ${analysisResult.overallScore}");
+        print("🔍 DEBUG: Setting local _analysisResult...");
+        setState(() {
+          _analysisResult = analysisResult;
+        });
+        print("✅ DEBUG: Local _analysisResult set: ${_analysisResult != null}");
+        
+        print("🚀 DEBUG: Navigating to results page...");
+        if (mounted) {
+          print("🔍 DEBUG: PageView children count before navigation: ${(_analysisResult != null) ? 'ResultsScreen included' : 'ResultsScreen NOT included'}");
+          _pageController.nextPage(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+          print("✅ DEBUG: Navigation to results initiated");
+        }
+      } else {
+        print("❌ DEBUG: No analysis result available - navigation blocked");
+        print("🔍 DEBUG: Provider lastAnalysis is null despite analysis completion");
+      }
+    } else {
+      print("❌ DEBUG: Missing scenario or text support");
     }
   }
 
