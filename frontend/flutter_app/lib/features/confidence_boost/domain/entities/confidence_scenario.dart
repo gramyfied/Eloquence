@@ -1,21 +1,35 @@
 import 'package:equatable/equatable.dart';
+import 'package:hive/hive.dart';
 import 'confidence_models.dart';
+
+part 'confidence_scenario.g.dart';
 
 /// Représente un scénario de confiance pour l'exercice Confidence Boost Express
 /// CONFORME AUX SPÉCIFICATIONS EXACTES DU PROMPT
-class ConfidenceScenario extends Equatable {
+@HiveType(typeId: 20)
+class ConfidenceScenario extends HiveObject with EquatableMixin {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String title;
+  @HiveField(2)
   final String description;
+  @HiveField(3)
   final String prompt;
+  @HiveField(4)
   final ConfidenceScenarioType type;
+  @HiveField(5)
   final int durationSeconds;
+  @HiveField(6)
   final List<String> tips;
+  @HiveField(7)
   final List<String> keywords;
+  @HiveField(8)
   final String difficulty; // 'beginner', 'intermediate', 'advanced'
+  @HiveField(9)
   final String icon;
 
-  const ConfidenceScenario({
+  ConfidenceScenario({
     required this.id,
     required this.title,
     required this.description,
@@ -29,22 +43,41 @@ class ConfidenceScenario extends Equatable {
   });
 
   @override
-  List<Object?> get props => [
-        id,
-        title,
-        description,
-        prompt,
-        type,
-        durationSeconds,
-        tips,
-        keywords,
-        difficulty,
-        icon,
-      ];
+  List<Object?> get props => [id, title, description, prompt, type, durationSeconds, tips, keywords, difficulty, icon];
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'prompt': prompt,
+      'type': type.name,
+      'durationSeconds': durationSeconds,
+      'tips': tips,
+      'keywords': keywords,
+      'difficulty': difficulty,
+      'icon': icon,
+    };
+  }
+
+  factory ConfidenceScenario.fromJson(Map<String, dynamic> json) {
+    return ConfidenceScenario(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      prompt: json['prompt'] ?? '',
+      type: ConfidenceScenarioType.values.firstWhere((e) => e.name == json['type'], orElse: () => ConfidenceScenarioType.presentation),
+      durationSeconds: json['durationSeconds'] ?? 180,
+      tips: List<String>.from(json['tips'] ?? []),
+      keywords: List<String>.from(json['keywords'] ?? []),
+      difficulty: json['difficulty'] ?? 'beginner',
+      icon: json['icon'] ?? '👥',
+    );
+  }
 
   /// Factory pour créer les scénarios exacts spécifiés dans le prompt
   static ConfidenceScenario professional() {
-    return const ConfidenceScenario(
+    return ConfidenceScenario(
         id: 'professional_presentation',
         title: 'Présentation Professionnelle',
         description: 'Présentez votre projet avec assurance',
@@ -59,7 +92,7 @@ class ConfidenceScenario extends Equatable {
   }
 
   static ConfidenceScenario interview() {
-    return const ConfidenceScenario(
+    return ConfidenceScenario(
         id: 'job_interview',
         title: 'Entretien d\'Embauche',
         description: 'Brillez lors de votre prochain entretien',
@@ -74,7 +107,7 @@ class ConfidenceScenario extends Equatable {
   }
 
   static ConfidenceScenario publicSpeaking() {
-    return const ConfidenceScenario(
+    return ConfidenceScenario(
         id: 'public_speaking',
         title: 'Prise de Parole Publique',
         description: 'Captivez votre audience avec confiance',
@@ -90,7 +123,7 @@ class ConfidenceScenario extends Equatable {
 
   static List<ConfidenceScenario> getDefaultScenarios() {
     return [
-      const ConfidenceScenario(
+      ConfidenceScenario(
         id: 'team_meeting',
         title: 'Réunion d\'équipe',
         description: 'Pratiquez votre discours pour une réunion avec vos collègues.',
@@ -108,7 +141,7 @@ class ConfidenceScenario extends Equatable {
         keywords: ['projet', 'objectifs', 'défis', 'étapes', 'équipe'],
       ),
       
-      const ConfidenceScenario(
+      ConfidenceScenario(
         id: 'client_presentation',
         title: 'Présentation client',
         description: 'Présentez une solution à un client potentiel.',
@@ -126,7 +159,7 @@ class ConfidenceScenario extends Equatable {
         keywords: ['solution', 'problème', 'bénéfices', 'innovation', 'entreprise'],
       ),
       
-      const ConfidenceScenario(
+      ConfidenceScenario(
         id: 'elevator_pitch',
         title: 'Elevator Pitch',
         description: 'Présentez votre startup en 90 secondes.',
@@ -144,7 +177,7 @@ class ConfidenceScenario extends Equatable {
         keywords: ['startup', 'vision', 'marché', 'investissement', 'solution'],
       ),
       
-      const ConfidenceScenario(
+      ConfidenceScenario(
         id: 'team_motivation',
         title: 'Motivation d\'équipe',
         description: 'Motivez votre équipe avant un projet important.',
@@ -162,7 +195,7 @@ class ConfidenceScenario extends Equatable {
         keywords: ['motivation', 'projet', 'objectifs', 'confiance', 'réussir'],
       ),
       
-      const ConfidenceScenario(
+      ConfidenceScenario(
         id: 'product_demo',
         title: 'Démonstration produit',
         description: 'Présentez les fonctionnalités de votre produit.',

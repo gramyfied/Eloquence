@@ -2,218 +2,171 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/text_support_generator.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
+import '../../fakes/fake_mistral_api_service.dart';
 
 void main() {
-  group('TextSupportGenerator Tests d\'Intégration', () {
+  group('TextSupportGenerator Tests', () {
     late TextSupportGenerator textSupportGenerator;
-
-    // Scénario de test
-    final testScenario = ConfidenceScenario(
-      id: 'test_scenario',
-      title: 'Présentation Produit',
-      description: 'Préparer une présentation efficace pour un nouveau produit.',
-      prompt: 'Présentez votre nouveau produit innovant à des clients potentiels.',
-      type: ConfidenceScenarioType.presentation,
-      durationSeconds: 180,
-      keywords: ['innovation', 'marché', 'croissance'],
-      tips: ['Utiliser des visuels', 'Être concis'],
-      difficulty: 'Moyenne',
-      icon: '📱',
-    );
+    late FakeMistralApiService fakeMistralService;
 
     setUp(() {
-      textSupportGenerator = TextSupportGenerator();
+      fakeMistralService = FakeMistralApiService();
+      textSupportGenerator = TextSupportGenerator(mistralService: fakeMistralService);
     });
 
-    test('generateSupport génère un TextSupport valide pour fullText', () async {
+    test('should generate full text support successfully', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: testScenario,
+        scenario: scenario,
         type: SupportType.fullText,
-        difficulty: 'Facile',
+        difficulty: 'beginner',
       );
 
       // Assert
-      expect(result, isA<TextSupport>());
-      expect(result.type, SupportType.fullText);
+      expect(result.type, equals(SupportType.fullText));
       expect(result.content, isNotEmpty);
-      expect(result.content.length, greaterThan(50)); // Contenu substantiel
+      expect(result.content.length, greaterThan(100));
       expect(result.suggestedWords, isNotEmpty);
-      expect(result.suggestedWords, contains('innovation'));
+      expect(result.content, contains('projet'));
+      expect(result.content, contains('initiative'));
     });
 
-    test('generateSupport génère un TextSupport valide pour fillInBlanks', () async {
+    test('should generate fill-in-blanks support with [BLANK] placeholders', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: testScenario,
+        scenario: scenario,
         type: SupportType.fillInBlanks,
-        difficulty: 'Moyen',
+        difficulty: 'intermediate',
       );
 
       // Assert
-      expect(result, isA<TextSupport>());
-      expect(result.type, SupportType.fillInBlanks);
-      expect(result.content, isNotEmpty);
+      expect(result.type, equals(SupportType.fillInBlanks));
       expect(result.content, contains('[BLANK]'));
+      expect(result.content.split('[BLANK]').length, greaterThan(3)); // Au moins 2 blancs
       expect(result.suggestedWords, isNotEmpty);
-      // Test flexible: accepte soit le contenu API soit le fallback
-      expect(
-        result.suggestedWords.any((word) =>
-          word.contains('complétez') || word.contains('innovation')
-        ),
-        isTrue
-      );
     });
 
-    test('generateSupport génère un TextSupport valide pour guidedStructure', () async {
+    test('should generate guided structure with numbered points', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: testScenario,
+        scenario: scenario,
         type: SupportType.guidedStructure,
-        difficulty: 'Difficile',
+        difficulty: 'beginner',
       );
 
       // Assert
-      expect(result, isA<TextSupport>());
-      expect(result.type, SupportType.guidedStructure);
-      expect(result.content, isNotEmpty);
-      expect(result.content, contains('1.')); // Structure numérotée
+      expect(result.type, equals(SupportType.guidedStructure));
+      expect(result.content, contains('1.'));
+      expect(result.content, contains('2.'));
+      expect(result.content, contains('3.'));
+      expect(result.content, contains('Introduction'));
       expect(result.suggestedWords, isNotEmpty);
-      // Test flexible: accepte soit le contenu API soit le fallback
-      expect(
-        result.suggestedWords.any((word) =>
-          word.contains('premièrement') || word.contains('innovation')
-        ),
-        isTrue
-      );
     });
 
-    test('generateSupport génère un TextSupport valide pour keywordChallenge', () async {
+    test('should generate keyword challenge with comma-separated words', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: testScenario,
+        scenario: scenario,
         type: SupportType.keywordChallenge,
-        difficulty: 'Facile',
+        difficulty: 'advanced',
       );
 
       // Assert
-      expect(result, isA<TextSupport>());
-      expect(result.type, SupportType.keywordChallenge);
-      expect(result.content, isNotEmpty);
-      expect(result.content, contains(',')); // Liste de mots séparés par des virgules
+      expect(result.type, equals(SupportType.keywordChallenge));
+      expect(result.content, contains(','));
+      expect(result.content.split(',').length, greaterThanOrEqualTo(6));
+      expect(result.content, contains('innovation'));
       expect(result.suggestedWords, isNotEmpty);
-      // Test flexible: accepte soit le contenu API soit le fallback
-      expect(
-        result.suggestedWords.any((word) =>
-          word.contains('défi') || word.contains('innovation')
-        ),
-        isTrue
-      );
     });
 
-    test('generateSupport génère un TextSupport valide pour freeImprovisation', () async {
+    test('should generate free improvisation coaching tips', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: testScenario,
+        scenario: scenario,
         type: SupportType.freeImprovisation,
-        difficulty: 'Moyen',
+        difficulty: 'intermediate',
       );
 
       // Assert
-      expect(result, isA<TextSupport>());
-      expect(result.type, SupportType.freeImprovisation);
-      expect(result.content, isNotEmpty);
-      expect(result.content, contains('•')); // Format de conseils avec puces
+      expect(result.type, equals(SupportType.freeImprovisation));
+      expect(result.content, contains('•'));
+      expect(result.content.split('•').length, greaterThan(3)); // Au moins 3 conseils
+      expect(result.content, contains('authentique'));
       expect(result.suggestedWords, isNotEmpty);
-      // Test flexible: accepte soit le contenu API soit le fallback
-      expect(
-        result.suggestedWords.any((word) =>
-          word.contains('spontanéité') || word.contains('innovation')
-        ),
-        isTrue
-      );
     });
 
-    test('generateSupport fonctionne pour tous les niveaux de difficulté', () async {
-      final difficulties = ['Facile', 'Moyen', 'Difficile'];
+    test('should fallback to default content when service fails', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      fakeMistralService.shouldFail = true;
       
-      for (final difficulty in difficulties) {
-        final result = await textSupportGenerator.generateSupport(
-          scenario: testScenario,
-          type: SupportType.fullText,
-          difficulty: difficulty,
-        );
-
-        expect(result, isA<TextSupport>());
-        expect(result.content, isNotEmpty);
-        expect(result.suggestedWords, isNotEmpty);
-      }
-    });
-
-    test('generateSupport utilise les mots-clés du scénario dans le contenu suggéré', () async {
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: testScenario,
+        scenario: scenario,
         type: SupportType.fullText,
-        difficulty: 'Moyen',
+        difficulty: 'beginner',
       );
 
       // Assert
-      expect(result.suggestedWords, contains('innovation'));
-      expect(result.suggestedWords, contains('marché'));
-      expect(result.suggestedWords, contains('croissance'));
+      expect(result.type, equals(SupportType.fullText));
+      expect(result.content, isNotEmpty);
+      expect(result.content, contains('projet'));
+      expect(result.suggestedWords, isNotEmpty);
     });
 
-    test('generateSupport retourne toujours un résultat même en cas d\'erreur potentielle', () async {
-      // Test avec un scénario ayant des caractères spéciaux qui pourraient causer des erreurs
-      final scenarioComplexe = ConfidenceScenario(
-        id: 'test_complexe',
-        title: 'Test "Complexe" & Spécial',
-        description: 'Description avec caractères spéciaux: éàç & <>',
-        prompt: 'Prompt avec caractères spéciaux et "guillemets"',
-        type: ConfidenceScenarioType.pitch,
-        durationSeconds: 90,
-        keywords: ['test', 'spéciaux', 'caractères'],
-        tips: ['Attention aux caractères', 'Gérer les erreurs'],
-        difficulty: 'Test',
-        icon: '🧪',
-      );
-
+    test('should include scenario keywords in suggested words', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      
       // Act
       final result = await textSupportGenerator.generateSupport(
-        scenario: scenarioComplexe,
+        scenario: scenario,
         type: SupportType.fullText,
-        difficulty: 'Facile',
+        difficulty: 'beginner',
       );
 
-      // Assert - Le système doit toujours retourner un TextSupport valide
-      expect(result, isA<TextSupport>());
-      expect(result.content, isNotEmpty);
-      expect(result.type, SupportType.fullText);
+      // Assert
+      expect(result.suggestedWords, isNotEmpty);
+      expect(result.suggestedWords.length, lessThanOrEqualTo(6));
+      
+      // Vérifier que certains mots-clés du scénario sont inclus
+      final hasScenarioKeywords = scenario.keywords.any(
+        (keyword) => result.suggestedWords.contains(keyword)
+      );
+      expect(hasScenarioKeywords, isTrue);
     });
 
-    test('generateSupport produit des contenus différents pour différents types', () async {
-      // Act - Générer pour tous les types
-      final results = <SupportType, TextSupport>{};
+    test('should handle custom response from fake service', () async {
+      // Arrange
+      final scenario = ConfidenceScenario.getDefaultScenarios().first;
+      fakeMistralService.customResponse = 'Custom test response for testing';
       
-      for (final type in SupportType.values) {
-        results[type] = await textSupportGenerator.generateSupport(
-          scenario: testScenario,
-          type: type,
-          difficulty: 'Moyen',
-        );
-      }
+      // Act
+      final result = await textSupportGenerator.generateSupport(
+        scenario: scenario,
+        type: SupportType.fullText,
+        difficulty: 'beginner',
+      );
 
-      // Assert - Vérifier que chaque type a des caractéristiques spécifiques
-      expect(results[SupportType.fullText]!.content.length, greaterThan(100));
-      expect(results[SupportType.fillInBlanks]!.content, contains('[BLANK]'));
-      expect(results[SupportType.guidedStructure]!.content, contains('1.'));
-      expect(results[SupportType.keywordChallenge]!.content, contains(','));
-      expect(results[SupportType.freeImprovisation]!.content, contains('•'));
-
-      // Vérifier que les contenus sont différents
-      final contents = results.values.map((r) => r.content).toSet();
-      expect(contents.length, greaterThan(1)); // Au moins 2 contenus différents
+      // Assert
+      expect(result.type, equals(SupportType.fullText));
+      expect(result.content, contains('Custom test response'));
+      expect(result.suggestedWords, isNotEmpty);
     });
   });
 }

@@ -1,18 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+
+part 'confidence_models.g.dart';
 
 // Enum pour les différents types de support texte
+@HiveType(typeId: 10)
 enum SupportType {
+  @HiveField(0)
   fullText,
+  @HiveField(1)
   fillInBlanks,
+  @HiveField(2)
   guidedStructure,
+  @HiveField(3)
   keywordChallenge,
+  @HiveField(4)
   freeImprovisation,
 }
 
 // Modèle pour le support texte fourni à l'utilisateur
-class TextSupport {
+@HiveType(typeId: 11)
+class TextSupport extends HiveObject {
+  @HiveField(0)
   final SupportType type;
+  @HiveField(1)
   final String content;
+  @HiveField(2)
   final List<String> suggestedWords; // Pour le type 'fillInBlanks'
 
   TextSupport({
@@ -20,71 +33,27 @@ class TextSupport {
     required this.content,
     this.suggestedWords = const [],
   });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'type': type.name,
-      'content': content,
-      'suggestedWords': suggestedWords,
-    };
-  }
-
-  factory TextSupport.fromJson(Map<String, dynamic> json) {
-    return TextSupport(
-      type: SupportType.values.firstWhere(
-        (e) => e.name == json['type'],
-        orElse: () => SupportType.fullText,
-      ),
-      content: json['content'] ?? '',
-      suggestedWords: List<String>.from(json['suggestedWords'] ?? []),
-    );
-  }
 }
 
 // Enum pour les différents types de scénarios de confiance
+@HiveType(typeId: 12)
 enum ConfidenceScenarioType {
+  @HiveField(0)
   presentation,
+  @HiveField(1)
   meeting,
+  @HiveField(2)
   interview,
+  @HiveField(3)
   networking,
+  @HiveField(4)
   pitch,
-  // Ajoutez d'autres types si nécessaire
 }
 
 
 extension ConfidenceScenarioTypeExtension on ConfidenceScenarioType {
   String toJson() {
-    switch (this) {
-      case ConfidenceScenarioType.presentation:
-        return 'presentation';
-      case ConfidenceScenarioType.meeting:
-        return 'meeting';
-      case ConfidenceScenarioType.interview:
-        return 'interview';
-      case ConfidenceScenarioType.networking:
-        return 'networking';
-      case ConfidenceScenarioType.pitch:
-        return 'pitch';
-      default:
-        return 'presentation';
-    }
-  }
-
-  static ConfidenceScenarioType fromJson(String json) {
-    switch (json) {
-      case 'presentation':
-        return ConfidenceScenarioType.presentation;
-      case 'meeting':
-        return ConfidenceScenarioType.meeting;
-      case 'interview':
-        return ConfidenceScenarioType.interview;
-      case 'networking':
-        return ConfidenceScenarioType.networking;
-      case 'pitch':
-        return ConfidenceScenarioType.pitch;
-      default:
-        return ConfidenceScenarioType.presentation;
-    }
+    return this.name;
   }
 
   String get displayName {
@@ -119,18 +88,31 @@ extension ConfidenceScenarioTypeExtension on ConfidenceScenarioType {
 }
 
 // Modèle pour les résultats de l'analyse de la performance
-class ConfidenceAnalysis {
+@HiveType(typeId: 13)
+class ConfidenceAnalysis extends HiveObject {
+  @HiveField(0)
   final double overallScore;
+  @HiveField(1)
   final double confidenceScore;
+  @HiveField(2)
   final double fluencyScore;
+  @HiveField(3)
   final double clarityScore;
+  @HiveField(4)
   final double energyScore;
+  @HiveField(5)
   final String feedback;
+  @HiveField(6)
   final int wordCount;
+  @HiveField(7)
   final double speakingRate;
+  @HiveField(8)
   final List<String> keywordsUsed;
+  @HiveField(9)
   final String transcription;
+  @HiveField(10)
   final List<String> strengths;
+  @HiveField(11)
   final List<String> improvements;
 
   ConfidenceAnalysis({
@@ -147,43 +129,9 @@ class ConfidenceAnalysis {
     this.strengths = const [],
     this.improvements = const [],
   });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'overallScore': overallScore,
-      'confidenceScore': confidenceScore,
-      'fluencyScore': fluencyScore,
-      'clarityScore': clarityScore,
-      'energyScore': energyScore,
-      'feedback': feedback,
-      'wordCount': wordCount,
-      'speakingRate': speakingRate,
-      'keywordsUsed': keywordsUsed,
-      'transcription': transcription,
-      'strengths': strengths,
-      'improvements': improvements,
-    };
-  }
-
-  factory ConfidenceAnalysis.fromJson(Map<String, dynamic> json) {
-    return ConfidenceAnalysis(
-      overallScore: (json['overallScore'] ?? 0.0).toDouble(),
-      confidenceScore: (json['confidenceScore'] ?? 0.0).toDouble(),
-      fluencyScore: (json['fluencyScore'] ?? 0.0).toDouble(),
-      clarityScore: (json['clarityScore'] ?? 0.0).toDouble(),
-      energyScore: (json['energyScore'] ?? 0.0).toDouble(),
-      feedback: json['feedback'] ?? '',
-      wordCount: json['wordCount'] ?? 0,
-      speakingRate: (json['speakingRate'] ?? 0.0).toDouble(),
-      keywordsUsed: List<String>.from(json['keywordsUsed'] ?? []),
-      transcription: json['transcription'] ?? '',
-      strengths: List<String>.from(json['strengths'] ?? []),
-      improvements: List<String>.from(json['improvements'] ?? []),
-    );
-  }
 }
 
-// Classe pour les particules de confettis
+// Classe pour les particules de confettis - non persistée dans Hive
 class ConfettiParticle {
   double x;
   double y;

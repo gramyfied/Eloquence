@@ -170,7 +170,7 @@ class TextSupportSelectionScreen extends StatelessWidget {
   }
 
   Future<TextSupport> _generateSupport(SupportType supportType) async {
-    final generator = TextSupportGenerator();
+    final generator = TextSupportGenerator.create();
     return await generator.generateSupport(
       scenario: scenario,
       type: supportType,

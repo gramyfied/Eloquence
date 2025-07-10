@@ -1,31 +1,24 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../domain/entities/confidence_models.dart';
-import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
-import '../../domain/entities/confidence_session.dart';
-
+import '../../domain/entities/confidence_models.dart';
 abstract class ConfidenceLocalDataSource {
   Future<void> cacheScenarios(List<ConfidenceScenario> scenarios);
   Future<List<ConfidenceScenario>> getCachedScenarios();
-  Future<void> saveSession(ConfidenceSession session);
-  Future<void> updateSession(ConfidenceSession session);
-  Future<ConfidenceSession?> getSession(String sessionId);
-  Future<List<ConfidenceSession>> getUserSessions(String userId);
-  Future<void> clearCache();
+  Future<void> clearScenariosCache();
 }
 
 class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
   final SharedPreferences sharedPreferences;
   
   static const String SCENARIOS_KEY = 'confidence_scenarios';
-  static const String SESSIONS_KEY_PREFIX = 'confidence_sessions_';
-  static const String SESSION_KEY_PREFIX = 'confidence_session_';
 
   ConfidenceLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
   Future<void> cacheScenarios(List<ConfidenceScenario> scenarios) async {
+    // Cette méthode de sérialisation manuelle sera remplacée par Hive pour les objets complexes.
+    // Pour les scénarios, qui sont moins dynamiques, SharedPreferences reste acceptable.
     final scenariosJson = scenarios.map((s) => _scenarioToJson(s)).toList();
     await sharedPreferences.setString(
       SCENARIOS_KEY,
@@ -49,81 +42,20 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
   }
 
   @override
-  Future<void> saveSession(ConfidenceSession session) async {
-    // Sauvegarder la session individuelle
-    await sharedPreferences.setString(
-      '$SESSION_KEY_PREFIX${session.id}',
-      json.encode(_sessionToJson(session)),
-    );
-
-    // Ajouter à la liste des sessions de l'utilisateur
-    final userSessionsKey = '$SESSIONS_KEY_PREFIX${session.userId}';
-    final existingSessions = await getUserSessions(session.userId);
-    
-    // Éviter les doublons
-    existingSessions.removeWhere((s) => s.id == session.id);
-    existingSessions.add(session);
-    
-    final sessionsJson = existingSessions.map((s) => _sessionToJson(s)).toList();
-    await sharedPreferences.setString(
-      userSessionsKey,
-      json.encode(sessionsJson),
-    );
+  Future<void> clearScenariosCache() async {
+    await sharedPreferences.remove(SCENARIOS_KEY);
   }
 
-  @override
-  Future<void> updateSession(ConfidenceSession session) async {
-    await saveSession(session);
-  }
-
-  @override
-  Future<ConfidenceSession?> getSession(String sessionId) async {
-    final sessionString = sharedPreferences.getString('$SESSION_KEY_PREFIX$sessionId');
-    if (sessionString == null) return null;
-    
-    try {
-      final sessionJson = json.decode(sessionString);
-      return _sessionFromJson(sessionJson);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  @override
-  Future<List<ConfidenceSession>> getUserSessions(String userId) async {
-    final sessionsString = sharedPreferences.getString('$SESSIONS_KEY_PREFIX$userId');
-    if (sessionsString == null) return [];
-    
-    try {
-      final List<dynamic> sessionsJson = json.decode(sessionsString);
-      return sessionsJson.map((json) => _sessionFromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  @override
-  Future<void> clearCache() async {
-    final keys = sharedPreferences.getKeys();
-    for (final key in keys) {
-      if (key.startsWith('confidence_')) {
-        await sharedPreferences.remove(key);
-      }
-    }
-  }
-
-  // Méthodes de conversion JSON
+  // Méthodes de conversion JSON pour ConfidenceScenario
   Map<String, dynamic> _scenarioToJson(ConfidenceScenario scenario) {
     return {
       'id': scenario.id,
       'title': scenario.title,
       'description': scenario.description,
-      'prompt': scenario.prompt,
-      'type': scenario.type.index,
-      'durationSeconds': scenario.durationSeconds,
-      'tips': scenario.tips,
-      'keywords': scenario.keywords,
+      'type': scenario.type.toString(), // Utiliser toString pour l'enum
       'difficulty': scenario.difficulty,
+      'keywords': scenario.keywords,
+      'tips': scenario.tips,
       'icon': scenario.icon,
     };
   }
@@ -133,82 +65,34 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
       id: json['id'],
       title: json['title'],
       description: json['description'],
-      prompt: json['prompt'],
-      type: ConfidenceScenarioTypeExtension.fromJson(json['type']),
-      durationSeconds: json['durationSeconds'],
-      tips: List<String>.from(json['tips']),
-      keywords: List<String>.from(json['keywords']),
+      prompt: json['prompt'] ?? '',
+      durationSeconds: json['durationSeconds'] ?? 60,
+      type: ConfidenceScenarioType.values.firstWhere(
+        (e) => e.toString() == json['type'],
+        orElse: () => ConfidenceScenarioType.presentation,
+      ),
       difficulty: json['difficulty'] ?? 'intermediate',
+      keywords: List<String>.from(json['keywords']),
+      tips: List<String>.from(json['tips']),
       icon: json['icon'] ?? '🎯',
     );
   }
 
-  Map<String, dynamic> _sessionToJson(ConfidenceSession session) {
-    return {
-      'id': session.id,
-      'userId': session.userId,
-      'scenario': _scenarioToJson(session.scenario),
-      'startTime': session.startTime.toIso8601String(),
-      'endTime': session.endTime?.toIso8601String(),
-      'recordingDurationSeconds': session.recordingDurationSeconds,
-      'audioFilePath': session.audioFilePath,
-      'analysis': session.analysis != null ? _analysisToJson(session.analysis!) : null,
-      'achievedBadges': session.achievedBadges,
-      'isCompleted': session.isCompleted,
-    };
-  }
-
-  ConfidenceSession _sessionFromJson(Map<String, dynamic> json) {
-    return ConfidenceSession(
-      id: json['id'],
-      userId: json['userId'],
-      scenario: _scenarioFromJson(json['scenario']),
-      startTime: DateTime.parse(json['startTime']),
-      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
-      recordingDurationSeconds: json['recordingDurationSeconds'],
-      audioFilePath: json['audioFilePath'],
-      analysis: json['analysis'] != null ? _analysisFromJson(json['analysis']) : null,
-      achievedBadges: List<String>.from(json['achievedBadges']),
-      isCompleted: json['isCompleted'],
-    );
-  }
-
-  Map<String, dynamic> _analysisToJson(ConfidenceAnalysis analysis) {
-    return {
-      'overallScore': analysis.overallScore,
-      'confidenceScore': analysis.confidenceScore,
-      'fluencyScore': analysis.fluencyScore,
-      'clarityScore': analysis.clarityScore,
-      'energyScore': analysis.energyScore,
-      'wordCount': analysis.wordCount,
-      'speakingRate': analysis.speakingRate,
-      'keywordsUsed': analysis.keywordsUsed,
-      'transcription': analysis.transcription,
-      'feedback': analysis.feedback,
-      'strengths': analysis.strengths,
-      'improvements': analysis.improvements,
-    };
-  }
-
-  ConfidenceAnalysis _analysisFromJson(Map<String, dynamic> json) {
-    return ConfidenceAnalysis(
-      overallScore: (json['overallScore'] ?? 0.0).toDouble(),
-      confidenceScore: (json['confidenceScore'] ?? 0.0).toDouble(),
-      fluencyScore: (json['fluencyScore'] ?? 0.0).toDouble(),
-      clarityScore: (json['clarityScore'] ?? 0.0).toDouble(),
-      energyScore: (json['energyScore'] ?? 0.0).toDouble(),
-      wordCount: json['wordCount'] ?? 0,
-      speakingRate: (json['speakingRate'] ?? 0.0).toDouble(),
-      keywordsUsed: List<String>.from(json['keywordsUsed'] ?? []),
-      transcription: json['transcription'] ?? '',
-      feedback: json['feedback'] ?? '',
-      strengths: List<String>.from(json['strengths'] ?? []),
-      improvements: List<String>.from(json['improvements'] ?? []),
-    );
-  }
-
-  // Scénarios par défaut CONFORMES AUX SPÉCIFICATIONS
   List<ConfidenceScenario> _getDefaultScenarios() {
-    return ConfidenceScenario.getDefaultScenarios();
+    // Re-création de la liste par défaut pour maintenir la fonctionnalité
+    return [
+      ConfidenceScenario(
+        id: '1',
+        title: 'Présentation d\'équipe',
+        description: 'Présentez les résultats de votre dernier projet à votre équipe.',
+        prompt: 'Commencez par résumer l\'objectif du projet. Présentez ensuite les 3 résultats clés que vous avez obtenus. Terminez en proposant les prochaines étapes.',
+        type: ConfidenceScenarioType.presentation,
+        durationSeconds: 180,
+        difficulty: 'intermediate',
+        keywords: ['résultats', 'projet', 'équipe', 'prochaines étapes'],
+        tips: ['Parlez lentement', 'Regardez vos interlocuteurs', 'Utilisez des gestes'],
+        icon: '🗣️',
+      ),
+    ];
   }
 }

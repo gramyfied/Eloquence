@@ -26,7 +26,7 @@ class ConfidenceLiveKitIntegration {
     required this.livekitService,
     required this.apiService,
     TextSupportGenerator? textGenerator,
-  }) : textGenerator = textGenerator ?? TextSupportGenerator();
+  }) : textGenerator = textGenerator ?? TextSupportGenerator.create();
 
   /// Démarre une session avec contexte enrichi
   Future<bool> startSession({
@@ -101,14 +101,7 @@ class ConfidenceLiveKitIntegration {
     final context = {
       'sessionType': 'confidence_boost',
       'timestamp': DateTime.now().toIso8601String(),
-      'scenario': {
-        'title': scenario.title,
-        'description': scenario.description,
-        'type': scenario.type,
-        'difficulty': scenario.difficulty,
-        'keywords': scenario.keywords,
-        'tips': scenario.tips,
-      },
+      'scenario': scenario.toJson(), // Utilisation de la méthode toJson()
       'userContext': userContext,
       if (customInstructions != null) 'customInstructions': customInstructions,
       if (generatedSupport != null) 'generatedSupport': generatedSupport,
