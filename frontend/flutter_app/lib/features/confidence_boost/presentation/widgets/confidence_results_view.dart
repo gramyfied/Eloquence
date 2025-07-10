@@ -247,10 +247,12 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    label,
-                    style: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white,
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: EloquenceTextStyles.bodyMedium.copyWith(
+                        color: EloquenceColors.white,
+                      ),
                     ),
                   ),
                   Text(
@@ -294,10 +296,12 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
                 size: 24,
               ),
               const SizedBox(width: 12),
-              Text(
-                'Feedback personnalisé',
-                style: EloquenceTextStyles.h3.copyWith(
-                  color: EloquenceColors.white,
+              Flexible(
+                child: Text(
+                  'Feedback personnalisé',
+                  style: EloquenceTextStyles.h3.copyWith(
+                    color: EloquenceColors.white,
+                  ),
                 ),
               ),
             ],
@@ -400,15 +404,17 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _getBadgeName(badge),
-                            style: EloquenceTextStyles.caption.copyWith(
-                              color: EloquenceColors.white,
+                          const SizedBox(height: 6),
+                          Flexible(
+                            child: Text(
+                              _getBadgeName(badge),
+                              style: EloquenceTextStyles.caption.copyWith(
+                                color: EloquenceColors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -425,8 +431,10 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
   
   Widget _buildActionButtons() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
+        Flexible(
+          flex: 1,
           child: OutlinedButton(
             onPressed: widget.onRetry,
             style: OutlinedButton.styleFrom(
@@ -445,7 +453,8 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
           ),
         ),
         const SizedBox(width: 16),
-        Expanded(
+        Flexible(
+          flex: 1,
           child: ElevatedButton(
             onPressed: widget.onComplete,
             style: ElevatedButton.styleFrom(

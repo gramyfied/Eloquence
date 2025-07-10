@@ -2,11 +2,12 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
-import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
+import '../../lib/src/services/clean_livekit_service.dart';
+import '../../lib/features/confidence_boost/domain/entities/confidence_models.dart';
+import '../../lib/features/confidence_boost/domain/entities/confidence_scenario.dart';
 
-class FakeCleanLiveKitService with ChangeNotifier implements CleanLiveKitService {
+class FakeCleanLiveKitService extends CleanLiveKitService {
+  FakeCleanLiveKitService() : super();
   @override
   bool get isConnected => true;
 

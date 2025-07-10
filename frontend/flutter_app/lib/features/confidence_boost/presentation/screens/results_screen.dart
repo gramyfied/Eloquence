@@ -1,10 +1,13 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../domain/entities/confidence_models.dart';
+import '../../domain/entities/gamification_models.dart';
 import '../widgets/confetti_painter.dart';
+import '../providers/confidence_boost_provider.dart';
 
-class ResultsScreen extends StatefulWidget {
+class ResultsScreen extends ConsumerStatefulWidget {
   final ConfidenceAnalysis analysis;
   final Function() onContinue;
 
@@ -15,10 +18,10 @@ class ResultsScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ResultsScreenState createState() => _ResultsScreenState();
+  ConsumerState<ResultsScreen> createState() => _ResultsScreenState();
 }
 
-class _ResultsScreenState extends State<ResultsScreen>
+class _ResultsScreenState extends ConsumerState<ResultsScreen>
     with TickerProviderStateMixin {
   late AnimationController _scoreController;
   late AnimationController _metricsController;
@@ -28,12 +31,39 @@ class _ResultsScreenState extends State<ResultsScreen>
 
   List<ConfettiParticle> _confettiParticles = [];
   bool _showBadge = false;
+  GamificationResult? _gamificationResult;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
+    _loadGamificationData();
     _startAnimationSequence();
+  }
+
+  void _loadGamificationData() {
+    try {
+      print("🎮 DEBUG: Attempting to read confidenceBoostProvider...");
+      final provider = ref.read(confidenceBoostProvider);
+      print("🎮 DEBUG: Provider obtained successfully");
+      
+      _gamificationResult = provider.lastGamificationResult;
+      print("🎮 DEBUG: Provider lastGamificationResult: $_gamificationResult");
+      
+      if (_gamificationResult != null) {
+        print("🎮 DEBUG: ✅ XP earned: ${_gamificationResult!.earnedXP}");
+        print("🎮 DEBUG: ✅ New level: ${_gamificationResult!.newLevel}");
+        print("🎮 DEBUG: ✅ New badges: ${_gamificationResult!.newBadges.length}");
+        print("🎮 DEBUG: ✅ Level up: ${_gamificationResult!.levelUp}");
+      } else {
+        print("❌ DEBUG: Gamification result is NULL - XP section will not display");
+        print("❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()");
+        print("❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data");
+      }
+    } catch (e) {
+      print("💥 DEBUG: ERREUR loading gamification data: $e");
+      print("💥 DEBUG: Provider might not be properly initialized");
+    }
   }
   
   @override
@@ -146,7 +176,10 @@ class _ResultsScreenState extends State<ResultsScreen>
                     children: [
                       IconButton(
                         icon: Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          print("🔍 DEBUG: Close button pressed - using onContinue for PageView navigation");
+                          widget.onContinue();
+                        },
                       ),
                       Expanded(
                         child: Text(
@@ -162,6 +195,7 @@ class _ResultsScreenState extends State<ResultsScreen>
                   // Contenu scrollable
                   Expanded(
                     child: SingleChildScrollView(
+                      physics: ClampingScrollPhysics(),
                       child: Column(
                         children: [
                           SizedBox(height: EloquenceSpacing.xl),
@@ -176,8 +210,16 @@ class _ResultsScreenState extends State<ResultsScreen>
 
                           SizedBox(height: EloquenceSpacing.xl),
 
-                          // Badge de réussite (si applicable)
-                          if (_showBadge) _buildAchievementBadge(),
+                          // Section Gamification
+                          if (_gamificationResult != null) _buildGamificationSection(),
+
+                          SizedBox(height: EloquenceSpacing.xl),
+
+                          // Badge de réussite (si applicable) - remplacé par les nouveaux badges de gamification
+                          // Les badges sont maintenant affichés dans la section gamification ci-dessus
+                          // Pas besoin d'afficher le badge générique si on a des badges réels
+                          if (_showBadge && (_gamificationResult == null || _gamificationResult!.newBadges.isEmpty))
+                            _buildAchievementBadge(),
 
                           SizedBox(height: EloquenceSpacing.xl),
 
@@ -204,12 +246,14 @@ class _ResultsScreenState extends State<ResultsScreen>
             AnimatedBuilder(
               animation: _confettiController,
               builder: (context, child) {
-                return CustomPaint(
-                  painter: ConfettiPainter(
-                    particles: _confettiParticles,
-                    progress: _confettiController.value,
+                return IgnorePointer( // CORRECTION: Rendre transparent aux gestes
+                  child: CustomPaint(
+                    painter: ConfettiPainter(
+                      particles: _confettiParticles,
+                      progress: _confettiController.value,
+                    ),
+                    size: MediaQuery.of(context).size,
                   ),
-                  size: MediaQuery.of(context).size,
                 );
               },
             ),
@@ -481,7 +525,12 @@ class _ResultsScreenState extends State<ResultsScreen>
           ),
           child: TextButton(
             onPressed: () {
-              // Voir les badges
+              print("🏆 DEBUG: Bouton 'VOIR BADGES' cliqué - mais pas d'implémentation");
+              print("🏆 DEBUG: Gamification result exists: ${_gamificationResult != null}");
+              if (_gamificationResult != null) {
+                print("🏆 DEBUG: New badges count: ${_gamificationResult!.newBadges.length}");
+              }
+              // TODO: Implémenter la navigation vers la page des badges
             },
             style: TextButton.styleFrom(
               shape: RoundedRectangleBorder(
@@ -498,6 +547,293 @@ class _ResultsScreenState extends State<ResultsScreen>
         ),
       ],
     );
+  }
+
+  Widget _buildGamificationSection() {
+    if (_gamificationResult == null) return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(EloquenceSpacing.lg),
+      decoration: BoxDecoration(
+        color: EloquenceColors.glassBackground,
+        borderRadius: EloquenceRadii.card,
+        border: EloquenceBorders.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header de la section
+          Row(
+            children: [
+              Icon(Icons.emoji_events, color: ConfidenceBoostColors.celebrationGold, size: 24),
+              SizedBox(width: EloquenceSpacing.sm),
+              Text(
+                'Récompenses Gagnées',
+                style: EloquenceTextStyles.body1.copyWith(
+                  color: ConfidenceBoostColors.celebrationGold,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: EloquenceSpacing.lg),
+
+          // XP gagnés avec animation
+          _buildXPSection(),
+          SizedBox(height: EloquenceSpacing.md),
+
+          // Barre de progression du niveau
+          _buildLevelProgressBar(),
+          SizedBox(height: EloquenceSpacing.md),
+
+          // Badges débloqués (s'il y en a)
+          if (_gamificationResult!.newBadges.isNotEmpty) ...[
+            _buildNewBadgesSection(),
+            SizedBox(height: EloquenceSpacing.md),
+          ],
+
+          // Streak actuel
+          _buildStreakSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildXPSection() {
+    return TweenAnimationBuilder<int>(
+      duration: const Duration(milliseconds: 1500),
+      tween: IntTween(begin: 0, end: _gamificationResult!.earnedXP),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.star, color: EloquenceColors.cyan, size: 20),
+                SizedBox(width: EloquenceSpacing.sm),
+                Text(
+                  'XP Gagnés',
+                  style: EloquenceTextStyles.body1,
+                ),
+              ],
+            ),
+            Text(
+              '+$value XP',
+              style: EloquenceTextStyles.body1.copyWith(
+                color: EloquenceColors.cyan,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLevelProgressBar() {
+    final currentLevelXP = _gamificationResult!.xpInCurrentLevel;
+    final nextLevelXP = _gamificationResult!.xpRequiredForNextLevel;
+    final progress = nextLevelXP > 0 ? currentLevelXP / nextLevelXP : 1.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Niveau ${_gamificationResult!.newLevel}',
+              style: EloquenceTextStyles.body1.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '$currentLevelXP / $nextLevelXP XP',
+              style: EloquenceTextStyles.body1.copyWith(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: EloquenceSpacing.sm),
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 2000),
+          tween: Tween(begin: 0.0, end: progress),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Container(
+              height: 12,
+              decoration: BoxDecoration(
+                color: EloquenceColors.navy.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: value,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        EloquenceColors.cyan,
+                        ConfidenceBoostColors.celebrationGold,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EloquenceColors.cyan.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNewBadgesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Nouveaux Badges',
+          style: EloquenceTextStyles.body1.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: EloquenceSpacing.sm),
+        Wrap(
+          spacing: EloquenceSpacing.sm,
+          runSpacing: EloquenceSpacing.sm,
+          children: _gamificationResult!.newBadges.map((badge) {
+            return TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 800),
+              tween: Tween(begin: 0.0, end: 1.0),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: EloquenceSpacing.md,
+                      vertical: EloquenceSpacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        colors: [
+                          ConfidenceBoostColors.celebrationGold,
+                          ConfidenceBoostColors.celebrationGold.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: ConfidenceBoostColors.celebrationGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _getBadgeIcon(badge.id),
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        SizedBox(width: EloquenceSpacing.xs),
+                        Text(
+                          badge.name,
+                          style: EloquenceTextStyles.body1.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStreakSection() {
+    final streak = _gamificationResult!.streakInfo.currentStreak;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.local_fire_department, color: ConfidenceBoostColors.warningOrange, size: 20),
+            SizedBox(width: EloquenceSpacing.sm),
+            Text(
+              'Série Actuelle',
+              style: EloquenceTextStyles.body1,
+            ),
+          ],
+        ),
+        TweenAnimationBuilder<int>(
+          duration: const Duration(milliseconds: 1000),
+          tween: IntTween(begin: 0, end: streak),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Text(
+              '$value jours',
+              style: EloquenceTextStyles.body1.copyWith(
+                color: ConfidenceBoostColors.warningOrange,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  IconData _getBadgeIcon(String badgeId) {
+    switch (badgeId) {
+      case 'first_session':
+        return Icons.play_arrow;
+      case 'confident_speaker':
+        return Icons.record_voice_over;
+      case 'fluency_master':
+        return Icons.speed;
+      case 'clarity_champion':
+        return Icons.clear;
+      case 'energy_boost':
+        return Icons.bolt;
+      case 'perfect_score':
+        return Icons.star;
+      case 'high_performer':
+        return Icons.trending_up;
+      case 'consistency_king':
+        return Icons.refresh;
+      case 'streak_starter':
+        return Icons.local_fire_department;
+      case 'week_warrior':
+        return Icons.calendar_view_week;
+      case 'dedication_master':
+        return Icons.fitness_center;
+      case 'eloquence_expert':
+        return Icons.psychology;
+      default:
+        return Icons.emoji_events;
+    }
   }
 
   LinearGradient _getScoreGradient(double score) {
