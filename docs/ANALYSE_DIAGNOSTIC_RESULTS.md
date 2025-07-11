@@ -7,7 +7,7 @@
 - **Docker** : Containers principaux actifs
 - **TTS Service** : Opérationnel (port 5002)
 - **Redis** : Fonctionnel (port 6380)
-- **Kaldi** : Service actif
+- **VOSK** : Service actif
 
 ### ❌ PROBLÈMES IDENTIFIÉS :
 
@@ -109,7 +109,7 @@ netstat -an | findstr ":7881"
 - ❌ `eloquence-backend-celery-1` - En redémarrage continu
 - ✅ `eloquence-backend-redis-1` - Redis (port 6380)
 - ✅ `eloquence-backend-tts-service-1` - TTS (port 5002)
-- ✅ `kaldi_eloquence` - Kaldi ASR
+- ✅ `vosk_eloquence` - VOSK ASR
 
 ### **Services manquants :**
 - ❌ LiveKit Server (port 7881)

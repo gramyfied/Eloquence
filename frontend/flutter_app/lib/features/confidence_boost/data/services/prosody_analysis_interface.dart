@@ -5,10 +5,10 @@ import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../../../core/utils/logger.dart';
 
-/// Interface pour l'analyse prosodique utilisant Kaldi (future implémentation)
+/// Interface pour l'analyse prosodique utilisant VOSK (future implémentation)
 /// 
 /// Cette interface définit les contrats pour l'analyse prosodique avancée
-/// qui sera implémentée avec Kaldi pour l'analyse de débit, intonation, pauses, etc.
+/// qui sera implémentée avec VOSK pour l'analyse de débit, intonation, pauses, etc.
 abstract class ProsodyAnalysisInterface {
   /// Analyse prosodique complète d'un enregistrement audio
   /// 
@@ -38,12 +38,12 @@ abstract class ProsodyAnalysisInterface {
   /// Détection d'hésitations et disfluences
   Future<DisfluencyAnalysis?> analyzeDisfluencies(Uint8List audioData);
   
-  /// Vérification de la disponibilité du service Kaldi
+  /// Vérification de la disponibilité du service VOSK
   Future<bool> isAvailable();
   
-  /// Configuration du service (serveur Kaldi, modèles, etc.)
+  /// Configuration du service (serveur VOSK, modèles, etc.)
   void configure({
-    required String kaldiServerUrl,
+    required String voskServerUrl,
     Map<String, String>? modelPaths,
     Duration? timeout,
   });
@@ -271,7 +271,7 @@ enum DisfluencyType {
 }
 
 /// Implémentation de fallback pour l'interface prosodique
-/// Utilisée quand Kaldi n'est pas encore disponible
+/// Utilisée quand VOSK n'est pas encore disponible
 class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
   static const String _tag = 'FallbackProsodyAnalysis';
   static final Logger _logger = Logger();
@@ -334,13 +334,13 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
   
   @override
   Future<bool> isAvailable() async {
-    _logger.i('$_tag: Service prosodique en mode fallback (Kaldi indisponible)');
+    _logger.i('$_tag: Service prosodique en mode fallback (VOSK indisponible)');
     return true; // Fallback toujours disponible
   }
   
   @override
   void configure({
-    required String kaldiServerUrl,
+    required String voskServerUrl,
     Map<String, String>? modelPaths,
     Duration? timeout,
   }) {
@@ -374,7 +374,7 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
       f0Std: 25.0,
       f0Range: 100.0,
       clarityScore: 0.75,
-      feedback: 'Intonation estimée normale. Analyse Kaldi requise pour détails.',
+      feedback: 'Intonation estimée normale. Analyse VOSK requise pour détails.',
       pattern: IntonationPattern.natural,
     );
   }
@@ -387,7 +387,7 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
       averagePauseDuration: 0.8,
       pauseRate: estimatedPauses / (duration / 60),
       rhythmScore: 0.70,
-      feedback: 'Rythme estimé correct. Analyse Kaldi requise pour précision.',
+      feedback: 'Rythme estimé correct. Analyse VOSK requise pour précision.',
       pauseSegments: [],
     );
   }
@@ -417,7 +417,7 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
     return '''
 📊 **Analyse Prosodique Estimée**
 
-Cette analyse utilise des estimations basiques en l'absence du système Kaldi complet.
+Cette analyse utilise des estimations basiques en l'absence du système VOSK complet.
 
 🎯 **Pour ${scenario.title}** :
 • Débit de parole dans la norme estimée
@@ -426,7 +426,7 @@ Cette analyse utilise des estimations basiques en l'absence du système Kaldi co
 • Énergie vocale équilibrée
 
 ⚡ **Prochaines améliorations** :
-L'intégration de Kaldi permettra une analyse prosodique détaillée incluant :
+L'intégration de VOSK permettra une analyse prosodique détaillée incluant :
 • Analyse spectrale précise
 • Détection fine des pauses
 • Mesure exacte du débit

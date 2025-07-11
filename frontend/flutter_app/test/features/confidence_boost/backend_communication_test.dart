@@ -17,7 +17,7 @@ import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
 /// Ces tests valident l'intégration complète entre :
 /// - ConfidenceAnalysisBackendService (Pipeline Whisper + Mistral)
 /// - ConfidenceLiveKitIntegration (Session LiveKit avec fallbacks)
-/// - ProsodyAnalysisInterface (Analyse prosodique Kaldi/Fallback)
+/// - ProsodyAnalysisInterface (Analyse prosodique VOSK/Fallback)
 /// - ConfidenceBoostProvider (Gestion d'état et coordination)
 /// 
 /// Architecture testée :
@@ -112,7 +112,7 @@ class MockProsodyAnalysisInterface extends Mock implements ProsodyAnalysisInterf
 
   @override
   void configure({
-    required String kaldiServerUrl,
+    required String voskServerUrl,
     Map<String, String>? modelPaths,
     Duration? timeout,
   }) {}

@@ -1,0 +1,42 @@
+# =============================================================================
+# Requirements pour Service Whisper Temps Réel Eloquence
+# =============================================================================
+# Dépendances optimisées pour reconnaissance vocale temps réel
+# Compatible avec Python 3.11+
+
+# === Framework Web et API ===
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# === WebSocket ===
+websockets==12.0
+
+# === Machine Learning et IA ===
+transformers==4.38.2
+torch==2.2.2
+torchaudio==2.2.2
+accelerate==0.25.0
+
+# === Traitement Audio ===
+numpy==1.26.4
+soundfile==0.12.1
+librosa==0.10.1
+scipy==1.11.4
+
+# === Validation et Sérialisation ===
+pydantic==2.5.3
+
+# === Utilitaires HTTP ===
+httpx==0.25.2
+requests==2.31.0
+
+# === Logging et Monitoring ===
+structlog==23.2.0
+
+# === Développement et Tests (optionnel) ===
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.11.0
+isort==5.12.0
