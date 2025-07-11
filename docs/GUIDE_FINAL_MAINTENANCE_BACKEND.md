@@ -49,7 +49,7 @@ verification_finale_complete.bat      # Test complet de tous les services
 - **Celery** : Fonctionnel (confirmé dans dernier diagnostic)
 - **Redis** : Opérationnel (port 6380)
 - **TTS Service** : Actif (port 5002)
-- **Kaldi ASR** : Fonctionnel
+- **VOSK ASR** : Fonctionnel
 - **LiveKit** : À démarrer/vérifier (port 7881)
 
 ## 🔄 WORKFLOW DE MAINTENANCE ÉTABLI

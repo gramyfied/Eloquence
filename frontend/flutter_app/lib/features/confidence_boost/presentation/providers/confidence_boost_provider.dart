@@ -14,6 +14,7 @@ import '../../data/services/confidence_livekit_integration.dart';
 import '../../data/services/text_support_generator.dart';
 import '../../data/services/confidence_analysis_backend_service.dart';
 import '../../data/services/prosody_analysis_interface.dart';
+import '../../data/services/hybrid_speech_evaluation_service.dart';
 import '../../data/services/mistral_api_service.dart';
 import '../../data/services/gamification_service.dart';
 import '../../data/services/xp_calculator_service.dart';
@@ -80,9 +81,18 @@ final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBack
   return ConfidenceAnalysisBackendService();
 });
 
-// Provider pour l'interface d'analyse prosodique (Kaldi futur)
+// Provider pour l'interface d'analyse prosodique Whisper temps réel
 final prosodyAnalysisInterfaceProvider = Provider<ProsodyAnalysisInterface>((ref) {
-  return FallbackProsodyAnalysis(); // Utilise le fallback en attendant Kaldi
+  // Utiliser le service whisper-realtime opérationnel
+  return HybridSpeechEvaluationService(
+    baseUrl: 'http://192.168.1.44:8006', // Service whisper-realtime sur adresse IP réseau
+    timeout: const Duration(seconds: 15),
+  );
+});
+
+// Provider pour le fallback prosodique (utilisé en cas d'échec du service hybride)
+final fallbackProsodyAnalysisProvider = Provider<ProsodyAnalysisInterface>((ref) {
+  return FallbackProsodyAnalysis();
 });
 
 // Provider pour Mistral API Service
@@ -213,17 +223,85 @@ class ConfidenceBoostProvider with ChangeNotifier {
     }
   }
 
-  // MÉTHODE PHASE 3 : Analyse backend avec Whisper + Mistral
+  // MÉTHODE PHASE 4 : Analyse hybride VOSK + Whisper avec fallbacks intelligents
   Future<void> analyzePerformance({
     required confidence_scenarios.ConfidenceScenario scenario,
     required confidence_models.TextSupport textSupport,
     required Duration recordingDuration,
     Uint8List? audioData, // Données audio de l'enregistrement
   }) async {
-    logger.i("PHASE 3: Analysing performance via backend - Scenario: ${scenario.title}");
+    logger.i("PHASE 4: Analysing performance via HYBRID system - Scenario: ${scenario.title}");
     
     try {
-      // 1. Vérifier la disponibilité du service backend avec TIMEOUT RÉDUIT
+      // 1. PRIORITÉ : Service d'évaluation hybride VOSK + Whisper (port 8002)
+      final whisperAvailable = await prosodyAnalysisInterface.isAvailable().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          logger.w("Whisper service availability check timed out");
+          return false;
+        },
+      );
+      
+      if (whisperAvailable && audioData != null) {
+        logger.i("🔄 Utilisation du service Whisper temps réel");
+        
+        try {
+          // Analyse prosodique complète via le service hybride
+          final prosodyResult = await prosodyAnalysisInterface.analyzeProsody(
+            audioData: audioData,
+            scenario: scenario,
+            language: 'fr',
+          ).timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              logger.w("Hybrid prosody analysis timed out");
+              return null;
+            },
+          );
+          
+          if (prosodyResult != null) {
+            logger.i("✅ Analyse hybride complétée avec succès");
+            
+            // Convertir le résultat prosodique en analyse de confiance
+            final hybridAnalysis = prosodyResult.toConfidenceAnalysis();
+            
+            // Enrichir avec des détails spécifiques au scénario
+            final enrichedFeedback = "${hybridAnalysis.feedback}\n\n"
+                "🎯 **Contexte** : ${scenario.title} (${recordingDuration.inSeconds}s)\n"
+                "📊 **Support utilisé** : ${textSupport.type.name}\n"
+                "🎵 **Analyse complète VOSK + Whisper** :\n"
+                "• Transcription: Analyse Whisper large-v3-turbo\n"
+                "• Prosody: Analyse VOSK temps réel\n"
+                "• Recommandations: IA personnalisées";
+            
+            _lastAnalysis = confidence_models.ConfidenceAnalysis(
+              overallScore: hybridAnalysis.overallScore,
+              confidenceScore: hybridAnalysis.confidenceScore,
+              fluencyScore: hybridAnalysis.fluencyScore,
+              clarityScore: hybridAnalysis.clarityScore,
+              energyScore: hybridAnalysis.energyScore,
+              feedback: enrichedFeedback,
+            );
+            
+            // Traiter la gamification après une analyse hybride réussie
+            if (_currentTextSupport != null) {
+              await _processGamification(
+                scenario: scenario,
+                textSupport: _currentTextSupport!,
+                sessionDuration: recordingDuration,
+              );
+            }
+            
+            notifyListeners();
+            return;
+          }
+        } catch (e) {
+          logger.w("Erreur service hybride, fallback vers backend classique: $e");
+        }
+      }
+      
+      // 2. FALLBACK : Service backend classique (Whisper + Mistral sur ports séparés)
+      logger.i("🔄 Fallback vers pipeline backend classique");
       final isBackendAvailable = await backendAnalysisService.isServiceAvailable().timeout(
         const Duration(seconds: 3),
         onTimeout: () {
@@ -231,10 +309,9 @@ class ConfidenceBoostProvider with ChangeNotifier {
           return false;
         },
       );
-      logger.i("Backend service available: $isBackendAvailable");
       
       if (isBackendAvailable && audioData != null) {
-        // 2. Analyser via le pipeline Whisper + Mistral avec TIMEOUT
+        // Analyser via le pipeline Whisper + Mistral avec TIMEOUT
         final analysis = await backendAnalysisService.analyzeAudioRecording(
           audioData: audioData,
           scenario: scenario,
@@ -249,46 +326,10 @@ class ConfidenceBoostProvider with ChangeNotifier {
         );
         
         if (analysis != null) {
-          logger.i("Backend analysis completed successfully");
+          logger.i("✅ Analyse backend classique complétée");
           _lastAnalysis = analysis;
           
-          // 3. Enrichir avec l'analyse prosodique (Kaldi) si disponible
-          try {
-            final prosodyResult = await prosodyAnalysisInterface.analyzeProsody(
-              audioData: audioData,
-              scenario: scenario,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                logger.w("Prosody analysis timed out");
-                return null;
-              },
-            );
-            
-            // Combiner les résultats si l'analyse prosodique a réussi
-            if (prosodyResult != null) {
-              logger.i("Prosody analysis completed - enhancing feedback");
-              // Enrichir le feedback avec les données prosodiques
-              final enrichedFeedback = "${analysis.feedback}\n\n"
-                  "🎵 **Analyse Prosodique** :\n"
-                  "• Débit de parole: ${prosodyResult.speechRate.wordsPerMinute.toStringAsFixed(0)} mots/min\n"
-                  "• Variation intonation: ${(prosodyResult.intonation.f0Range).toStringAsFixed(0)} Hz\n"
-                  "• Pauses détectées: ${prosodyResult.pauses.totalPauses} pauses";
-              
-              _lastAnalysis = confidence_models.ConfidenceAnalysis(
-                overallScore: analysis.overallScore,
-                confidenceScore: analysis.confidenceScore,
-                fluencyScore: prosodyResult.speechRate.fluencyScore,
-                clarityScore: analysis.clarityScore,
-                energyScore: prosodyResult.energy.normalizedEnergyScore,
-                feedback: enrichedFeedback,
-              );
-            }
-          } catch (e) {
-            logger.w("Prosody analysis failed, continuing with backend-only results: $e");
-          }
-          
-          // Traiter la gamification après une analyse réussie
+          // Traiter la gamification après une analyse backend réussie
           if (_currentTextSupport != null) {
             await _processGamification(
               scenario: scenario,

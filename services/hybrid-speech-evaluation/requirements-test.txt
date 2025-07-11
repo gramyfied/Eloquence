@@ -1,0 +1,43 @@
+# Dépendances pour les tests du service hybride VOSK + Whisper
+
+# Framework de test principal
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Mocks et fixtures
+aioresponses>=0.7.4
+responses>=0.23.0
+
+# Analyse de code et qualité
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Utilitaires de test
+faker>=19.0.0
+factory-boy>=3.3.0
+hypothesis>=6.82.0
+
+# Test de performance
+pytest-benchmark>=4.0.0
+memory-profiler>=0.61.0
+
+# Couverture de code avancée
+coverage[toml]>=7.3.0
+
+# Validation de schémas
+jsonschema>=4.19.0
+
+# Simulation réseau
+aiohttp>=3.8.0
+websockets>=11.0.0
+
+# Traitement audio pour tests
+numpy>=1.24.0
+scipy>=1.11.0
+librosa>=0.10.0
+
+# Utilitaires système
+psutil>=5.9.0
