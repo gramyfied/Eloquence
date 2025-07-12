@@ -6,7 +6,7 @@ part 'confidence_scenario.g.dart';
 
 /// Représente un scénario de confiance pour l'exercice Confidence Boost Express
 /// CONFORME AUX SPÉCIFICATIONS EXACTES DU PROMPT
-@HiveType(typeId: 20)
+@HiveType(typeId: 21)
 class ConfidenceScenario extends HiveObject with EquatableMixin {
   @HiveField(0)
   final String id;

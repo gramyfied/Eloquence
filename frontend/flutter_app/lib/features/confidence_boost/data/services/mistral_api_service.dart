@@ -2,8 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/utils/logger_service.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/optimized_http_service.dart';
+import 'mistral_cache_service.dart';
 
 class MistralApiService {
+  // Utilisation du service HTTP optimisé au lieu du client standard
+  static final OptimizedHttpService _httpService = OptimizedHttpService();
+  
   // Configuration simple - Même approche que le backend Python
   static String get _endpoint {
     // MISTRAL_BASE_URL contient déjà l'URL complète avec /chat/completions
@@ -17,30 +23,69 @@ class MistralApiService {
   static String get _apiKey {
     return dotenv.env['MISTRAL_API_KEY'] ?? '';
   }
+  
   static bool get _isEnabled => dotenv.env['MISTRAL_ENABLED']?.toLowerCase() == 'true';
   static const String _tag = 'MistralApiService';
+  
+  /// Initialise le service (incluant le cache)
+  static Future<void> init() async {
+    logger.i(_tag, 'Initialisation du service Mistral...');
+    await MistralCacheService.init();
+  }
 
-  Future<String> generateText({
+  /// Génère du texte avec l'API Mistral (avec cache persistant)
+  static Future<String> generateText({
     required String prompt,
     int maxTokens = 500,
     double temperature = 0.7,
   }) async {
+    // === CACHE CHECK PRIORITAIRE POUR PERFORMANCE MOBILE ===
+    final cachedResult = await MistralCacheService.getCachedResponse(
+      prompt,
+      maxTokens: maxTokens,
+      temperature: temperature,
+    );
+    
+    if (cachedResult != null) {
+      return cachedResult; // Retour instantané depuis le cache !
+    }
+    
     // Vérifier si Mistral est activé
     if (!_isEnabled) {
       logger.i(_tag, 'Mistral désactivé, utilisation du feedback simulé');
-      return 'Feedback simulé: Excellente performance ! Continuez ainsi pour développer votre confiance en prise de parole.';
+      const simulatedResult = 'Feedback simulé: Excellente performance ! Continuez ainsi pour développer votre confiance en prise de parole.';
+      await MistralCacheService.cacheResponse(
+        prompt,
+        simulatedResult,
+        maxTokens: maxTokens,
+        temperature: temperature,
+      );
+      return simulatedResult;
     }
     
     // Vérifier si la clé API est présente
     if (_apiKey.isEmpty || _apiKey == 'your_mistral_api_key') {
       logger.w(_tag, 'Clé API Mistral invalide, utilisation du feedback simulé');
-      return 'Feedback simulé: Très bonne performance ! Votre élocution était claire et votre message était bien structuré.';
+      const simulatedResult = 'Feedback simulé: Très bonne performance ! Votre élocution était claire et votre message était bien structuré.';
+      await MistralCacheService.cacheResponse(
+        prompt,
+        simulatedResult,
+        maxTokens: maxTokens,
+        temperature: temperature,
+      );
+      return simulatedResult;
     }
     
     try {
       logger.i(_tag, 'Appel API Mistral: $_endpoint');
-      final response = await http.post(
-        Uri.parse(_endpoint),
+      
+      // Utilisation du service HTTP optimisé pour bénéficier automatiquement de :
+      // - Pool de connexions persistantes
+      // - Compression gzip
+      // - Retry logic avec backoff exponentiel
+      // - Timeouts optimisés
+      final response = await _httpService.post(
+        _endpoint,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_apiKey',
@@ -55,54 +100,136 @@ class MistralApiService {
           ],
           'max_tokens': maxTokens,
           'temperature': temperature,
+          'stream': false, // Pas de streaming pour l'instant
         }),
-      ).timeout(const Duration(seconds: 30));
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices']?[0]?['message']?['content'] ?? '';
+        final result = data['choices']?[0]?['message']?['content'] ?? '';
+        
+        // Mettre en cache la réponse réussie
+        await MistralCacheService.cacheResponse(
+          prompt,
+          result,
+          maxTokens: maxTokens,
+          temperature: temperature,
+          metadata: {
+            'model': _model,
+            'tokens_used': data['usage']?['total_tokens'] ?? 0,
+          },
+        );
+        
+        return result;
       } else {
         logger.e(_tag, 'Erreur API Mistral: ${response.statusCode} - ${response.body}');
         // En cas d'erreur API, retourner un feedback de fallback
-        return 'Feedback simulé: Performance solide ! Votre présentation était engageante et bien articulée.';
+        const fallbackResult = 'Feedback simulé: Performance solide ! Votre présentation était engageante et bien articulée.';
+        await MistralCacheService.cacheResponse(
+          prompt,
+          fallbackResult,
+          maxTokens: maxTokens,
+          temperature: temperature,
+        );
+        return fallbackResult;
       }
     } catch (e) {
       logger.e(_tag, 'Erreur communication Mistral: $e');
       // En cas d'exception, retourner un feedback de fallback
-      return 'Feedback simulé: Bonne prestation ! Votre confiance transparaît dans votre façon de vous exprimer.';
+      const exceptionResult = 'Feedback simulé: Bonne prestation ! Votre confiance transparaît dans votre façon de vous exprimer.';
+      await MistralCacheService.cacheResponse(
+        prompt,
+        exceptionResult,
+        maxTokens: maxTokens,
+        temperature: temperature,
+      );
+      return exceptionResult;
     }
   }
 
-  Future<Map<String, dynamic>> analyzeContent({
+  /// Analyse du contenu avec l'API Mistral (avec cache persistant)
+  static Future<Map<String, dynamic>> analyzeContent({
     required String prompt,
     int maxTokens = 800,
   }) async {
+    // === CACHE CHECK PRIORITAIRE POUR ANALYSES RÉPÉTÉES ===
+    final cachedResult = await MistralCacheService.getCachedResponse(
+      prompt,
+      maxTokens: maxTokens,
+      temperature: 0.7,
+    );
+    
+    if (cachedResult != null) {
+      // Tenter de parser le JSON depuis le cache
+      try {
+        return jsonDecode(cachedResult) as Map<String, dynamic>;
+      } catch (e) {
+        // Si ce n'est pas du JSON, créer une structure
+        return {
+          'content_score': 0.75,
+          'feedback': cachedResult,
+          'strengths': ['Expression naturelle'],
+          'improvements': ['Continuer la pratique'],
+          'cached': true,
+        };
+      }
+    }
+    
     // Vérifier si Mistral est activé
     if (!_isEnabled) {
       logger.i(_tag, 'Mistral désactivé, utilisation de l\'analyse simulée');
-      return {
+      const simulatedAnalysis = {
         'content_score': 0.8,
         'feedback': 'Analyse simulée: Excellente présentation ! Votre ton était confiant et votre message était clair.',
         'strengths': ['Clarté du message', 'Confiance dans le ton', 'Structure cohérente'],
         'improvements': ['Continuer la pratique régulière', 'Explorer de nouveaux sujets'],
       };
+      await MistralCacheService.cacheResponse(
+        prompt,
+        jsonEncode(simulatedAnalysis),
+        maxTokens: maxTokens,
+        temperature: 0.7,
+      );
+      return simulatedAnalysis;
     }
     
     // Vérifier si la clé API est présente
     if (_apiKey.isEmpty || _apiKey == 'your_mistral_api_key') {
       logger.w(_tag, 'Clé API Mistral invalide, utilisation de l\'analyse simulée');
-      return {
+      const fallbackAnalysis = {
         'content_score': 0.75,
         'feedback': 'Analyse simulée: Très bonne performance ! Votre expression était naturelle et engageante.',
         'strengths': ['Expression naturelle', 'Engagement du public', 'Gestion du stress'],
         'improvements': ['Travailler la gestuelle', 'Varier l\'intonation'],
       };
+      await MistralCacheService.cacheResponse(
+        prompt,
+        jsonEncode(fallbackAnalysis),
+        maxTokens: maxTokens,
+        temperature: 0.7,
+      );
+      return fallbackAnalysis;
     }
     
     try {
       logger.i(_tag, 'Analyse avec Mistral: $_endpoint');
-      final response = await http.post(
-        Uri.parse(_endpoint),
+      
+      // Prompt structuré pour obtenir une réponse JSON
+      final structuredPrompt = '''
+$prompt
+
+Réponds uniquement avec un objet JSON valide contenant ces champs :
+{
+  "content_score": <nombre entre 0 et 1>,
+  "feedback": "<texte de feedback>",
+  "strengths": ["<point fort 1>", "<point fort 2>", ...],
+  "improvements": ["<amélioration 1>", "<amélioration 2>", ...]
+}
+''';
+      
+      // Utilisation du service HTTP optimisé pour l'analyse
+      final response = await _httpService.post(
+        _endpoint,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_apiKey',
@@ -112,13 +239,14 @@ class MistralApiService {
           'messages': [
             {
               'role': 'user',
-              'content': prompt,
+              'content': structuredPrompt,
             }
           ],
-          'max_tokens': 500,
+          'max_tokens': maxTokens,
           'temperature': 0.7,
+          'stream': false,
         }),
-      ).timeout(const Duration(seconds: 45));
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -126,35 +254,101 @@ class MistralApiService {
         
         // Tenter de parser le JSON de l'analyse
         try {
-          return jsonDecode(analysisText);
+          final parsedResult = jsonDecode(analysisText) as Map<String, dynamic>;
+          
+          // Mettre en cache le résultat JSON
+          await MistralCacheService.cacheResponse(
+            prompt,
+            jsonEncode(parsedResult),
+            maxTokens: maxTokens,
+            temperature: 0.7,
+            metadata: {
+              'model': _model,
+              'tokens_used': data['usage']?['total_tokens'] ?? 0,
+            },
+          );
+          
+          return parsedResult;
         } catch (e) {
+          logger.w(_tag, 'Erreur parsing JSON de l\'analyse: $e');
           // Si le parsing JSON échoue, créer une structure de base
-          return {
+          final fallbackStructure = {
             'content_score': 0.7,
             'feedback': analysisText,
             'strengths': ['Expression naturelle'],
             'improvements': ['Continuer la pratique'],
           };
+          
+          await MistralCacheService.cacheResponse(
+            prompt,
+            jsonEncode(fallbackStructure),
+            maxTokens: maxTokens,
+            temperature: 0.7,
+          );
+          
+          return fallbackStructure;
         }
       } else {
         logger.e(_tag, 'Erreur API Mistral: ${response.statusCode} - ${response.body}');
         // En cas d'erreur API, retourner une analyse de fallback
-        return {
+        final apiErrorResult = {
           'content_score': 0.7,
           'feedback': 'Analyse simulée: Performance satisfaisante ! Votre présentation montrait de la préparation.',
           'strengths': ['Préparation visible', 'Effort d\'articulation'],
           'improvements': ['Continuer l\'entraînement', 'Renforcer la confiance'],
         };
+        await MistralCacheService.cacheResponse(
+          prompt,
+          jsonEncode(apiErrorResult),
+          maxTokens: maxTokens,
+          temperature: 0.7,
+        );
+        return apiErrorResult;
       }
     } catch (e) {
       logger.e(_tag, 'Erreur analyse Mistral: $e');
       // En cas d'exception, retourner une analyse de fallback
-      return {
+      final exceptionResult = {
         'content_score': 0.65,
         'feedback': 'Analyse simulée: Bonne tentative ! Chaque pratique vous aide à progresser.',
         'strengths': ['Courage de pratiquer', 'Volonté d\'amélioration'],
         'improvements': ['Persévérer dans l\'entraînement', 'Gagner en assurance'],
       };
+      await MistralCacheService.cacheResponse(
+        prompt,
+        jsonEncode(exceptionResult),
+        maxTokens: maxTokens,
+        temperature: 0.7,
+      );
+      return exceptionResult;
     }
+  }
+  
+  /// Obtient les statistiques du cache
+  static Map<String, dynamic> getCacheStatistics() {
+    return MistralCacheService.getStatistics();
+  }
+  
+  /// Efface le cache
+  static Future<void> clearCache() async {
+    await MistralCacheService.clearCache();
+  }
+  
+  /// Précharge des prompts courants pour améliorer les performances
+  static Future<void> preloadCommonPrompts() async {
+    final commonPrompts = [
+      'Analyse ma présentation orale et donne-moi un feedback constructif',
+      'Évalue ma confiance en prise de parole publique',
+      'Comment puis-je améliorer ma présentation ?',
+      'Quels sont mes points forts en communication orale ?',
+    ];
+    
+    await MistralCacheService.preloadCommonPrompts(commonPrompts);
+  }
+  
+  /// Libère les ressources
+  static void dispose() {
+    // Le service HTTP optimisé gère automatiquement ses ressources
+    // via le pattern Singleton, pas besoin de close explicite
   }
 }

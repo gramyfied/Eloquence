@@ -88,7 +88,7 @@ class UserGamificationProfile extends HiveObject {
   }
 }
 
-@HiveType(typeId: 21)
+@HiveType(typeId: 24)
 class Badge extends HiveObject {
   @HiveField(0)
   String id;

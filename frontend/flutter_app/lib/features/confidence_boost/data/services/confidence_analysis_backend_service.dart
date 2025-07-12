@@ -11,16 +11,27 @@ import '../../domain/entities/confidence_scenario.dart';
 import 'package:logger/logger.dart';
 import '../../domain/entities/confidence_models.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/services/optimized_http_service.dart';
 
 /// Service pour l'analyse backend utilisant Whisper + Mistral sur Scaleway
 class ConfidenceAnalysisBackendService {
   static const String _tag = 'ConfidenceAnalysisBackendService';
   static final Logger _logger = Logger();
   
+  // Utilisation du service HTTP optimisé
+  static final OptimizedHttpService _httpService = OptimizedHttpService();
+  
   // Configuration backend depuis .env
-  static String get _baseUrl => dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000';
+  static String get _baseUrl {
+    final envUrl = dotenv.env['LLM_SERVICE_URL'];
+    final finalUrl = envUrl ?? 'http://localhost:8000';
+    _logger.i('$_tag: 🔍 DEBUG URL Configuration:');
+    _logger.i('  - Variable LLM_SERVICE_URL: $envUrl');
+    _logger.i('  - URL finale utilisée: $finalUrl');
+    return finalUrl;
+  }
   static const String _analysisEndpoint = '/api/confidence-analysis';
-  static const Duration _timeout = Duration(minutes: 2);
+  // Timeout géré automatiquement par OptimizedHttpService
   
   /// Analyse un enregistrement audio via le pipeline Whisper + Mistral
   /// 
@@ -136,8 +147,12 @@ class ConfidenceAnalysisBackendService {
       
       _logger.i('$_tag: Envoi requête vers backend: $uri');
       
-      // Envoyer la requête avec timeout
-      final streamedResponse = await request.send().timeout(_timeout);
+      // Utiliser le service HTTP optimisé qui gère automatiquement :
+      // - Pool de connexions persistantes
+      // - Compression gzip
+      // - Retry logic avec backoff exponentiel
+      // - Timeouts optimisés (8s pour API)
+      final streamedResponse = await _httpService.sendMultipartRequest(request);
       final response = await http.Response.fromStream(streamedResponse);
       
       _logger.d('$_tag: Réponse backend - Status: ${response.statusCode}');
@@ -150,9 +165,9 @@ class ConfidenceAnalysisBackendService {
         );
       }
       
-    } on TimeoutException {
-      _logger.e('$_tag: Timeout requête backend (${_timeout.inSeconds}s)');
-      throw TimeoutException('Analyse backend timeout', _timeout);
+    } on TimeoutException catch (e) {
+      _logger.e('$_tag: Timeout requête backend');
+      throw TimeoutException('Analyse backend timeout', e.duration);
     } catch (e) {
       _logger.e('$_tag: Erreur communication backend: $e', error: e);
       rethrow;
@@ -355,8 +370,8 @@ class ConfidenceAnalysisBackendService {
   /// Vérification de la disponibilité du service
   Future<bool> isServiceAvailable() async {
     try {
-      final uri = Uri.parse('$_baseUrl/health');
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      // Utiliser le service HTTP optimisé pour la vérification de santé
+      final response = await _httpService.get('$_baseUrl/health');
       return response.statusCode == 200;
     } catch (e) {
       _logger.w('$_tag: Service backend indisponible: $e');

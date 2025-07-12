@@ -25,6 +25,9 @@ services:
     tmpfs:
     - /tmp:noexec,nosuid,size=100m
   api-backend:
+    build:
+      context: ./services/api-backend
+      dockerfile: Dockerfile
     image: eloquence/api-backend:latest
     restart: unless-stopped # Politique de redémarrage robuste
     ports:
@@ -61,10 +64,10 @@ services:
       resources:
         limits:
           memory: 2G
-          cpus: '1.0'
+          cpus: '3.0'
         reservations:
           memory: 1G
-          cpus: '0.5'
+          cpus: '1.0'
     tmpfs:
     - /tmp:noexec,nosuid,size=200m
     volumes:

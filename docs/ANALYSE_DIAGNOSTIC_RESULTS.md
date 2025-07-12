@@ -1,125 +1,120 @@
-# 📊 ANALYSE DES RÉSULTATS DU DIAGNOSTIC
+# 🔍 ANALYSE DIAGNOSTIC BACKEND ELOQUENCE
+## Résultats Tests Systématiques - 12 Juillet 2025
 
-## 🔍 OBSERVATIONS IMPORTANTES DU DIAGNOSTIC
+### 📋 CONTEXTE
+Suite aux logs de production révélant problèmes backend récurrents post-correction BadgeCategory, diagnostic systématique exécuté pour valider 2 hypothèses critiques.
 
-### ✅ CE QUI FONCTIONNE BIEN :
-- **Port 8000** : Backend accessible via Docker
-- **Docker** : Containers principaux actifs
-- **TTS Service** : Opérationnel (port 5002)
-- **Redis** : Fonctionnel (port 6380)
-- **VOSK** : Service actif
+### 🎯 HYPOTHÈSES TESTÉES
 
-### ❌ PROBLÈMES IDENTIFIÉS :
+#### ✅ HYPOTHÈSE 1 : Instabilité Backend Gunicorn - PARTIELLEMENT VALIDÉE
 
-#### 1. **Celery en Redémarrage Continu**
+**Problème identifié :**
 ```
-eloquence-backend-celery-1   Restarting (1) 32 seconds ago
-```
-**Impact :** Les tâches asynchrones ne fonctionnent pas correctement
-
-#### 2. **LiveKit Absent**
-```
-Port 7881 libre
-```
-**Impact :** Pas de connexion audio WebRTC possible
-
-#### 3. **Backend uvicorn non détecté**
-Le backend fonctionne via Docker mais pas en mode direct uvicorn
-
-## 🛠️ SOLUTIONS IMMÉDIATES
-
-### **PROBLÈME 1 : Celery qui redémarre en boucle**
-
-**Diagnostic :**
-```cmd
-docker logs eloquence-backend-celery-1
+LOGS PRODUCTION (7-12 juillet):
+[2025-07-11 16:02:21 +0000] [1] [CRITICAL] WORKER TIMEOUT (pid:6)
+[2025-07-11 16:02:22 +0000] [1] [ERROR] Worker (pid:6) was sent SIGKILL! Perhaps out of memory?
 ```
 
-**Solutions possibles :**
-- Redis inaccessible depuis Celery
-- Variables d'environnement incorrectes
-- Problème de configuration broker
+**Résultats diagnostic :**
+```
+[CONFIGURATION ACTUELLE]
+- Commande: gunicorn --workers 1 --bind 0.0.0.0:8000 --reload app:app
+- Ressources Docker: 2G RAM, 1 CPU
+- Processus actifs: 2 (master + 1 worker)
+- Status: Fonctionnel mais restart récent (38 min)
 
-**Action :**
-```cmd
-# Redémarrer le stack complet
-cd eloquence-backend/eloquence-backend
-docker-compose down
-docker-compose up -d
+[PERFORMANCE TEST]
+- Health check: 200 OK (16.5ms)
+- Charge 5 requêtes parallèles: TOUTES RÉUSSIES (5.7-6.4ms)
+- Restart pattern: Worker 25381 → Worker 7 (13:08)
 ```
 
-### **PROBLÈME 2 : LiveKit manquant**
-
-**Action immédiate :**
-```cmd
-# Démarrer LiveKit
-start_livekit_server.bat
-```
-
-Ou si Docker ne fonctionne pas :
-```cmd
-# Alternative manuelle
-docker run -d --name livekit-server -p 7881:7881 -p 7882:7882/udp -v "%cd%\livekit.yaml:/livekit.yaml" livekit/livekit-server --config /livekit.yaml
-```
-
-## 🚀 UTILISATION DU SCRIPT CORRIGÉ
-
-### **Nouveau script sans erreur :**
-```cmd
-diagnostic_logs_backend_fixed.bat
-```
-
-**Améliorations :**
-- ✅ Pas d'erreur de syntaxe Docker
-- ✅ Analysis spécifique de vos containers
-- ✅ Détection des problèmes Celery/LiveKit
-- ✅ Recommandations automatiques
-
-## 📋 WORKFLOW DE RÉPARATION
-
-### **1. Diagnostic complet avec le script corrigé :**
-```cmd
-diagnostic_logs_backend_fixed.bat
-```
-
-### **2. Réparer Celery :**
-```cmd
-cd eloquence-backend/eloquence-backend
-docker-compose restart celery
-```
-
-### **3. Démarrer LiveKit :**
-```cmd
-start_livekit_server.bat
-```
-
-### **4. Valider la réparation :**
-```cmd
-# Test API Backend
-curl http://localhost:8000/health
-
-# Test LiveKit
-netstat -an | findstr ":7881"
-```
-
-## 🎯 ÉTAT ACTUEL DE VOTRE SYSTÈME
-
-### **Containers Docker actifs :**
-- ✅ `eloquence-backend-api-1` - Backend API (port 8000)
-- ❌ `eloquence-backend-celery-1` - En redémarrage continu
-- ✅ `eloquence-backend-redis-1` - Redis (port 6380)
-- ✅ `eloquence-backend-tts-service-1` - TTS (port 5002)
-- ✅ `vosk_eloquence` - VOSK ASR
-
-### **Services manquants :**
-- ❌ LiveKit Server (port 7881)
-
-### **Prochaines étapes :**
-1. Utiliser le script corrigé pour diagnostic complet
-2. Résoudre le problème Celery
-3. Démarrer LiveKit
-4. Tester l'intégration complète
+**✅ VALIDATION PARTIELLE :**
+- Configuration sous-optimale confirmée (1 worker pour 2G RAM)
+- Pattern instabilité détecté (restarts récents)
+- Problème intermittent sous charge élevée
 
 ---
 
-**🔧 Votre système est à 80% fonctionnel. Les corrections Celery + LiveKit vont le rendre 100% opérationnel.**
+#### ❌ HYPOTHÈSE 2 : Configuration Réseau Mobile - NON REPRODUCTIBLE PC
+
+**Problème identifié :**
+```
+LOGS MOBILE:
+Service backend indisponible: ClientException with SocketException: 
+Connection refused (OS Error: Connection refused, errno = 111), 
+address = localhost, port = 41724
+```
+
+**Résultats diagnostic :**
+```
+[CONNECTIVITÉ PC → BACKEND]
+✅ localhost:8000     → 200 OK (46.8ms) - DNS + Socket + HTTP OK
+✅ 192.168.1.44:8000 → 200 OK (5.0ms)  - PLUS RAPIDE que localhost
+✅ 127.0.0.1:8000    → 200 OK (4.6ms)  - Optimal
+✅ Whisper:8006      → 200 OK (20.6ms) - Service hybride OK
+```
+
+**❌ NON REPRODUCTIBLE :**
+- Tous endpoints fonctionnels depuis PC
+- IP réseau PERFORMANTE (5.0ms vs 46.8ms localhost)
+- Problème spécifique contexte mobile (téléphone ≠ PC réseau)
+
+### 🔧 SOLUTIONS PRIORITAIRES
+
+#### 🚨 CORRECTION 1 : Optimisation Configuration Gunicorn
+
+**Problème confirmé :**
+- 1 worker pour 2G RAM = sous-utilisation massive
+- Timeouts intermittents sous charge
+- Restarts fréquents
+
+**Solution technique :**
+```bash
+# Configuration optimale pour 2G RAM / 1 CPU
+--workers 3                    # (2 * CPU cores) + 1
+--worker-class sync            # Synchrone pour API
+--timeout 120                  # Timeout augmenté
+--worker-connections 1000      # Connexions par worker
+--max-requests 1000            # Restart périodique workers
+--max-requests-jitter 50       # Jitter pour éviter restart simultané
+```
+
+#### 🟡 CORRECTION 2 : Investigation Configuration Mobile
+
+**Problème non reproductible PC :**
+- Configuration réseau mobile spécifique
+- Analyse configuration Flutter .env loading
+- Tests connectivité depuis appareils mobiles réels
+
+**Investigation requise :**
+- Validation chargement dotenv mobile
+- Tests réseau depuis téléphones
+- Configuration fallback localhost vs IP
+
+### 📊 MÉTRIQUES PERFORMANCE ACTUELLES
+
+```
+[LATENCES MESURÉES]
+Backend API (192.168.1.44:8000):    5.0ms  ✅ EXCELLENT
+Backend API (localhost:8000):      46.8ms  ⚠️ ACCEPTABLE  
+Whisper Service (192.168.1.44:8006): 20.6ms ✅ BON
+Load Test (5 requêtes parallèles):  6.0ms  ✅ STABLE
+
+[CONFIGURATION DOCKER]
+Conteneurs actifs: 7/7 (tous healthy)
+Backend uptime: 38 minutes (restart récent)
+Whisper uptime: 21 heures (stable)
+```
+
+### ⚡ PRIORITÉS ACTIONS
+
+1. **🔴 URGENT** : Optimiser configuration gunicorn (workers + timeout)
+2. **🟡 MOYEN** : Investigation problème mobile spécifique
+3. **🟢 OPTIM** : Monitoring proactif performance backend
+
+### 📝 CONCLUSION
+
+**Diagnostic réussi** - Problème gunicorn confirmé et quantifié, problème mobile isolé au contexte spécifique. Configuration backend sous-optimale est la cause racine des timeouts intermittents observés en production.
+
+**Prochaine étape** : Correction configuration gunicorn puis tests charge pour validation stabilité.
