@@ -4,16 +4,14 @@ import 'mistral_api_service.dart';
 import '../../../../core/utils/logger_service.dart';
 
 class TextSupportGenerator {
-  final MistralApiService _mistralService;
   static const String _tag = 'TextSupportGenerator';
 
-  // Constructeur avec injection de dépendance obligatoire
-  TextSupportGenerator({required MistralApiService mistralService})
-      : _mistralService = mistralService;
+  // Constructeur simple - plus besoin d'injection car MistralApiService est statique
+  TextSupportGenerator();
 
-  // Factory pour la production (avec service par défaut)
+  // Factory pour la production
   factory TextSupportGenerator.create() {
-    return TextSupportGenerator(mistralService: MistralApiService());
+    return TextSupportGenerator();
   }
 
   Future<TextSupport> generateSupport({
@@ -25,7 +23,8 @@ class TextSupportGenerator {
       logger.i(_tag, 'Génération support: ${type.name} pour ${scenario.title}');
       
       final prompt = _buildPrompt(scenario, type, difficulty);
-      final generatedContent = await _mistralService.generateText(
+      // Utiliser directement la méthode statique de MistralApiService
+      final generatedContent = await MistralApiService.generateText(
         prompt: prompt,
         maxTokens: _getMaxTokens(type),
         temperature: _getTemperature(type),

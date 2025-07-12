@@ -8,7 +8,7 @@ part of 'confidence_scenario.dart';
 
 class ConfidenceScenarioAdapter extends TypeAdapter<ConfidenceScenario> {
   @override
-  final int typeId = 20;
+  final int typeId = 21;
 
   @override
   ConfidenceScenario read(BinaryReader reader) {

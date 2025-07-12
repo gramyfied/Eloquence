@@ -23,17 +23,37 @@ class HiveGamificationRepository implements GamificationRepository {
   Future<void> initialize() async {
     await Hive.initFlutter();
 
-    // Enregistrer les adaptateurs
-    Hive.registerAdapter(UserGamificationProfileAdapter());
-    Hive.registerAdapter(BadgeAdapter());
-    Hive.registerAdapter(BadgeRarityAdapter());
-    Hive.registerAdapter(BadgeCategoryAdapter());
-    Hive.registerAdapter(SessionRecordAdapter());
-    Hive.registerAdapter(ConfidenceAnalysisAdapter());
-    Hive.registerAdapter(ConfidenceScenarioAdapter());
-    Hive.registerAdapter(TextSupportAdapter());
-    Hive.registerAdapter(SupportTypeAdapter());
-    Hive.registerAdapter(ConfidenceScenarioTypeAdapter());
+    // Enregistrer les adaptateurs avec vérification pour éviter les doublons
+    if (!Hive.isAdapterRegistered(20)) {
+      Hive.registerAdapter(UserGamificationProfileAdapter());
+    }
+    if (!Hive.isAdapterRegistered(21)) {
+      Hive.registerAdapter(ConfidenceScenarioAdapter());
+    }
+    if (!Hive.isAdapterRegistered(22)) {
+      Hive.registerAdapter(BadgeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(23)) {
+      Hive.registerAdapter(BadgeRarityAdapter());
+    }
+    if (!Hive.isAdapterRegistered(24)) {
+      Hive.registerAdapter(BadgeCategoryAdapter());
+    }
+    if (!Hive.isAdapterRegistered(25)) {
+      Hive.registerAdapter(SessionRecordAdapter());
+    }
+    if (!Hive.isAdapterRegistered(26)) {
+      Hive.registerAdapter(ConfidenceAnalysisAdapter());
+    }
+    if (!Hive.isAdapterRegistered(27)) {
+      Hive.registerAdapter(TextSupportAdapter());
+    }
+    if (!Hive.isAdapterRegistered(28)) {
+      Hive.registerAdapter(SupportTypeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(29)) {
+      Hive.registerAdapter(ConfidenceScenarioTypeAdapter());
+    }
 
 
     // Ouvrir les boxes

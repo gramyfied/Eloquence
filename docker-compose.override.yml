@@ -8,8 +8,8 @@ services:
       # On exclut node_modules et __pycache__ du volume pour de meilleures performances
       - /app/node_modules
       - /app/__pycache__
-    # La commande gunicorn démarre le serveur avec hot-reload.
-    command: gunicorn --workers 1 --bind 0.0.0.0:8000 --reload app:app
+    # La commande gunicorn démarre le serveur avec hot-reload et configuration optimisée.
+    command: gunicorn --workers 3 --timeout 120 --worker-connections 1000 --bind 0.0.0.0:8000 --worker-class sync --preload --reload wsgi:application
 
   whisper-stt:
     build:

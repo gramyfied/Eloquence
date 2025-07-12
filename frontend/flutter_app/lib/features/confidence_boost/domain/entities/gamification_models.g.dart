@@ -76,7 +76,7 @@ class UserGamificationProfileAdapter
 
 class BadgeAdapter extends TypeAdapter<Badge> {
   @override
-  final int typeId = 21;
+  final int typeId = 24;
 
   @override
   Badge read(BinaryReader reader) {

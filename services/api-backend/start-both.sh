@@ -5,11 +5,11 @@ echo "==================================="
 echo "Démarrage Backend + Agent LiveKit"
 echo "==================================="
 
-# Démarrer le backend Flask en arrière-plan
-echo "🚀 Démarrage du backend Flask..."
-python wsgi.py &
+# Démarrer le backend Flask avec Gunicorn optimisé en arrière-plan
+echo "🚀 Démarrage du backend Flask avec Gunicorn (3 workers, timeout 120s)..."
+gunicorn --workers 3 --timeout 120 --worker-connections 1000 --bind 0.0.0.0:8000 --worker-class sync --preload --access-logfile - --error-logfile - wsgi:application &
 FLASK_PID=$!
-echo "✅ Backend Flask démarré (PID: $FLASK_PID)"
+echo "✅ Backend Gunicorn démarré (PID: $FLASK_PID)"
 
 # Attendre un peu que Flask démarre
 sleep 3
@@ -53,4 +53,3 @@ echo "✅ Backend et Agent démarrés - En attente..."
 
 # Attendre que les processus se terminent
 wait $FLASK_PID $AGENT_PID
-
