@@ -26,7 +26,8 @@ import '../../domain/entities/confidence_scenario.dart' as confidence_scenarios;
 import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/repositories/confidence_repository.dart';
 import '../widgets/mobile_optimized_progress_widget.dart';
-
+import 'mistral_api_service_provider.dart'; // Import du nouveau provider
+import 'network_config_provider.dart'; // Provider réseau adaptatif
 // Provider pour SharedPreferences
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('SharedPreferences must be initialized');
@@ -39,6 +40,8 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 
 // Provider pour CleanLiveKitService
 final livekitServiceProvider = Provider<CleanLiveKitService>((ref) {
+  // L’URL doit être passée dynamiquement lors de l’appel à connect()
+  // via networkConfigProvider.getBestLivekitUrl()
   return CleanLiveKitService();
 });
 
@@ -74,11 +77,15 @@ final confidenceLiveKitIntegrationProvider = Provider<ConfidenceLiveKitIntegrati
   return ConfidenceLiveKitIntegration(
     livekitService: livekitService,
     apiService: apiService,
+    ref: ref, // Passer le ref ici
   );
 });
 
 // Provider pour le service d'analyse backend (Whisper + Mistral)
 final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBackendService>((ref) {
+  final networkConfig = ref.watch(networkConfigProvider);
+  // Configure dynamiquement l’URL du backend
+  ConfidenceAnalysisBackendService.configureBackendUrl(networkConfig.getBestLlmServiceUrl());
   return ConfidenceAnalysisBackendService();
 });
 
@@ -95,9 +102,6 @@ final prosodyAnalysisInterfaceProvider = Provider<ProsodyAnalysisInterface>((ref
 final fallbackProsodyAnalysisProvider = Provider<ProsodyAnalysisInterface>((ref) {
   return FallbackProsodyAnalysis();
 });
-
-// Note: MistralApiService utilise maintenant des méthodes statiques pour le cache persistant
-// Plus besoin de provider car tout est statique
 
 // Provider pour le repository de gamification
 final gamificationRepositoryProvider = Provider<GamificationRepository>((ref) {
@@ -150,6 +154,8 @@ final confidenceBoostProvider = ChangeNotifierProvider((ref) {
     backendAnalysisService: ref.watch(confidenceAnalysisBackendServiceProvider),
     prosodyAnalysisInterface: ref.watch(prosodyAnalysisInterfaceProvider),
     gamificationService: ref.watch(gamificationServiceProvider),
+    mistralApiService: ref.watch(mistralApiServiceProvider), // Injecter le service Mistral
+    ref: ref, // Passer le ref pour TextSupportGenerator.create()
   );
 });
 
@@ -161,6 +167,8 @@ class ConfidenceBoostProvider with ChangeNotifier {
   final ConfidenceAnalysisBackendService backendAnalysisService;
   final ProsodyAnalysisInterface prosodyAnalysisInterface;
   final GamificationService gamificationService;
+  final IMistralApiService mistralApiService; // Nouvelle dépendance
+  final Ref _ref; // Pour accéder aux providers
 
   ConfidenceBoostProvider({
     required this.livekitService,
@@ -169,7 +177,9 @@ class ConfidenceBoostProvider with ChangeNotifier {
     required this.backendAnalysisService,
     required this.prosodyAnalysisInterface,
     required this.gamificationService,
-  }) {
+    required this.mistralApiService, // Nouvelle dépendance
+    required Ref ref, // Initialiser le ref
+  }) : _ref = ref {
     logger.i("ConfidenceBoostProvider created!");
   }
 
@@ -214,7 +224,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
 
     try {
       // Utiliser Mistral via votre pipeline LiveKit existant
-      final generator = TextSupportGenerator.create();
+      final generator = TextSupportGenerator.create(_ref); // Passer le ref ici
       final support = await generator.generateSupport(
         scenario: scenario,
         type: type,
@@ -594,8 +604,8 @@ class ConfidenceBoostProvider with ChangeNotifier {
           "Fournissez un feedback constructif et encourageant en français, "
           "avec des conseils spécifiques pour améliorer la confiance en soi.";
           
-      // Utiliser directement la méthode statique de MistralApiService
-      final aiResponse = await MistralApiService.generateText(
+      // Utiliser l'instance injectée de MistralApiService
+      final aiResponse = await mistralApiService.generateText(
         prompt: prompt,
         maxTokens: 600,
         temperature: 0.7,
@@ -831,6 +841,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
     } catch (e) {
       logger.e("❌ Erreur lors de la création des données de level up: $e");
     }
+    
   }
 
   /// Nettoyer les données de démonstration de gamification
@@ -840,4 +851,3 @@ class ConfidenceBoostProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-

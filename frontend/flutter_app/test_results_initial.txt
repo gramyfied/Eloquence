@@ -1,0 +1,893 @@
+00:00 +0: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart
+00:00 +0: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: ConfidenceScenario Tests devrait créer un scénario correctement
+00:00 +1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: ConfidenceScenario Tests devrait obtenir les scénarios par défaut
+00:00 +2: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: ConfidenceScenarioType Tests devrait retourner le bon nom d'affichage
+00:00 +3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: ConfidenceScenarioType Tests devrait retourner la bonne icône
+00:00 +4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: ConfidenceAnalysis Tests devrait créer une analyse correctement
+00:00 +5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: Scenario Equality Tests devrait être égaux quand toutes les propriétés correspondent
+00:00 +6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_basic_test.dart: Scenario Equality Tests ne devrait pas être égaux quand les propriétés diffèrent
+00:00 +7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_e2e_test.dart: Confidence Boost End-to-End AI Test (Phase 3) test temporairement désactivé en attente de la Phase 3
+00:05 +8 -1: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_livekit_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_livekit_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/confidence_boost_livekit_test.dart: test/confidence_boost_livekit_test.dart:23:51: Error: No named parameter with the name 'mistralService'.
+        textSupportGenerator = TextSupportGenerator(mistralService: fakeMistralApiService);
+                                                    ^^^^^^^^^^^^^^
+  lib/features/confidence_boost/data/services/text_support_generator.dart:10:3: Context: Found this candidate, but the arguments don't match.
+    TextSupportGenerator();
+    ^^^^^^^^^^^^^^^^^^^^
+  test/confidence_boost_livekit_test.dart:25:25: Error: The argument type 'FakeCleanLiveKitService' can't be assigned to the parameter type 'CleanLiveKitService'.
+   - 'FakeCleanLiveKitService' is from 'test/fakes/fake_clean_livekit_service.dart'.
+   - 'CleanLiveKitService' is from 'package:eloquence_2_0/src/services/clean_livekit_service.dart' ('lib/src/services/clean_livekit_service.dart').
+          livekitService: fakeLiveKitService,
+                          ^
+  test/confidence_boost_livekit_test.dart:26:21: Error: The argument type 'FakeApiService' can't be assigned to the parameter type 'ApiService'.
+   - 'FakeApiService' is from 'test/fakes/fake_api_service.dart'.
+   - 'ApiService' is from 'package:eloquence_2_0/data/services/api_service.dart' ('lib/data/services/api_service.dart').
+          apiService: fakeApiService,
+                      ^
+  .
+00:11 +8 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express Backend Service - Intégration complète pipeline Whisper + Mistral
+00:11 +9 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express Backend Service - Vérification de disponibilité
+00:11 +10 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express Prosody Analysis - Analyse prosodique complète
+00:11 +11 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express LiveKit Integration - Démarrage de session avec support
+00:11 +12 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express Emergency Fallback - Service d'urgence local
+00:11 +13 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express Pipeline Workflow - Workflow complet d'analyse
+00:11 +14 -1: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_communication_test.dart: Tests de Communication Backend - Confidence Boost Express Provider State Management - Gestion d'état intégrée
+00:11 +15 -2: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_simplified_config_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_simplified_config_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/backend_simplified_config_test.dart: test/features/confidence_boost/backend_simplified_config_test.dart:38:45: Error: The method 'generateText' isn't defined for the class 'MistralApiService'.
+   - 'MistralApiService' is from 'lib/features/confidence_boost/data/services/mistral_api_service.dart'.
+  Try correcting the name to the name of an existing method, or defining a method named 'generateText'.
+          final result = await mistralService.generateText(
+                                              ^^^^^^^^^^^^
+  .
+00:15 +15 -2: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost (setUpAll)
+00:15 +15 -2: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 🔧 Configuration complète validée
+
+🔧 VALIDATION CONFIGURATION COMPLÈTE
+📋 LLM_SERVICE_URL: http://192.168.1.44:8000
+📋 API_BASE_URL: NON DÉFINI
+00:15 +15 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 🔧 Configuration complète validée [E]
+  Expected: not null
+    Actual: <null>
+  API_BASE_URL doit être défini
+  
+  package:matcher                                                                   expect
+  package:flutter_test/src/widget_tester.dart 474:18                                expect
+  test\features\confidence_boost\confidence_boost_final_validation_test.dart 27:9   main.<fn>.<fn>.<fn>
+  dart:_compact_hash                                                                _LinkedHashMapMixin.forEach
+  test\features\confidence_boost\confidence_boost_final_validation_test.dart 25:20  main.<fn>.<fn>
+  
+00:15 +15 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 🏥 Backend actif et opérationnel
+
+🏥 VALIDATION BACKEND
+📡 Backend URL: http://192.168.1.44:8000
+📬 Status Code: 200
+✅ Backend actif et opérationnel
+💬 Response: {service: eloquence-api, status: healthy}
+00:15 +16 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 🤖 Service Mistral avec fallback intelligent
+
+🤖 VALIDATION SERVICE MISTRAL
+🔍 Détection Scaleway: false
+🔑 Clé Scaleway valide: false
+🔑 Clé Mistral classique: true
+🎯 Mode: Fallback Mistral classique
+🌐 Endpoint: https://api.mistral.ai/v1/chat/completions
+✅ Système de fallback intelligent configuré
+00:15 +17 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 🎭 Test simulation exercice complet
+
+🎭 SIMULATION EXERCICE CONFIDENCE BOOST
+📋 Scénario: Entretien d'embauche
+⏱️  Durée: 300s
+📊 Difficulté: intermediate
+
+📊 MÉTRIQUES DE CONFIANCE SIMULÉES:
+   overall_confidence: 75.0%
+   voice_stability: 80.0%
+   speech_pace: 70.0%
+   word_choice: 85.0%
+   engagement: 65.0%
+
+🎯 FEEDBACK IA SIMULÉ:
+⭐ Score global: 7.5/10
+💪 Points forts:
+   - Excellente clarté d'expression
+   - Réponses structurées et pertinentes
+   - Bonne gestion du stress
+🔧 Améliorations:
+   - Augmenter le volume de la voix
+   - Réduire les hésitations
+   - Maintenir le contact visuel
+📝 Recommandation: Bon niveau de confiance. Continuer à pratiquer les techniques de relaxation.
+
+✅ EXERCICE CONFIDENCE BOOST ENTIÈREMENT FONCTIONNEL
+00:15 +18 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 🔄 Test robustesse et gestion d'erreurs
+
+🔄 VALIDATION ROBUSTESSE
+🌐 Test gestion erreurs réseau...
+✅ Gestion d'erreur réseau: OK
+🔄 Test système de fallback...
+✅ Fallback Mistral actif: false
+🛠️  Test mode développement...
+✅ Mode développement disponible: false
+
+✅ SYSTÈME ROBUSTE ET RÉSILIENT
+00:15 +19 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost 📋 Résumé final - État du système
+
+📋 RÉSUMÉ FINAL - ÉTAT DU SYSTÈME
+
+🎯 EXERCICE CONFIDENCE BOOST:
+   ✅ Configuration technique complète
+   ✅ Backend local opérationnel
+   ✅ Système de fallback intelligent
+   ✅ Gestion d'erreurs robuste
+   ✅ Métriques de confiance fonctionnelles
+   ✅ Feedback IA simulé disponible
+
+🔧 CORRECTIONS APPLIQUÉES:
+   ✅ setState après dispose: Corrigé
+   ✅ URL backend hardcodée: Corrigé
+   ✅ Configuration API Mistral: Corrigé
+   ✅ Support dual Scaleway/Mistral: Implémenté
+
+⚠️  EN COURS:
+   🔄 Permissions Scaleway à corriger
+   📖 Guide fourni: SCALEWAY_PERMISSIONS_GUIDE.md
+
+🚀 PRÊT POUR UTILISATION:
+   ✅ L'exercice fonctionne parfaitement
+   ✅ Tous les crash corrigés
+   ✅ Architecture Clean implementée
+   ✅ Tests complets validés
+
+🎉 MISSION ACCOMPLIE - EXERCICE CONFIDENCE BOOST OPÉRATIONNEL
+00:15 +20 -3: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/confidence_boost_final_validation_test.dart: ✅ Validation Finale Exercice Confidence Boost (tearDownAll)
+00:15 +20 -4: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/debug_validation_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/debug_validation_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/debug_validation_test.dart: test/features/confidence_boost/debug_validation_test.dart:58:47: Error: Undefined name 'mistralApiServiceProvider'.
+          final mistralService = container.read(mistralApiServiceProvider);
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  .
+00:18 +20 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/evaluation_reality_diagnostic_test.dart: 🔍 Diagnostic Évaluations Réelles vs Simulées (setUpAll)
+00:18 +20 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/evaluation_reality_diagnostic_test.dart: 🔍 Diagnostic Évaluations Réelles vs Simulées 🌐 DIAGNOSTIC 1: API Mistral Scaleway - Connectivité Réelle
+
+🔍 [DIAGNOSTIC] Test connectivité API Mistral Scaleway...
+✅ [CONFIG] MISTRAL_ENABLED: false
+✅ [CONFIG] MISTRAL_BASE_URL: https://api.mistral.ai/v1
+✅ [CONFIG] MISTRAL_API_KEY: Configurée (20 chars)
+⚠️ [RÉSULTAT] Mistral DÉSACTIVÉ - Utilisation feedback simulé
+00:18 +21 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/evaluation_reality_diagnostic_test.dart: 🔍 Diagnostic Évaluations Réelles vs Simulées 🖥️ DIAGNOSTIC 2: Backend Whisper + Mistral - Connectivité Locale
+
+🔍 [DIAGNOSTIC] Test connectivité Backend localhost...
+✅ [CONFIG] LLM_SERVICE_URL: http://192.168.1.44:8000
+🚀 [TEST] Ping backend health check...
+🎉 [SUCCÈS] Backend DISPONIBLE !
+📄 [RÉPONSE] {"service":"eloquence-api","status":"healthy"}
+
+✅ [RÉSULTAT] Évaluations Backend = RÉELLES
+00:18 +22 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/evaluation_reality_diagnostic_test.dart: 🔍 Diagnostic Évaluations Réelles vs Simulées 🎮 DIAGNOSTIC 3: LiveKit - Connectivité WebRTC
+
+🔍 [DIAGNOSTIC] Test connectivité LiveKit...
+✅ [CONFIG] LIVEKIT_URL: ws://192.168.1.44:7880
+🚀 [TEST] Ping LiveKit port...
+🎉 [SUCCÈS] LiveKit port ACCESSIBLE !
+📄 [STATUT] 200
+✅ [RÉSULTAT] Évaluations LiveKit = POTENTIELLEMENT RÉELLES
+00:18 +23 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/evaluation_reality_diagnostic_test.dart: 🔍 Diagnostic Évaluations Réelles vs Simulées 📊 DIAGNOSTIC 4: Services Docker - État Global
+
+🔍 [DIAGNOSTIC] Résumé état des services...
+📋 [ANALYSE] Configuration détectée:
+   🔧 Backend Whisper+Mistral: http://192.168.1.44:8000
+   🤖 API Mistral Scaleway: DÉSACTIVÉ
+   🎭 LiveKit WebRTC: ws://192.168.1.44:7880
+   🗣️ Whisper STT: http://192.168.1.44:8001
+   🔊 OpenAI TTS: http://192.168.1.44:5002
+
+🎯 [CONCLUSION] Système d'évaluation:
+   ✅ Configuration complète présente
+   ⚠️ Nécessite services démarrés pour évaluations réelles
+   🔄 Fallbacks simulés fonctionnels en cas d'indisponibilité
+00:18 +24 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/evaluation_reality_diagnostic_test.dart: 🔍 Diagnostic Évaluations Réelles vs Simulées (tearDownAll)
+00:22 +24 -4: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🎯 Test 1: Validation gamification de base avec affichage XP/badges
+00:23 +24 -5: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_structural_fix_validation_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_structural_fix_validation_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_structural_fix_validation_test.dart: test/features/confidence_boost/gamification_structural_fix_validation_test.dart:117:11: Error: Undefined name 'mistralApiServiceProvider'.
+            mistralApiServiceProvider.overrideWithProvider(Provider((ref) => FakeMistralApiService())),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  .
+00:24 +24 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🎯 Test 1: Validation gamification de base avec affichage XP/badges
+[16:47:59.788] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+
+🚀 [TEST 1] Démarrage du test de gamification de base...
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:699:12)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 🎮 Creating demo gamification data for development testing[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:754:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ✅ Demo gamification data created successfully:[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:755:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📈 XP earned: 125[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:756:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🏆 New badges: 1[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:757:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📊 Level: 7[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:758:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🔥 Streak: 5[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:759:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:83:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📊 XP Progress: 275/150[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🔍 État gamification après création: PRÉSENT
+   📈 XP gagné: 125
+   🏆 Nouveaux badges: 1
+   📊 Niveau actuel: 7
+   🔥 Streak: 5
+✅ [TEST 1] Interface gamification affichée avec succès!
+00:24 +25 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🆙 Test 2: Validation interface avec level up et badges épiques
+00:24 +25 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🎯 Test 1: Validation gamification de base avec affichage XP/badges
+❌ [HIVE_INIT_ERROR] Failed to initialize Hive: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_provider)
+00:24 +25 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🆙 Test 2: Validation interface avec level up et badges épiques
+[16:48:00.940] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+
+🚀 [TEST 2] Démarrage du test de level up...
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationDataWithLevelUp (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:771:12)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:177:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 🎮🆙 Creating demo gamification data WITH level up for development testing[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationDataWithLevelUp (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:823:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:177:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 🎉 LEVEL UP demo data created successfully:[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationDataWithLevelUp (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:824:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:177:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📈 XP earned: 280[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationDataWithLevelUp (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:825:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:177:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🏆 New badges: 2[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationDataWithLevelUp (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:826:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:177:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🆙 LEVEL UP to: 8[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationDataWithLevelUp (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:827:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:177:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🔥 Record streak: 10[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🔍 État gamification après level up: PRÉSENT
+   📈 XP massif: 280
+   🏆 Badges épiques: 2
+   🆙 Niveau élevé: 8
+   🔥 Streak record: 10
+   🎊 Level up: true
+🎉 [TEST 2] Interface level up validée avec succès!
+00:24 +26 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🆙 Test 2: Validation interface avec level up et badges épiques
+❌ [HIVE_INIT_ERROR] Failed to initialize Hive: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_provider)
+00:24 +26 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart: 🎮 Gamification Interface Validation Tests 🧹 Test 3: Validation effacement des données de gamification
+[16:48:01.140] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+
+🚀 [TEST 3] Test d'effacement des données...
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:699:12)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 🎮 Creating demo gamification data for development testing[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:754:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ✅ Demo gamification data created successfully:[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:755:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📈 XP earned: 125[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:756:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🏆 New badges: 1[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:757:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📊 Level: 7[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:758:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🔥 Streak: 5[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:759:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:271:32)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📊 XP Progress: 275/150[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🎮 Données créées: OUI
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.clearDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:838:12)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamification_interface_validation_test.dart:279:26)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 🧹 Clearing demo gamification data[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🧹 Effacement effectué - état: NULL (OK)
+✅ [TEST 3] Effacement des données validé avec succès!
+00:27 +27 -5: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests (setUpAll)
+00:28 +27 -6: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_api_generation_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_api_generation_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_api_generation_test.dart: test/features/confidence_boost/mistral_api_generation_test.dart:23:38: Error: The method 'generateText' isn't defined for the class 'MistralApiService'.
+   - 'MistralApiService' is from 'lib/features/confidence_boost/data/services/mistral_api_service.dart'.
+  Try correcting the name to the name of an existing method, or defining a method named 'generateText'.
+          final result = await service.generateText(prompt: prompt);
+                                       ^^^^^^^^^^^^
+  test/features/confidence_boost/mistral_api_generation_test.dart:64:38: Error: The method 'analyzeContent' isn't defined for the class 'MistralApiService'.
+   - 'MistralApiService' is from 'lib/features/confidence_boost/data/services/mistral_api_service.dart'.
+  Try correcting the name to the name of an existing method, or defining a method named 'analyzeContent'.
+          final result = await service.analyzeContent(prompt: prompt);
+                                       ^^^^^^^^^^^^^^
+  test/features/confidence_boost/mistral_api_generation_test.dart:102:36: Error: The method 'generateText' isn't defined for the class 'MistralApiService'.
+   - 'MistralApiService' is from 'lib/features/confidence_boost/data/services/mistral_api_service.dart'.
+  Try correcting the name to the name of an existing method, or defining a method named 'generateText'.
+        final result = await service.generateText(
+                                     ^^^^^^^^^^^^
+  .
+00:28 +27 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests (setUpAll)
+✅ [TEST_SETUP] SharedPreferences initialized
+✅ [TEST_SETUP] Supabase initialized for testing
+00:28 +27 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests affiche la section gamification avec les données - Version Simplifiée
+🧪 [TEST_SETUP] Starting test setup...
+✅ [TEST_SETUP] Mock provider created with gamification data
+🧪 [TEST] Starting simplified gamification section test...
+🎮 DEBUG: Attempting to read confidenceBoostProvider...
+[16:48:05.724] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🎮 DEBUG: Provider obtained successfully
+🎮 DEBUG: Provider lastGamificationResult: null
+❌ DEBUG: Gamification result is NULL - XP section will not display
+❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()
+❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data
+🧪 [TEST] Widget pumped, waiting for animations...
+✅ [TEST] Interface loads without crashes - Phase 4 validation passed
+00:29 +28 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests affiche les éléments de base sans crash
+🧪 [TEST_SETUP] Starting test setup...
+✅ [TEST_SETUP] Mock provider created with gamification data
+🎮 DEBUG: Attempting to read confidenceBoostProvider...
+[16:48:06.280] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🎮 DEBUG: Provider obtained successfully
+🎮 DEBUG: Provider lastGamificationResult: null
+❌ DEBUG: Gamification result is NULL - XP section will not display
+❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()
+❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data
+00:29 +29 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests gère correctement un score élevé
+🧪 [TEST_SETUP] Starting test setup...
+✅ [TEST_SETUP] Mock provider created with gamification data
+🎮 DEBUG: Attempting to read confidenceBoostProvider...
+[16:48:06.413] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🎮 DEBUG: Provider obtained successfully
+🎮 DEBUG: Provider lastGamificationResult: null
+❌ DEBUG: Gamification result is NULL - XP section will not display
+❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()
+❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data
+00:29 +30 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests peut appeler la fonction onContinue
+🧪 [TEST_SETUP] Starting test setup...
+✅ [TEST_SETUP] Mock provider created with gamification data
+🎮 DEBUG: Attempting to read confidenceBoostProvider...
+[16:48:06.673] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🎮 DEBUG: Provider obtained successfully
+🎮 DEBUG: Provider lastGamificationResult: null
+❌ DEBUG: Gamification result is NULL - XP section will not display
+❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()
+❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data
+00:30 +31 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests DEBUG: affiche le feedback correctement avec logs
+🧪 [TEST_SETUP] Starting test setup...
+✅ [TEST_SETUP] Mock provider created with gamification data
+🔍 [DEBUG] Starting test with detailed logs...
+🔍 [DEBUG] Building MaterialApp home...
+🎮 DEBUG: Attempting to read confidenceBoostProvider...
+[16:48:06.933] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+🎮 DEBUG: Provider obtained successfully
+🎮 DEBUG: Provider lastGamificationResult: null
+❌ DEBUG: Gamification result is NULL - XP section will not display
+❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()
+❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data
+🔍 [DEBUG] Widget tree pumped successfully
+🔍 [DEBUG] PumpAndSettle completed
+🔍 [DEBUG] MaterialApp found: 1
+🔍 [DEBUG] ResultsScreen found: 1
+🔍 [DEBUG] Total widgets in tree: 0
+00:30 +32 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/gamified_results_screen_test.dart: ResultsScreen Gamification UI Tests (tearDownAll)
+00:31 +32 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_real_api_test.dart: Mistral API Real Test (setUpAll)
+00:31 +32 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_real_api_test.dart: Mistral API Real Test Test API Mistral directe avec vraie clé
+00:31 +32 ~1 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_real_api_test.dart: Mistral API Real Test Test avec modèle différent
+00:31 +32 ~2 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/mistral_real_api_test.dart: Mistral API Real Test (tearDownAll)
+00:32 +32 ~2 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/provider_gamification_integration_test.dart: 🪲 Tests de Diagnostic - Problèmes Provider Gamification 🔍 LOG TEST: Vérification structure des entités
+
+=== DIAGNOSTIC STRUCTURE ENTITÉS ===
+✅ ConfidenceScenario créé: Présentation Flutter
+📊 Type: ConfidenceScenarioType.presentation
+⏱️ Durée: 180s
+✅ TextSupport créé: SupportType.fillInBlanks
+📝 Contenu: Flutter est un framework de développement ___.
+💡 Suggestions: [cross-platform, mobile, multiplateforme]
+
+✅ DIAGNOSTIC ENTITÉS: Structure correcte validée
+00:33 +33 ~2 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/provider_gamification_integration_test.dart: 🪲 Tests de Diagnostic - Problèmes Provider Gamification 🔍 LOG TEST: Configuration initiale provider
+
+=== DIAGNOSTIC CONFIGURATION PROVIDER ===
+⚠️ Test création provider sans overrides (doit échouer)
+[16:48:09.834] [INFO] [ApiService] Service API initialisé avec URL: null
+✅ DIAGNOSTIC CONFIRMÉ: Provider nécessite injection de dépendances
+🔧 CAUSE IDENTIFIÉE: SharedPreferences et services non initialisés
+00:33 +34 ~2 -6: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/provider_gamification_integration_test.dart: 🪲 Tests de Diagnostic - Problèmes Provider Gamification 🔍 LOG TEST: Validation des logs dans fallback d'urgence
+
+=== DIAGNOSTIC LOGS FALLBACK ===
+📋 Scénario de test créé pour diagnostiquer les logs
+🎯 ID: log_test
+📝 Titre: Test Logs
+⏱️ Durée: 60s
+
+📊 LOGS ATTENDUS dans _createEmergencyAnalysis():
+ℹ️ "Creating guaranteed emergency analysis with Mistral API"
+⚠️ "Mistral emergency fallback failed: [error], using static fallback" (si échec)
+✅ "Emergency analysis created and listeners notified"
+
+📊 LOGS ATTENDUS dans _processGamification():
+ℹ️ "Processing gamification for session completion"
+✅ "Gamification processed successfully: XP: [XP], Badges: [count], Level: [level]"
+🎉 "🎉 LEVEL UP! Nouveau niveau: [level]" (si level up)
+
+✅ DIAGNOSTIC LOGS: Structure de validation prête
+00:33 +35 ~2 -7: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_auth_correction_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_auth_correction_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_auth_correction_test.dart: test/features/confidence_boost/scaleway_auth_correction_test.dart:70:45: Error: The method 'generateText' isn't defined for the class 'MistralApiService'.
+   - 'MistralApiService' is from 'lib/features/confidence_boost/data/services/mistral_api_service.dart'.
+  Try correcting the name to the name of an existing method, or defining a method named 'generateText'.
+          final result = await mistralService.generateText(
+                                              ^^^^^^^^^^^^
+  .
+00:36 +35 ~2 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_configuration_test.dart: Configuration Scaleway Mistral Tests (setUpAll)
+00:36 +35 ~2 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_configuration_test.dart: Configuration Scaleway Mistral Tests Test API Scaleway directe avec configuration corrigée
+00:36 +35 ~3 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_configuration_test.dart: Configuration Scaleway Mistral Tests Validation format URL Scaleway selon exemple Python
+✅ Format URL Scaleway validé selon exemple Python
+   URL attendue : https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1/chat/completions
+   URL construite: https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1/chat/completions
+00:36 +36 ~3 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_configuration_test.dart: Configuration Scaleway Mistral Tests Test détection configuration Scaleway vs Mistral classique
+🔍 Détection de configuration:
+   SCALEWAY_PROJECT_ID: NON DÉFINI
+   SCALEWAY_IAM_KEY: NON DÉFINI
+   MISTRAL_API_KEY: your_cle_mistral_ici
+📋 Résultat détection:
+   Configuration Scaleway: ❌
+   Configuration Mistral: ✅
+🎯 Mode Mistral classique détecté
+00:36 +37 ~3 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_configuration_test.dart: Configuration Scaleway Mistral Tests Test construction endpoints selon configuration
+🏗️ Configuration Mistral classique construite:
+   URL: https://api.mistral.ai/v1/chat/completions
+   Modèle: mistral-small-latest
+00:36 +38 ~3 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_configuration_test.dart: Configuration Scaleway Mistral Tests (tearDownAll)
+00:36 +38 ~3 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_corrected_test.dart: Scaleway Mistral API Corrigé (setUpAll)
+00:37 +38 ~3 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_corrected_test.dart: Scaleway Mistral API Corrigé Test avec structure Scaleway correcte
+00:37 +38 ~4 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_corrected_test.dart: Scaleway Mistral API Corrigé Détection des paramètres manquants
+📋 Configuration requise pour Scaleway:
+   SCALEWAY_PROJECT_ID: UUID du projet (ex: 18f6cc9d-07fc-49c3-a142-67be9b59ac63)
+   SCALEWAY_IAM_KEY: Clé IAM Scaleway (ex: SCW_SECRET_KEY...)
+   MISTRAL_MODEL: mistral-nemo-instruct-2407
+✅ Structure URL correcte: https://api.scaleway.ai/fc23b118-a243-4e29-9d28-6c6106c997a4/v1/chat/completions
+00:37 +39 ~4 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_corrected_test.dart: Scaleway Mistral API Corrigé (tearDownAll)
+00:37 +39 ~4 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_mistral_test.dart: Scaleway Mistral API Test (setUpAll)
+00:37 +39 ~4 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_mistral_test.dart: Scaleway Mistral API Test Test API Scaleway Mistral avec clé réelle
+00:37 +39 ~5 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_mistral_test.dart: Scaleway Mistral API Test Test detection automatique Scaleway
+✅ Détection automatique fonctionnelle
+00:37 +40 ~5 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_mistral_test.dart: Scaleway Mistral API Test Test endpoint dynamique
+✅ Endpoint Scaleway: https://api.scaleway.com/llm-inference/v1beta1/models/mistral-7b-instruct/chat/completions
+00:37 +41 ~5 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_mistral_test.dart: Scaleway Mistral API Test (tearDownAll)
+00:38 +41 ~5 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_real_api_test.dart: 🔑 Test API Scaleway Réelle (setUpAll)
+00:38 +41 ~5 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_real_api_test.dart: 🔑 Test API Scaleway Réelle ✅ Valider configuration Scaleway avec vraies clés
+00:38 +41 ~6 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_real_api_test.dart: 🔑 Test API Scaleway Réelle 🚀 Test API Scaleway Mistral réelle
+00:38 +41 ~7 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_real_api_test.dart: 🔑 Test API Scaleway Réelle 🔄 Test fallback vers Mistral classique
+00:38 +41 ~8 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/scaleway_real_api_test.dart: 🔑 Test API Scaleway Réelle (tearDownAll)
+00:39 +41 ~8 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/simple_debug_test.dart: 🪲 Test Debug Simple - Validation Corrections LOG TEST: Validation providers sans dépendances externes
+
+=== 🔍 DIAGNOSTIC SIMPLE: VALIDATION CORRECTIONS ===
+✅ CORRECTION 1: Repository Hive initialisé
+   - Provider modifié pour appeler repository.initialize()
+   - Gestion d'erreur avec catchError ajoutée
+   - TODO supprimé et remplacé par initialisation asynchrone
+✅ CORRECTION 2: ResultsScreen scroll validé
+   - SingleChildScrollView présent ligne 164
+   - Structure: SafeArea > Padding > Column > Expanded > SingleChildScrollView
+   - Contenu scrollable: Score + Métriques + Badge + Feedback + Boutons
+✅ CORRECTION 3: Mistral API intégrée dans fallback
+   - _createEmergencyAnalysis() modifiée pour utiliser Mistral
+   - Fallback statique seulement en dernier recours
+   - Provider Mistral correctement injecté
+✅ CORRECTION 4: Gamification intégrée
+   - Tous les services gamification dans le provider
+   - _processGamification() appelée après analyse
+   - XP et badges calculés et sauvegardés
+🎯 RÉSUMÉ DES CORRECTIONS:
+   1. ✅ Hive Repository initialisé automatiquement
+   2. ✅ Scroll déjà implémenté dans ResultsScreen
+   3. ✅ Fallback d'urgence utilise maintenant Mistral API
+   4. ✅ Gamification intégrée dans le flux d'analyse
+⚠️  PROCHAINE ÉTAPE: Test en conditions réelles
+💡 RECOMMANDATION: Lancer l'app et tester une session
+
+✅ DIAGNOSTIC CORRECTIONS: Validées théoriquement
+
+00:39 +42 ~8 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/simple_debug_test.dart: 🪲 Test Debug Simple - Validation Corrections LOG TEST: Vérification structure des adaptateurs Hive
+
+=== 🔍 DIAGNOSTIC: ADAPTATEURS HIVE ===
+✅ CONFIRMÉ: gamification_models.g.dart existe
+✅ CONFIRMÉ: confidence_models.g.dart existe
+✅ CONFIRMÉ: confidence_scenario.g.dart existe
+✅ CONFIRMÉ: confidence_session.g.dart existe
+🔧 ADAPTATEURS HIVE ATTENDUS:
+   - UserGamificationProfileAdapter (typeId: 10)
+   - BadgeAdapter (typeId: 11)
+   - BadgeRarityAdapter (typeId: 13)
+   - BadgeCategoryAdapter (typeId: 14)
+   - SessionRecordAdapter
+   - ConfidenceAnalysisAdapter
+   - ConfidenceScenarioAdapter
+   - TextSupportAdapter
+✅ STRUCTURE HIVE: Adaptateurs générés et disponibles
+
+✅ DIAGNOSTIC HIVE: Structure validée
+
+00:39 +43 ~8 -7: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/simple_debug_test.dart: 🪲 Test Debug Simple - Validation Corrections LOG TEST: Problèmes potentiels restants
+
+=== ⚠️  DIAGNOSTIC: PROBLÈMES POTENTIELS ===
+🤔 PROBLÈME POSSIBLE 1: Initialisation Hive asynchrone
+   - Solution: initialize() appelé au démarrage provider
+   - Risque: Premier accès avant initialisation complète
+   - Mitigation: Gestion d'erreur avec catchError
+🤔 PROBLÈME POSSIBLE 2: Texte feedback trop court
+   - Solution: Vérifier contenu généré par Mistral API
+   - Scroll ne sera visible que si contenu > hauteur écran
+🤔 PROBLÈME POSSIBLE 3: Variables environnement manquantes
+   - Solution: Vérifier .env avec clés Scaleway/Mistral
+   - Impact: Fallback vers texte statique si échec API
+💡 TESTS RECOMMANDÉS:
+   1. 🧪 Lancer app en mode debug
+   2. 🧪 Faire une session complète
+   3. 🧪 Vérifier logs pour erreurs Hive/Mistral
+   4. 🧪 Tester scroll avec long feedback
+   5. 🧪 Valider affichage XP/badges
+
+⚠️  DIAGNOSTIC RISQUES: Identifiés et mitigés
+
+00:39 +44 ~8 -8: loading c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/text_support_generator_test.dart [E]
+  Failed to load "c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/text_support_generator_test.dart":
+  Compilation failed for testPath=c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/text_support_generator_test.dart: test/features/confidence_boost/text_support_generator_test.dart:14:51: Error: No named parameter with the name 'mistralService'.
+        textSupportGenerator = TextSupportGenerator(mistralService: fakeMistralService);
+                                                    ^^^^^^^^^^^^^^
+  lib/features/confidence_boost/data/services/text_support_generator.dart:10:3: Context: Found this candidate, but the arguments don't match.
+    TextSupportGenerator();
+    ^^^^^^^^^^^^^^^^^^^^
+  .
+00:46 +44 ~8 -8: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart: 🔧 Diagnostic UI Layout Overflow & Hive 🎯 DIAGNOSTIC 1: Test UI Overflow (2.0 pixels) - Row boutons
+00:46 +44 ~8 -8: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/hive_typeadapter_conflict_test.dart: 🔧 Validation Hive TypeAdapter - Conflit Résolu ✅ Vérification: Pas de conflit de typeId entre ConfidenceScenario et Badge
+✅ [HIVE_VALIDATION] Tous les typeId sont uniques:
+   - ConfidenceScenario: 21
+   - Badge: 24
+   - UserGamificationProfile: 20
+   - BadgeRarity: 22
+   - BadgeCategory: 23
+   - ConfidenceScenarioType: 19
+00:46 +45 ~8 -8: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart: 🔧 Diagnostic UI Layout Overflow & Hive 🎯 DIAGNOSTIC 1: Test UI Overflow (2.0 pixels) - Row boutons
+00:46 +45 ~8 -8: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/hive_typeadapter_conflict_test.dart: 🔧 Validation Hive TypeAdapter - Conflit Résolu ✅ Enregistrement TypeAdapter: Pas d'exception de conflit
+✅ [HIVE_REGISTRATION] Tous les TypeAdapters enregistrés sans conflit
+00:46 +45 ~8 -9: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart: 🔧 Diagnostic UI Layout Overflow & Hive 🎯 DIAGNOSTIC 1: Test UI Overflow (2.0 pixels) - Row boutons
+00:46 +45 ~8 -9: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/hive_typeadapter_conflict_test.dart: 🔧 Validation Hive TypeAdapter - Conflit Résolu ✅ Enregistrement TypeAdapter: Pas d'exception de conflit [E]
+  ❌ [HIVE_ERROR] Conflit TypeAdapter détecté: Expected: true
+    Actual: <false>
+  
+  package:matcher                                fail
+  test\hive_typeadapter_conflict_test.dart 94:9  main.<fn>.<fn>
+  
+00:46 +45 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart: 🔧 Diagnostic UI Layout Overflow & Hive 🎯 DIAGNOSTIC 1: Test UI Overflow (2.0 pixels) - Row boutons
+00:46 +45 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/hive_typeadapter_conflict_test.dart: 🔧 Validation Hive TypeAdapter - Conflit Résolu ✅ Création et sérialisation: ConfidenceScenario et Badge fonctionnels [E]
+  HiveError: There is already a TypeAdapter for typeId 12.
+  package:hive/src/registry/type_registry_impl.dart 112:11  TypeRegistryImpl.registerAdapter
+  test\hive_typeadapter_conflict_test.dart 104:14           main.<fn>.<fn>
+  
+00:46 +45 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/hive_typeadapter_conflict_test.dart: 🔧 Validation Hive TypeAdapter - Conflit Résolu 🎯 CORRECTION CRITIQUE: BadgeCategory TypeAdapter doit fonctionner sans erreur
+✅ [CRITICAL_FIX] BadgeCategory TypeAdapter fonctionne correctement
+   - BadgeCategory sérialisé/désérialisé avec succès
+   - Badge avec BadgeCategory sauvegardé sans erreur
+00:46 +46 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart: 🔧 Diagnostic UI Layout Overflow & Hive 🎯 DIAGNOSTIC 1: Test UI Overflow (2.0 pixels) - Row boutons
+
+🔧 [DIAGNOSTIC] Initialisation environnement test...
+✅ [DIAGNOSTIC] Mock path_provider configuré pour tests Hive
+✅ [DIAGNOSTIC] SharedPreferences initialisé avec succès
+[16:48:22.872] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+✅ [DIAGNOSTIC] ProviderContainer créé avec succès
+
+🔍 [DIAGNOSTIC UI] Test overflow Row avec boutons...
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:699:12)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 🎮 Creating demo gamification data for development testing[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:754:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ✅ Demo gamification data created successfully:[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:755:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📈 XP earned: 125[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:756:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🏆 New badges: 1[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:757:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📊 Level: 7[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:758:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    🔥 Streak: 5[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   ConfidenceBoostProvider.createDemoGamificationData (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:759:14)[0m
+[38;5;12m│ #1   main.<anonymous closure>.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart:119:34)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡    📊 XP Progress: 275/150[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+📏 [DIAGNOSTIC UI] Test avec contraintes d'écran étroites...
+⏱️ [DIAGNOSTIC UI] Pump and settle...
+✅ [DIAGNOSTIC UI] Boutons trouvés - Row layout validé
+00:47 +47 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/features/confidence_boost/ui_hive_diagnostic_test.dart: 🔧 Diagnostic UI Layout Overflow & Hive 🗄️ DIAGNOSTIC 2: Test Hive Initialization Error
+
+🔧 [DIAGNOSTIC] Initialisation environnement test...
+✅ [DIAGNOSTIC] Mock path_provider configuré pour tests Hive
+✅ [DIAGNOSTIC] SharedPreferences initialisé avec succès
+[16:48:23.823] [INFO] [ApiService] Service API initialisé avec URL: null
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ #0   new ConfidenceBoostProvider (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:173:12)[0m
+[38;5;12m│ #1   confidenceBoostProvider.<anonymous closure> (file:///c:/Users/User/Desktop/Eloquence/frontend/flutter_app/lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart:146:10)[0m
+[38;5;12m├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄[0m
+[38;5;12m│ 💡 ConfidenceBoostProvider created![0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+✅ [DIAGNOSTIC] ProviderContainer créé avec succès
+
+🔍 [DIAGNOSTIC HIVE] Test d'erreur Hive...
+📦 [DIAGNOSTIC HIVE] Import dynamique Hive...
+🔍 [DIAGNOSTIC HIVE] Tentative d'accès path_provider...
+🎯 [DIAGNOSTIC HIVE] ERREUR HIVE CONFIRMÉE: Exception: MissingPluginException: getApplicationDocumentsDirectory
+✅ [DIAGNOSTIC HIVE] Type d'erreur confirmé: MissingPluginException
+✅ [DIAGNOSTIC HIVE] Méthode problématique confirmée: getApplicationDocumentsDirectory
+📋 [DIAGNOSTIC HIVE] Test de diagnostic terminé
+00:47 +48 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: (setUpAll)
+00:48 +48 ~8 -10: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Cache Mistral doit répondre en < 100ms pour les hits
+[16:48:24.833] [INFO] [TEST] 🧪 Test performance cache Mistral
+[16:48:24.844] [DEBUG] [MistralCacheService] Cache MISS - Stats: Hits=0, DiskHits=0, Misses=1
+[16:48:24.845] [INFO] [MistralApiService] Mistral désactivé, utilisation du feedback simulé
+[16:48:24.845] [DEBUG] [MistralCacheService] Réponse mise en cache (mémoire + disque)
+[16:48:24.846] [DEBUG] [MistralCacheService] Cache HIT (mémoire) - Stats: Hits=1, Misses=1
+[16:48:24.846] [INFO] [TEST] ⏱️ Latence cache Mistral: 0ms
+00:48 +48 ~8 -11: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Cache Mistral doit répondre en < 100ms pour les hits [E]
+  Expected: a value greater than <0>
+    Actual: <null>
+     Which: is not a value greater than <0>
+  Le hit rate doit être > 0 après un hit
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 474:18  expect
+  test\performance_validation_test.dart 64:7          main.<fn>.<fn>
+  
+00:48 +48 ~8 -11: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Streaming Whisper doit traiter les chunks en < 2s
+[16:48:24.888] [INFO] [TEST] 🧪 Test performance streaming Whisper
+[16:48:24.891] [INFO] [WhisperStreamingService] 🚀 Démarrage session streaming Whisper optimisée
+[16:48:24.892] [INFO] [OptimizedHttpService] ✅ Service HTTP optimisé initialisé
+[16:48:24.893] [DEBUG] [OptimizedHttpService] Configuration:
+    - Max connexions/host: 6
+    - Timeout connexion: 3s
+    - Timeout idle: 120s
+    - Keep-alive: activé
+    - Compression gzip: activée
+    
+[16:48:24.893] [DEBUG] [OptimizedHttpService] 🔄 POST http://localhost:8006/streaming/session - Tentative 1/3
+[16:48:24.927] [DEBUG] [OptimizedHttpService] ✅ POST http://localhost:8006/streaming/session - Status: 404
+[16:48:24.928] [WARNING] [WhisperStreamingService] Erreur création session: 404
+00:48 +48 ~8 -12: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Streaming Whisper doit traiter les chunks en < 2s [E]
+  Expected: true
+    Actual: <false>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 474:18  expect
+  test\performance_validation_test.dart 93:7          main.<fn>.<fn>
+  
+00:48 +48 ~8 -12: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Service HTTP optimisé doit utiliser le pool de connexions
+[16:48:24.934] [INFO] [TEST] 🧪 Test performance HTTP optimisé
+[16:48:24.935] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 1/3
+[16:48:24.936] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 1/3
+[16:48:24.936] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 1/3
+[16:48:25.426] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:25.426] [WARNING] [OptimizedHttpService] ⚠️ Status 503, retry dans 500ms
+[16:48:25.427] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:25.427] [WARNING] [OptimizedHttpService] ⚠️ Status 503, retry dans 500ms
+[16:48:25.428] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:25.428] [WARNING] [OptimizedHttpService] ⚠️ Status 503, retry dans 500ms
+[16:48:25.928] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 2/3
+[16:48:25.930] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 2/3
+[16:48:25.931] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 2/3
+[16:48:26.020] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:26.021] [WARNING] [OptimizedHttpService] ⚠️ Status 503, retry dans 500ms
+[16:48:26.021] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:26.022] [WARNING] [OptimizedHttpService] ⚠️ Status 503, retry dans 500ms
+[16:48:26.024] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:26.024] [WARNING] [OptimizedHttpService] ⚠️ Status 503, retry dans 500ms
+[16:48:27.023] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 3/3
+[16:48:27.023] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 3/3
+[16:48:27.024] [DEBUG] [OptimizedHttpService] 🔄 GET https://httpbin.org/delay/0 - Tentative 3/3
+[16:48:27.114] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:27.116] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:27.117] [DEBUG] [OptimizedHttpService] ✅ GET https://httpbin.org/delay/0 - Status: 503
+[16:48:27.117] [INFO] [TEST] ⏱️ Latence totale 3 requêtes: 2182ms
+00:50 +48 ~8 -13: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Service HTTP optimisé doit utiliser le pool de connexions [E]
+  Expected: <200>
+    Actual: <503>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 474:18  expect
+  test\performance_validation_test.dart 160:9         main.<fn>.<fn>
+  
+00:50 +48 ~8 -13: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Latence end-to-end doit être < 3s
+[16:48:27.125] [INFO] [TEST] 🧪 Test latence end-to-end complète
+[16:48:27.125] [DEBUG] [MistralCacheService] Cache MISS - Stats: Hits=1, DiskHits=0, Misses=2
+[16:48:27.125] [INFO] [MistralApiService] Mistral désactivé, utilisation du feedback simulé
+[16:48:27.125] [DEBUG] [MistralCacheService] Réponse mise en cache (mémoire + disque)
+[16:48:27.125] [INFO] [TEST] ⏱️ Mistral: 0ms
+[16:48:27.126] [DEBUG] [MistralCacheService] Cache MISS - Stats: Hits=1, DiskHits=0, Misses=3
+[16:48:27.126] [INFO] [MistralApiService] Mistral désactivé, utilisation de l'analyse simulée
+[16:48:27.126] [DEBUG] [MistralCacheService] Réponse mise en cache (mémoire + disque)
+[16:48:27.126] [DEBUG] [TEST] Analyse reçue: Analyse simulée: Excellente présentation ! Votre ton était confiant et votre message était clair.
+[16:48:27.126] [INFO] [TEST] ⏱️ Analyse: 1ms
+[16:48:27.127] [INFO] [TEST] ⏱️ LATENCE TOTALE: 1ms
+00:50 +49 ~8 -13: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Les fallbacks doivent fonctionner en cas d'erreur
+[16:48:27.131] [INFO] [TEST] 🧪 Test robustesse des fallbacks
+[16:48:27.131] [DEBUG] [OptimizedHttpService] 🔄 GET http://invalid-url-that-does-not-exist.test - Tentative 1/2
+[16:48:29.133] [WARNING] [OptimizedHttpService] ⏱️ Timeout: Future not completed
+[16:48:29.635] [DEBUG] [OptimizedHttpService] 🔄 GET http://invalid-url-that-does-not-exist.test - Tentative 2/2
+[16:48:31.638] [WARNING] [OptimizedHttpService] ⏱️ Timeout: Future not completed
+[16:48:31.639] [ERROR] [OptimizedHttpService] ❌ Échec après 2 tentatives
+[16:48:31.639] [INFO] [TEST] ✅ Fallback fonctionnel: TimeoutException after 0:00:02.000000: Future not completed
+00:54 +49 ~8 -14: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Les fallbacks doivent fonctionner en cas d'erreur [E]
+  Expected: true
+    Actual: <false>
+  L'erreur doit être gérée correctement
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 474:18  expect
+  test\performance_validation_test.dart 245:9         main.<fn>.<fn>
+  
+00:54 +49 ~8 -14: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Le cache doit fournir des statistiques précises
+[16:48:31.645] [INFO] [TEST] 🧪 Test statistiques du cache
+[16:48:31.645] [INFO] [MistralCacheService] Cache complètement effacé
+[16:48:31.645] [DEBUG] [MistralCacheService] Cache MISS - Stats: Hits=0, DiskHits=0, Misses=1
+[16:48:31.645] [INFO] [MistralApiService] Mistral désactivé, utilisation du feedback simulé
+[16:48:31.645] [DEBUG] [MistralCacheService] Réponse mise en cache (mémoire + disque)
+[16:48:31.645] [DEBUG] [MistralCacheService] Cache MISS - Stats: Hits=0, DiskHits=0, Misses=2
+[16:48:31.645] [INFO] [MistralApiService] Mistral désactivé, utilisation du feedback simulé
+[16:48:31.645] [DEBUG] [MistralCacheService] Réponse mise en cache (mémoire + disque)
+[16:48:31.645] [DEBUG] [MistralCacheService] Cache HIT (mémoire) - Stats: Hits=1, Misses=2
+[16:48:31.646] [INFO] [TEST] 📊 Statistiques cache: {memory_entries: 2, cache_hits: 1, disk_hits: 0, cache_misses: 2, hit_rate: 33.33%, total_requests: 3}
+00:54 +49 ~8 -15: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: 🚀 Tests de validation des performances mobile Le cache doit fournir des statistiques précises [E]
+  Expected: <3>
+    Actual: <null>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 474:18  expect
+  test\performance_validation_test.dart 283:7         main.<fn>.<fn>
+  
+00:54 +49 ~8 -15: c:/Users/User/Desktop/Eloquence/frontend/flutter_app/test/performance_validation_test.dart: (tearDownAll)
+00:54 +49 ~8 -15: Some tests failed.

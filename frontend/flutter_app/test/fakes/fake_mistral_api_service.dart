@@ -1,6 +1,6 @@
-import '../../lib/features/confidence_boost/data/services/mistral_api_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
 
-class FakeMistralApiService extends MistralApiService {
+class FakeMistralApiService implements IMistralApiService {
   bool shouldFail = false;
   String? customResponse;
 
@@ -10,6 +10,7 @@ class FakeMistralApiService extends MistralApiService {
     int maxTokens = 150,
     double temperature = 0.7,
   }) async {
+    // TODO: implement generateText
     if (shouldFail) {
       throw Exception('Fake API Error');
     }
@@ -68,6 +69,7 @@ En conclusion, je suis convaincu que ce projet apportera une valeur ajoutée sig
     required String prompt,
     int maxTokens = 800,
   }) async {
+    // TODO: implement analyzeContent
     if (shouldFail) {
       throw Exception('Fake API Error');
     }
@@ -77,5 +79,28 @@ En conclusion, je suis convaincu que ce projet apportera une valeur ajoutée sig
       'strengths': ['Clarté du message', 'Confiance dans le ton', 'Structure cohérente'],
       'improvements': ['Continuer la pratique régulière', 'Explorer de nouveaux sujets'],
     };
+  }
+  
+  @override
+  Map<String, dynamic> getCacheStatistics() {
+    // TODO: implement getCacheStatistics
+    throw UnimplementedError();
+  }
+  
+  @override
+  Future<void> preloadCommonPrompts() {
+    // TODO: implement preloadCommonPrompts
+    throw UnimplementedError();
+  }
+  
+  @override
+  void dispose() {
+    // TODO: implement dispose
+  }
+  
+  @override
+  Future<void> clearCache() {
+    // TODO: implement clearCache
+    throw UnimplementedError();
   }
 }

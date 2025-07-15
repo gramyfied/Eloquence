@@ -3,15 +3,24 @@ import 'package:eloquence_2_0/features/confidence_boost/data/services/text_suppo
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../fakes/fake_mistral_api_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
 void main() {
   group('TextSupportGenerator Tests', () {
     late TextSupportGenerator textSupportGenerator;
     late FakeMistralApiService fakeMistralService;
+    late ProviderContainer container;
 
     setUp(() {
       fakeMistralService = FakeMistralApiService();
-      textSupportGenerator = TextSupportGenerator(mistralService: fakeMistralService);
+      container = ProviderContainer(
+        overrides: [
+          mistralApiServiceProvider.overrideWithProvider(Provider((ref) => fakeMistralService)),
+        ],
+      );
+      final textSupportGeneratorProvider = Provider<TextSupportGenerator>((ref) => TextSupportGenerator.create(ref));
+      textSupportGenerator = container.read(textSupportGeneratorProvider);
     });
 
     test('should generate full text support successfully', () async {
