@@ -101,3 +101,9 @@ test_*.py
 diagnostic_*.py
 vad_diagnostic.py
 *_diagnostic.py
+*.json
+*_diagnostic.dart
+*_validation.dart
+rapport_*.json
+validation_*.json
+test_*.dart
