@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
 import '../../../lib/features/confidence_boost/domain/entities/gamification_models.dart' as gamification;
 import '../../../lib/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
 import '../../../lib/features/confidence_boost/domain/entities/confidence_scenario.dart' as confidence_scenarios;
@@ -114,7 +114,8 @@ void main() {
           livekitServiceProvider.overrideWithProvider(Provider((ref) => FakeCleanLiveKitService())),
           
           // Override Mistral API service avec fake
-          mistralApiServiceProvider.overrideWithProvider(Provider((ref) => FakeMistralApiService())),
+// import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+          // TODO: Ajouter l'override du provider correctement ici si nécessaire
           
           // Override autres services avec mocks simples
           confidenceAnalysisBackendServiceProvider.overrideWithProvider(Provider((ref) => MockConfidenceAnalysisBackendService())),

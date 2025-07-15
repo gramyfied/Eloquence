@@ -1,17 +1,19 @@
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'mistral_api_service.dart';
 import '../../../../core/utils/logger_service.dart';
+import '../../presentation/providers/mistral_api_service_provider.dart';
 
 class TextSupportGenerator {
+  final IMistralApiService _mistralApiService;
   static const String _tag = 'TextSupportGenerator';
 
-  // Constructeur simple - plus besoin d'injection car MistralApiService est statique
-  TextSupportGenerator();
+  TextSupportGenerator(this._mistralApiService);
 
   // Factory pour la production
-  factory TextSupportGenerator.create() {
-    return TextSupportGenerator();
+  factory TextSupportGenerator.create(Ref ref) {
+    return TextSupportGenerator(ref.read(mistralApiServiceProvider));
   }
 
   Future<TextSupport> generateSupport({
@@ -23,8 +25,7 @@ class TextSupportGenerator {
       logger.i(_tag, 'Génération support: ${type.name} pour ${scenario.title}');
       
       final prompt = _buildPrompt(scenario, type, difficulty);
-      // Utiliser directement la méthode statique de MistralApiService
-      final generatedContent = await MistralApiService.generateText(
+      final generatedContent = await _mistralApiService.generateText(
         prompt: prompt,
         maxTokens: _getMaxTokens(type),
         temperature: _getTemperature(type),

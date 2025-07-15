@@ -11,18 +11,22 @@ import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confiden
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
 import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
-
+import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+import '../../fakes/fake_mistral_api_service.dart';
 /// Tests complets de communication backend pour l'exercice Confidence Boost Express
-/// 
+///
 /// Ces tests valident l'intégration complète entre :
 /// - ConfidenceAnalysisBackendService (Pipeline Whisper + Mistral)
 /// - ConfidenceLiveKitIntegration (Session LiveKit avec fallbacks)
 /// - ProsodyAnalysisInterface (Analyse prosodique VOSK/Fallback)
 /// - ConfidenceBoostProvider (Gestion d'état et coordination)
-/// 
+///
 /// Architecture testée :
 /// Audio → Backend Analysis → Prosody Analysis → LiveKit Integration → Provider State
-/// 
+///
 /// Fallbacks multiniveaux : Backend → LiveKit → CleanLiveKitService → Emergency Local
 
 // === MOCKS MANUELS ===
@@ -169,7 +173,9 @@ void main() {
 
       container = ProviderContainer(
         overrides: [
-          // Override des providers pour tests
+          // Importer correctement le provider et le fake MistralApiService
+          mistralApiServiceProvider.overrideWithProvider(Provider((ref) => FakeMistralApiService())),
+          // Override des autres providers pour tests
         ],
       );
     });

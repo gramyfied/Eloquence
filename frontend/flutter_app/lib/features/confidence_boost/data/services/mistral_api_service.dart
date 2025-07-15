@@ -6,35 +6,47 @@ import '../../../../core/utils/constants.dart';
 import '../../../../core/services/optimized_http_service.dart';
 import 'mistral_cache_service.dart';
 
-class MistralApiService {
-  // Utilisation du service HTTP optimisé au lieu du client standard
-  static final OptimizedHttpService _httpService = OptimizedHttpService();
-  
-  // Configuration simple - Même approche que le backend Python
-  static String get _endpoint {
-    // MISTRAL_BASE_URL contient déjà l'URL complète avec /chat/completions
-    return dotenv.env['MISTRAL_BASE_URL'] ?? 'https://api.mistral.ai/v1/chat/completions';
-  }
-  
-  static String get _model {
-    return dotenv.env['MISTRAL_MODEL'] ?? 'mistral-nemo-instruct-2407';
-  }
-  
-  static String get _apiKey {
-    return dotenv.env['MISTRAL_API_KEY'] ?? '';
-  }
-  
-  static bool get _isEnabled => dotenv.env['MISTRAL_ENABLED']?.toLowerCase() == 'true';
-  static const String _tag = 'MistralApiService';
-  
+abstract class IMistralApiService {
+  Future<String> generateText({
+    required String prompt,
+    int maxTokens,
+    double temperature,
+  });
+
+  Future<Map<String, dynamic>> analyzeContent({
+    required String prompt,
+    int maxTokens,
+  });
+
+  Map<String, dynamic> getCacheStatistics();
+  Future<void> clearCache();
+  Future<void> preloadCommonPrompts();
+  void dispose();
+}
+
+class MistralApiService implements IMistralApiService {
+  final OptimizedHttpService _httpService;
+  final String _endpoint;
+  final String _model;
+  final String _apiKey;
+  final bool _isEnabled;
+  final String _tag = 'MistralApiService';
+
+  MistralApiService({OptimizedHttpService? httpService})
+      : _httpService = httpService ?? OptimizedHttpService(),
+        _endpoint = dotenv.env['MISTRAL_BASE_URL'] ?? 'https://api.mistral.ai/v1/chat/completions',
+        _model = dotenv.env['MISTRAL_MODEL'] ?? 'mistral-nemo-instruct-2407',
+        _apiKey = dotenv.env['MISTRAL_API_KEY'] ?? '',
+        _isEnabled = dotenv.env['MISTRAL_ENABLED']?.toLowerCase() == 'true';
+
   /// Initialise le service (incluant le cache)
   static Future<void> init() async {
-    logger.i(_tag, 'Initialisation du service Mistral...');
+    logger.i('MistralApiService', 'Initialisation du service Mistral...');
     await MistralCacheService.init();
   }
 
-  /// Génère du texte avec l'API Mistral (avec cache persistant)
-  static Future<String> generateText({
+  @override
+  Future<String> generateText({
     required String prompt,
     int maxTokens = 500,
     double temperature = 0.7,
@@ -147,8 +159,8 @@ class MistralApiService {
     }
   }
 
-  /// Analyse du contenu avec l'API Mistral (avec cache persistant)
-  static Future<Map<String, dynamic>> analyzeContent({
+  @override
+  Future<Map<String, dynamic>> analyzeContent({
     required String prompt,
     int maxTokens = 800,
   }) async {
@@ -324,18 +336,18 @@ Réponds uniquement avec un objet JSON valide contenant ces champs :
     }
   }
   
-  /// Obtient les statistiques du cache
-  static Map<String, dynamic> getCacheStatistics() {
+  @override
+  Map<String, dynamic> getCacheStatistics() {
     return MistralCacheService.getStatistics();
   }
   
-  /// Efface le cache
-  static Future<void> clearCache() async {
+  @override
+  Future<void> clearCache() async {
     await MistralCacheService.clearCache();
   }
   
-  /// Précharge des prompts courants pour améliorer les performances
-  static Future<void> preloadCommonPrompts() async {
+  @override
+  Future<void> preloadCommonPrompts() async {
     final commonPrompts = [
       'Analyse ma présentation orale et donne-moi un feedback constructif',
       'Évalue ma confiance en prise de parole publique',
@@ -346,8 +358,8 @@ Réponds uniquement avec un objet JSON valide contenant ces champs :
     await MistralCacheService.preloadCommonPrompts(commonPrompts);
   }
   
-  /// Libère les ressources
-  static void dispose() {
+  @override
+  void dispose() {
     // Le service HTTP optimisé gère automatiquement ses ressources
     // via le pattern Singleton, pas besoin de close explicite
   }

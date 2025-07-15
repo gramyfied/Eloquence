@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import ajouté
 import '../../../../core/utils/logger_service.dart';
 import '../../../../src/services/clean_livekit_service.dart';
 import '../../../../data/services/api_service.dart';
@@ -14,6 +15,7 @@ class ConfidenceLiveKitIntegration {
   final CleanLiveKitService livekitService;
   final ApiService apiService;
   final TextSupportGenerator textGenerator;
+  final Ref _ref; // Ajout de Ref
   static const String _tag = 'ConfidenceLiveKitIntegration';
 
   String? _currentSessionId;
@@ -25,8 +27,10 @@ class ConfidenceLiveKitIntegration {
   ConfidenceLiveKitIntegration({
     required this.livekitService,
     required this.apiService,
+    required Ref ref, // Ref est maintenant requis
     TextSupportGenerator? textGenerator,
-  }) : textGenerator = textGenerator ?? TextSupportGenerator.create();
+  })  : _ref = ref,
+        textGenerator = textGenerator ?? TextSupportGenerator.create(ref);
 
   /// Démarre une session avec contexte enrichi
   Future<bool> startSession({

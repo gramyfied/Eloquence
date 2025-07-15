@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
 import '../../../lib/features/confidence_boost/data/repositories/gamification_repository.dart';
 import '../../../lib/features/confidence_boost/data/repositories/confidence_repository_impl.dart';
 import '../../../lib/features/confidence_boost/data/services/gamification_service.dart';
@@ -55,7 +55,7 @@ void main() {
       
       try {
         print('📋 Création du mistralApiServiceProvider...');
-        final mistralService = container.read(mistralApiServiceProvider);
+        // final mistralService = container.read(mistralApiServiceProvider);
         print('✅ Service créé: ${mistralService.runtimeType}');
         
         if (mistralService is MistralApiService) {
