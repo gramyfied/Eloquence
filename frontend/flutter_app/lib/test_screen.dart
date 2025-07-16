@@ -15,14 +15,14 @@ class TestScreen extends StatelessWidget {
           children: [
             ElevatedButton(
               onPressed: () {
-                print('=== SIMPLE TEST BUTTON CLICKED ===');
+                debugPrint('=== SIMPLE TEST BUTTON CLICKED ===');
                 try {
                   final navigationState = context.read<NavigationState>();
-                  print('NavigationState found: $navigationState');
+                  debugPrint('NavigationState found: $navigationState');
                   navigationState.navigateTo('/home', context);
-                  print('Navigation successful');
+                  debugPrint('Navigation successful');
                 } catch (e) {
-                  print('Navigation error: $e');
+                  debugPrint('Navigation error: $e');
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -39,13 +39,13 @@ class TestScreen extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  print('=== SIMPLE INKWELL CLICKED ===');
+                  debugPrint('=== SIMPLE INKWELL CLICKED ===');
                   try {
                     final navigationState = context.read<NavigationState>();
                     navigationState.navigateTo('/home', context);
-                    print('InkWell navigation successful');
+                    debugPrint('InkWell navigation successful');
                   } catch (e) {
-                    print('InkWell navigation error: $e');
+                    debugPrint('InkWell navigation error: $e');
                   }
                 },
                 child: Container(
@@ -64,13 +64,13 @@ class TestScreen extends StatelessWidget {
             const SizedBox(height: 20),
             GestureDetector(
               onTap: () {
-                print('=== SIMPLE GESTURE DETECTOR CLICKED ===');
+                debugPrint('=== SIMPLE GESTURE DETECTOR CLICKED ===');
                 try {
                   final navigationState = context.read<NavigationState>();
                   navigationState.navigateTo('/home', context);
-                  print('GestureDetector navigation successful');
+                  debugPrint('GestureDetector navigation successful');
                 } catch (e) {
-                  print('GestureDetector navigation error: $e');
+                  debugPrint('GestureDetector navigation error: $e');
                 }
               },
               child: Container(

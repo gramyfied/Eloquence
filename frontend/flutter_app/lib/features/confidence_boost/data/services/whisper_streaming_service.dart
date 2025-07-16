@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import '../../../../core/utils/logger_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/optimized_http_service.dart';
@@ -30,15 +28,12 @@ class WhisperStreamingService {
   StreamController<String>? _transcriptionController;
   StreamController<double>? _progressController;
   Timer? _chunkTimer;
-  List<Uint8List> _audioBuffer = [];
+  final List<Uint8List> _audioBuffer = [];
   String _sessionId = '';
   bool _isStreaming = false;
   
   // Utilisation du service HTTP optimisé
   static final OptimizedHttpService _httpService = OptimizedHttpService();
-  
-  // Codec audio pour la compression
-  final FlutterSoundHelper _soundHelper = FlutterSoundHelper();
   
   /// Stream de transcription temps réel
   Stream<String> get transcriptionStream => 
@@ -236,7 +231,7 @@ class WhisperStreamingService {
       
     } catch (e) {
       logger.e(_tag, 'Erreur connexion WebSocket: $e');
-      throw e;
+      rethrow;
     }
   }
   
@@ -274,7 +269,7 @@ class WhisperStreamingService {
   /// Démarre le timer pour l'envoi régulier des chunks
   void _startChunkTimer() {
     _chunkTimer = Timer.periodic(
-      Duration(seconds: _chunkDurationSeconds),
+      const Duration(seconds: _chunkDurationSeconds),
       (_) => _sendChunk(),
     );
   }

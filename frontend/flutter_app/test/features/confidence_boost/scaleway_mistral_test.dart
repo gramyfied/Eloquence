@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -16,7 +17,7 @@ void main() {
       expect(apiKey.contains('-'), isTrue);
       expect(apiKey.length, equals(36));
       
-      print('🔑 Clé Scaleway détectée: ${apiKey.substring(0, 8)}...');
+      debugPrint('🔑 Clé Scaleway détectée: ${apiKey.substring(0, 8)}...');
       
       const String baseUrl = 'https://api.scaleway.com/llm-inference/v1beta1';
       const String endpoint = '$baseUrl/models/mistral-7b-instruct/chat/completions';
@@ -38,12 +39,12 @@ void main() {
         'temperature': 0.7,
       };
       
-      print('🌐 Endpoint Scaleway: $endpoint');
-      print('📦 Headers: $headers');
-      print('💬 Body: ${jsonEncode(body)}');
+      debugPrint('🌐 Endpoint Scaleway: $endpoint');
+      debugPrint('📦 Headers: $headers');
+      debugPrint('💬 Body: ${jsonEncode(body)}');
       
       try {
-        print('🚀 Envoi requête Scaleway...');
+        debugPrint('🚀 Envoi requête Scaleway...');
         
         final response = await http.post(
           Uri.parse(endpoint),
@@ -51,37 +52,37 @@ void main() {
           body: jsonEncode(body),
         );
         
-        print('📊 Status Code: ${response.statusCode}');
-        print('📄 Response Headers: ${response.headers}');
-        print('📝 Response Body: ${response.body}');
+        debugPrint('📊 Status Code: ${response.statusCode}');
+        debugPrint('📄 Response Headers: ${response.headers}');
+        debugPrint('📝 Response Body: ${response.body}');
         
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
           final generatedText = responseData['choices']?[0]?['message']?['content'];
           
-          print('✅ SUCCÈS SCALEWAY! Texte généré: $generatedText');
+          debugPrint('✅ SUCCÈS SCALEWAY! Texte généré: $generatedText');
           expect(generatedText, isNotNull);
           expect(generatedText, isNotEmpty);
           
         } else {
-          print('❌ ERREUR SCALEWAY: ${response.statusCode}');
-          print('📄 Détails: ${response.body}');
+          debugPrint('❌ ERREUR SCALEWAY: ${response.statusCode}');
+          debugPrint('📄 Détails: ${response.body}');
           
           if (response.statusCode == 401) {
-            print('🔐 Erreur authentification Scaleway');
+            debugPrint('🔐 Erreur authentification Scaleway');
           } else if (response.statusCode == 403) {
-            print('🚫 Accès refusé - vérifier les permissions');
+            debugPrint('🚫 Accès refusé - vérifier les permissions');
           } else if (response.statusCode == 404) {
-            print('🔍 Endpoint non trouvé - vérifier l\'URL');
+            debugPrint('🔍 Endpoint non trouvé - vérifier l\'URL');
           }
           
           // Ne pas faire échouer le test, juste informer
-          print('ℹ️ Test Scaleway skippé - Configuration API manquante');
+          debugPrint('ℹ️ Test Scaleway skippé - Configuration API manquante');
         }
         
       } catch (e) {
-        print('💥 Exception Scaleway: $e');
-        print('ℹ️ Test Scaleway skippé - Erreur de configuration');
+        debugPrint('💥 Exception Scaleway: $e');
+        debugPrint('ℹ️ Test Scaleway skippé - Erreur de configuration');
       }
     }, skip: true);
 
@@ -96,7 +97,7 @@ void main() {
       expect(mistralKey.contains('-'), isFalse);
       expect(mistralKey.length, isNot(equals(36)));
       
-      print('✅ Détection automatique fonctionnelle');
+      debugPrint('✅ Détection automatique fonctionnelle');
     });
 
     test('Test endpoint dynamique', () {
@@ -113,7 +114,7 @@ void main() {
       expect(endpoint, contains('scaleway.com'));
       expect(endpoint, contains('mistral-7b-instruct'));
       
-      print('✅ Endpoint Scaleway: $endpoint');
+      debugPrint('✅ Endpoint Scaleway: $endpoint');
     });
   });
 }

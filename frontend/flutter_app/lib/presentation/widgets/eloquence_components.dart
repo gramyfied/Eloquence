@@ -90,10 +90,10 @@ class EloquenceMicrophone extends StatefulWidget {
   }) : super(key: key);
   
   @override
-  _EloquenceMicrophoneState createState() => _EloquenceMicrophoneState();
+  EloquenceMicrophoneState createState() => EloquenceMicrophoneState();
 }
 
-class _EloquenceMicrophoneState extends State<EloquenceMicrophone>
+class EloquenceMicrophoneState extends State<EloquenceMicrophone>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -280,10 +280,10 @@ class EloquenceWaveforms extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _EloquenceWaveformsState createState() => _EloquenceWaveformsState();
+  EloquenceWaveformsState createState() => EloquenceWaveformsState();
 }
 
-class _EloquenceWaveformsState extends State<EloquenceWaveforms> {
+class EloquenceWaveformsState extends State<EloquenceWaveforms> {
   final Random _random = Random();
 
   @override
@@ -292,7 +292,7 @@ class _EloquenceWaveformsState extends State<EloquenceWaveforms> {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(widget.barCount, (index) {
-        return _WaveformBar(
+        return WaveformBar(
           isActive: widget.isActive,
           random: _random,
         );
@@ -301,21 +301,21 @@ class _EloquenceWaveformsState extends State<EloquenceWaveforms> {
   }
 }
 
-class _WaveformBar extends StatefulWidget {
+class WaveformBar extends StatefulWidget {
   final bool isActive;
   final Random random;
 
-  const _WaveformBar({
+  const WaveformBar({
     Key? key,
     required this.isActive,
     required this.random,
   }) : super(key: key);
 
   @override
-  __WaveformBarState createState() => __WaveformBarState();
+  WaveformBarState createState() => WaveformBarState();
 }
 
-class __WaveformBarState extends State<_WaveformBar>
+class WaveformBarState extends State<WaveformBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -341,7 +341,7 @@ class __WaveformBarState extends State<_WaveformBar>
   }
 
   @override
-  void didUpdateWidget(covariant _WaveformBar oldWidget) {
+  void didUpdateWidget(covariant WaveformBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isActive != oldWidget.isActive) {
       if (widget.isActive) {

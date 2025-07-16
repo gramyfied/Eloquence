@@ -55,9 +55,9 @@ class ConfidenceBoostScreenSimple extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
-              Text(
+              const Text(
                 'User ID: \$userId',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   color: Colors.white54,
                 ),

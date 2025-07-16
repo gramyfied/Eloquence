@@ -124,13 +124,13 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
             shape: BoxShape.circle,
             gradient: RadialGradient(
               colors: [
-                EloquenceColors.cyan.withOpacity(0.3),
-                EloquenceColors.violet.withOpacity(0.1),
+                EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
+                EloquenceColors.violet.withAlpha((255 * 0.1).round()),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: EloquenceColors.cyan.withOpacity(0.5),
+                color: EloquenceColors.cyan.withAlpha((255 * 0.5).round()),
                 blurRadius: 40,
                 spreadRadius: 10,
               ),
@@ -230,7 +230,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withAlpha((255 * 0.2).round()),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -270,7 +270,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
                 builder: (context, child) {
                   return LinearProgressIndicator(
                     value: (score / 100) * _scoreAnimation.value,
-                    backgroundColor: color.withOpacity(0.2),
+                    backgroundColor: color.withAlpha((255 * 0.2).round()),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                     minHeight: 6,
                   );
@@ -290,7 +290,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.lightbulb_outline,
                 color: EloquenceColors.cyan,
                 size: 24,
@@ -310,7 +310,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
           Text(
             analysis.feedback,
             style: EloquenceTextStyles.bodyLarge.copyWith(
-              color: EloquenceColors.white.withOpacity(0.9),
+              color: EloquenceColors.white.withAlpha((255 * 0.9).round()),
             ),
           ),
           if (analysis.improvements.isNotEmpty) ...[
@@ -332,7 +332,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
                     width: 6,
                     height: 6,
                     margin: const EdgeInsets.only(top: 6),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: EloquenceColors.violet,
                       shape: BoxShape.circle,
                     ),
@@ -342,7 +342,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
                     child: Text(
                       suggestion,
                       style: EloquenceTextStyles.bodyMedium.copyWith(
-                        color: EloquenceColors.white.withOpacity(0.8),
+                        color: EloquenceColors.white.withAlpha((255 * 0.8).round()),
                       ),
                     ),
                   ),
@@ -391,7 +391,7 @@ class _ConfidenceResultsViewState extends State<ConfidenceResultsView>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: EloquenceColors.cyan.withOpacity(0.5),
+                                  color: EloquenceColors.cyan.withAlpha((255 * 0.5).round()),
                                   blurRadius: 20,
                                   spreadRadius: 5,
                                 ),

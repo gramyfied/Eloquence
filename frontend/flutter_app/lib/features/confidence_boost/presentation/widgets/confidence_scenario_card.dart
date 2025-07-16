@@ -25,7 +25,7 @@ class ConfidenceScenarioCard extends StatelessWidget {
             Container(
               width: 60,
               height: 60,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: EloquenceColors.cyanVioletGradient,
               ),
@@ -54,7 +54,7 @@ class ConfidenceScenarioCard extends StatelessWidget {
                   Text(
                     scenario.description,
                     style: EloquenceTextStyles.caption.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -83,7 +83,7 @@ class ConfidenceScenarioCard extends StatelessWidget {
             // Flèche
             Icon(
               Icons.arrow_forward_ios,
-              color: EloquenceColors.white.withOpacity(0.5),
+              color: EloquenceColors.white.withAlpha((255 * 0.5).round()),
               size: 16,
             ),
           ],
@@ -100,10 +100,10 @@ class ConfidenceScenarioCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: (color ?? EloquenceColors.cyan).withOpacity(0.2),
+        color: (color ?? EloquenceColors.cyan).withAlpha((255 * 0.2).round()),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: (color ?? EloquenceColors.cyan).withOpacity(0.3),
+          color: (color ?? EloquenceColors.cyan).withAlpha((255 * 0.3).round()),
           width: 1,
         ),
       ),

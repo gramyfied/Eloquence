@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -21,11 +22,11 @@ void main() {
       // Il nous faut la vraie clé IAM Scaleway
       const String iamApiKey = 'fc23b118-a243-4e29-9d28-6c6106c997a4'; // À remplacer par la vraie clé IAM
       
-      print('🏗️ Configuration Scaleway:');
-      print('   Project ID: $projectId');
-      print('   Base URL: $baseUrl');
-      print('   Endpoint: $endpoint');
-      print('   IAM Key: ${iamApiKey.substring(0, 8)}...');
+      debugPrint('🏗️ Configuration Scaleway:');
+      debugPrint('   Project ID: $projectId');
+      debugPrint('   Base URL: $baseUrl');
+      debugPrint('   Endpoint: $endpoint');
+      debugPrint('   IAM Key: ${iamApiKey.substring(0, 8)}...');
       
       final headers = {
         'Content-Type': 'application/json',
@@ -48,10 +49,10 @@ void main() {
         'temperature': 0.3,
       };
       
-      print('📦 Request Body: ${jsonEncode(body)}');
+      debugPrint('📦 Request Body: ${jsonEncode(body)}');
       
       try {
-        print('🚀 Test API Scaleway corrigée...');
+        debugPrint('🚀 Test API Scaleway corrigée...');
         
         final response = await http.post(
           Uri.parse(endpoint),
@@ -59,47 +60,47 @@ void main() {
           body: jsonEncode(body),
         );
         
-        print('📊 Status Code: ${response.statusCode}');
-        print('📄 Response Headers: ${response.headers}');
-        print('📝 Response Body: ${response.body}');
+        debugPrint('📊 Status Code: ${response.statusCode}');
+        debugPrint('📄 Response Headers: ${response.headers}');
+        debugPrint('📝 Response Body: ${response.body}');
         
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
           final generatedText = responseData['choices']?[0]?['message']?['content'];
           
-          print('✅ SUCCÈS SCALEWAY! Réponse: $generatedText');
+          debugPrint('✅ SUCCÈS SCALEWAY! Réponse: $generatedText');
           expect(generatedText, isNotNull);
           expect(generatedText, isNotEmpty);
           
         } else {
-          print('❌ ERREUR: ${response.statusCode}');
-          print('📄 Détails: ${response.body}');
+          debugPrint('❌ ERREUR: ${response.statusCode}');
+          debugPrint('📄 Détails: ${response.body}');
           
           if (response.statusCode == 401) {
-            print('🔐 Clé IAM invalide ou projet non trouvé');
+            debugPrint('🔐 Clé IAM invalide ou projet non trouvé');
           } else if (response.statusCode == 403) {
-            print('🚫 Permissions insuffisantes');
+            debugPrint('🚫 Permissions insuffisantes');
           } else if (response.statusCode == 404) {
-            print('🔍 Project ID invalide ou endpoint incorrect');
+            debugPrint('🔍 Project ID invalide ou endpoint incorrect');
           }
           
           // Ne pas faire échouer le test, juste informer
-          print('ℹ️ Configuration Scaleway nécessite à la fois:');
-          print('   1. Un Project ID (UUID du projet)');
-          print('   2. Une clé IAM Scaleway (SCW_SECRET_KEY)');
+          debugPrint('ℹ️ Configuration Scaleway nécessite à la fois:');
+          debugPrint('   1. Un Project ID (UUID du projet)');
+          debugPrint('   2. Une clé IAM Scaleway (SCW_SECRET_KEY)');
         }
         
       } catch (e) {
-        print('💥 Exception: $e');
-        print('ℹ️ Vérifier la configuration Scaleway');
+        debugPrint('💥 Exception: $e');
+        debugPrint('ℹ️ Vérifier la configuration Scaleway');
       }
     }, skip: true);
 
     test('Détection des paramètres manquants', () {
-      print('📋 Configuration requise pour Scaleway:');
-      print('   SCALEWAY_PROJECT_ID: UUID du projet (ex: 18f6cc9d-07fc-49c3-a142-67be9b59ac63)');
-      print('   SCALEWAY_IAM_KEY: Clé IAM Scaleway (ex: SCW_SECRET_KEY...)');
-      print('   MISTRAL_MODEL: mistral-nemo-instruct-2407');
+      debugPrint('📋 Configuration requise pour Scaleway:');
+      debugPrint('   SCALEWAY_PROJECT_ID: UUID du projet (ex: 18f6cc9d-07fc-49c3-a142-67be9b59ac63)');
+      debugPrint('   SCALEWAY_IAM_KEY: Clé IAM Scaleway (ex: SCW_SECRET_KEY...)');
+      debugPrint('   MISTRAL_MODEL: mistral-nemo-instruct-2407');
       
       // Test de l'URL construction
       const projectId = 'fc23b118-a243-4e29-9d28-6c6106c997a4';
@@ -109,7 +110,7 @@ void main() {
       expect(expectedUrl, contains(projectId));
       expect(expectedUrl, endsWith('/chat/completions'));
       
-      print('✅ Structure URL correcte: $expectedUrl');
+      debugPrint('✅ Structure URL correcte: $expectedUrl');
     });
   });
 }

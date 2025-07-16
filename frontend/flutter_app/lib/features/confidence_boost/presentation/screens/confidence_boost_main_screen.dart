@@ -13,11 +13,11 @@ class ConfidenceBoostMainScreen extends ConsumerStatefulWidget {
   const ConfidenceBoostMainScreen({Key? key}) : super(key: key);
 
   @override
-  _ConfidenceBoostMainScreenState createState() =>
-      _ConfidenceBoostMainScreenState();
+  ConfidenceBoostMainScreenState createState() =>
+      ConfidenceBoostMainScreenState();
 }
 
-class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainScreen> {
+class ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainScreen> {
   late PageController _pageController;
   ConfidenceScenario? _selectedScenario;
   TextSupport? _selectedTextSupport;
@@ -57,7 +57,6 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
   }
 
   void _onRecordingComplete(Duration duration) async {
-    print("🎙️ DEBUG: Recording completed, duration: ${duration.inSeconds}s");
     if (!mounted) return;
     
     setState(() {
@@ -65,7 +64,6 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
     });
     
     if (_selectedScenario != null && _selectedTextSupport != null) {
-      print("🔄 DEBUG: Starting analysis for scenario: ${_selectedScenario!.title}");
       
       await ref.read(confidenceBoostProvider.notifier).analyzePerformance(
             scenario: _selectedScenario!,
@@ -73,59 +71,36 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
             recordingDuration: _recordingDuration,
           );
       
-      print("✅ DEBUG: Analysis completed, checking results...");
-      
       if (!mounted) {
-        print("⚠️ DEBUG: Widget disposed during analysis");
         return;
       }
       
       final analysisResult = ref.read(confidenceBoostProvider).lastAnalysis;
-      print("📊 DEBUG: Analysis result available: ${analysisResult != null}");
-      print("🔍 DEBUG: Provider state: ${ref.read(confidenceBoostProvider)}");
-      print("🔍 DEBUG: Local _analysisResult: ${_analysisResult != null}");
       
       if (analysisResult != null) {
-        print("📈 DEBUG: Analysis score: ${analysisResult.overallScore}");
-        print("🔍 DEBUG: Setting local _analysisResult...");
         setState(() {
           _analysisResult = analysisResult;
         });
-        print("✅ DEBUG: Local _analysisResult set: ${_analysisResult != null}");
         
-        print("🚀 DEBUG: Navigating to results page...");
         if (mounted) {
           // ✅ CORRECTION: Attendre le rebuild avant navigation
-          print("🔄 DEBUG: Waiting for rebuild to complete before navigation...");
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              int childrenCount = _getChildrenCount();
-              print("📊 DEBUG: PageView children count AFTER rebuild: $childrenCount");
-              print("🔍 DEBUG: ResultsScreen exists AFTER rebuild: ${_analysisResult != null}");
-              
               // Navigation maintenant que la ResultsScreen existe
-              print("✅ DEBUG: Calling nextPage() AFTER rebuild - page should exist");
               _pageController.nextPage(
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.easeInOut,
               );
-              print("🎯 DEBUG: Navigation to results completed successfully");
               
               // Vérification finale
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  print("📍 DEBUG: Final page index: ${_pageController.page?.round() ?? 'unknown'}");
                 }
               });
             }
           });
         }
-      } else {
-        print("❌ DEBUG: No analysis result available - navigation blocked");
-        print("🔍 DEBUG: Provider lastAnalysis is null despite analysis completion");
       }
-    } else {
-      print("❌ DEBUG: Missing scenario or text support");
     }
   }
 
@@ -139,19 +114,6 @@ class _ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainS
       _recordingDuration = Duration.zero;
     });
     _pageController.jumpToPage(0);
-  }
-
-  void _onExit() {
-    Navigator.of(context).pop();
-  }
-
-  // Méthode helper pour compter les children du PageView
-  int _getChildrenCount() {
-    int count = 1; // ScenarioSelectionScreen toujours présent
-    if (_selectedScenario != null) count++; // TextSupportSelectionScreen
-    if (_selectedScenario != null && _selectedTextSupport != null) count++; // RecordingScreen
-    if (_analysisResult != null) count++; // ResultsScreen
-    return count;
   }
 
   @override

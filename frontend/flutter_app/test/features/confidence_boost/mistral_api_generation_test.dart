@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../../lib/features/confidence_boost/data/services/mistral_api_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
 
 void main() {
   group('Test de Génération Mistral API', () {
@@ -22,10 +23,10 @@ void main() {
       try {
         final result = await service.generateText(prompt: prompt);
         
-        print('=== RÉSULTAT GÉNÉRATION MISTRAL ===');
-        print('Prompt: $prompt');
-        print('Réponse: $result');
-        print('=== FIN RÉSULTAT ===');
+        debugPrint('=== RÉSULTAT GÉNÉRATION MISTRAL ===');
+        debugPrint('Prompt: $prompt');
+        debugPrint('Réponse: $result');
+        debugPrint('=== FIN RÉSULTAT ===');
         
         // Vérifier que le résultat n'est pas vide
         expect(result, isNotEmpty);
@@ -41,7 +42,7 @@ void main() {
         expect(result.length, greaterThan(20), reason: 'Le feedback devrait être substantiel');
         
       } catch (e) {
-        print('Erreur lors de la génération: $e');
+        debugPrint('Erreur lors de la génération: $e');
         // Si l'API échoue, vérifier que c'est bien un fallback
         fail('La génération de texte a échoué: $e');
       }
@@ -63,10 +64,10 @@ void main() {
       try {
         final result = await service.analyzeContent(prompt: prompt);
         
-        print('=== RÉSULTAT ANALYSE MISTRAL ===');
-        print('Prompt: $prompt');
-        print('Réponse: $result');
-        print('=== FIN RÉSULTAT ===');
+        debugPrint('=== RÉSULTAT ANALYSE MISTRAL ===');
+        debugPrint('Prompt: $prompt');
+        debugPrint('Réponse: $result');
+        debugPrint('=== FIN RÉSULTAT ===');
         
         // Vérifier la structure du résultat
         expect(result, isA<Map<String, dynamic>>());
@@ -87,7 +88,7 @@ void main() {
         expect((result['improvements'] as List).isNotEmpty, isTrue);
         
       } catch (e) {
-        print('Erreur lors de l\'analyse: $e');
+        debugPrint('Erreur lors de l\'analyse: $e');
         fail('L\'analyse de contenu a échoué: $e');
       }
     });

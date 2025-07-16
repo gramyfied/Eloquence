@@ -269,10 +269,6 @@ class ConfidenceAnalysisBackendService {
         contextFeedback.add('🚀 **Contexte Pitch** : ');
         contextFeedback.add('Votre pitch est ${_getPublicSpeakingLevel(analysis)}.');
         break;
-      default:
-        contextFeedback.add('🎯 **Contexte Général** : ');
-        contextFeedback.add('Votre performance générale semble ${_getPerformanceLevel(analysis)}.');
-        break;
     }
     
     return contextFeedback.join('');
@@ -309,14 +305,6 @@ class ConfidenceAnalysisBackendService {
     if (score >= 0.65) return 'cordiale et professionnelle';
     if (score >= 0.50) return 'polie mais réservée';
     return 'timide, mais perfectible';
-  }
-  
-  String _getPhoneLevel(Map<String, dynamic> analysis) {
-    final score = _extractScore(analysis, 'clarity_score', 0.75);
-    if (score >= 0.85) return 'très claire et professionnelle';
-    if (score >= 0.70) return 'claire et efficace';
-    if (score >= 0.55) return 'compréhensible';
-    return 'parfois difficile à suivre';
   }
   
   /// Création d'une analyse de fallback en cas d'erreur

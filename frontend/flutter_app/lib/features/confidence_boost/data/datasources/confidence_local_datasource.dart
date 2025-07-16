@@ -11,7 +11,7 @@ abstract class ConfidenceLocalDataSource {
 class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
   final SharedPreferences sharedPreferences;
   
-  static const String SCENARIOS_KEY = 'confidence_scenarios';
+  static const String scenariosKey = 'confidence_scenarios';
 
   ConfidenceLocalDataSourceImpl({required this.sharedPreferences});
 
@@ -21,14 +21,14 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
     // Pour les scénarios, qui sont moins dynamiques, SharedPreferences reste acceptable.
     final scenariosJson = scenarios.map((s) => _scenarioToJson(s)).toList();
     await sharedPreferences.setString(
-      SCENARIOS_KEY,
+      scenariosKey,
       json.encode(scenariosJson),
     );
   }
 
   @override
   Future<List<ConfidenceScenario>> getCachedScenarios() async {
-    final scenariosString = sharedPreferences.getString(SCENARIOS_KEY);
+    final scenariosString = sharedPreferences.getString(scenariosKey);
     if (scenariosString == null) {
       return _getDefaultScenarios();
     }
@@ -43,7 +43,7 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
 
   @override
   Future<void> clearScenariosCache() async {
-    await sharedPreferences.remove(SCENARIOS_KEY);
+    await sharedPreferences.remove(scenariosKey);
   }
 
   // Méthodes de conversion JSON pour ConfidenceScenario
@@ -81,7 +81,7 @@ class ConfidenceLocalDataSourceImpl implements ConfidenceLocalDataSource {
   List<ConfidenceScenario> _getDefaultScenarios() {
     // Re-création de la liste par défaut pour maintenir la fonctionnalité
     return [
-      ConfidenceScenario(
+      const ConfidenceScenario(
         id: '1',
         title: 'Présentation d\'équipe',
         description: 'Présentez les résultats de votre dernier projet à votre équipe.',

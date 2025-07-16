@@ -2,43 +2,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence_livekit_integration.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
-import 'package:eloquence_2_0/data/services/api_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'fakes/fake_clean_livekit_service.dart';
 import 'fakes/fake_api_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/services/text_support_generator.dart';
-import 'fakes/fake_mistral_api_service.dart';
+import 'test_helpers.dart';
 
 void main() {
   group('ConfidenceLiveKitIntegration Tests', () {
+    setUpAll(() async {
+      // Load environment variables
+      await dotenv.load(fileName: ".env");
+      await setupTestHive();
+    });
     late ConfidenceLiveKitIntegration confidenceLiveKit;
     late FakeCleanLiveKitService fakeLiveKitService;
     late FakeApiService fakeApiService;
-    late TextSupportGenerator textSupportGenerator;
-    late FakeMistralApiService fakeMistralApiService;
+    late ProviderContainer container;
 
     setUp(() {
       fakeLiveKitService = FakeCleanLiveKitService();
       fakeApiService = FakeApiService();
-      fakeMistralApiService = FakeMistralApiService();
-      // TODO: Injecter le paramètre requis si nécessaire
-      // textSupportGenerator = TextSupportGenerator(ref); // Si ref est requis
-      // TODO: Injecter le paramètre requis (ref) pour TextSupportGenerator
-      // textSupportGenerator = TextSupportGenerator(ref);
-      // Pour l’instant, on commente pour éviter l’erreur de compilation
-      // textSupportGenerator = TextSupportGenerator();
-      // TODO: Ajouter le paramètre 'ref' requis si nécessaire
-      // confidenceLiveKit = ConfidenceLiveKitIntegration(
-      //   livekitService: fakeLiveKitService,
-      //   apiService: fakeApiService,
-      //   textGenerator: textSupportGenerator,
-      //   ref: ref, // à injecter si requis
-      // );
-      confidenceLiveKit = ConfidenceLiveKitIntegration(
-        livekitService: fakeLiveKitService,
-        apiService: fakeApiService,
-        // textGenerator: textSupportGenerator,
-        // ref: ref, // à injecter si requis
+      
+      container = ProviderContainer(
+        overrides: [
+          livekitServiceProvider.overrideWithValue(fakeLiveKitService),
+          apiServiceProvider.overrideWithValue(fakeApiService),
+          // Assurez-vous que tous les providers dont dépend confidenceLiveKitIntegrationProvider sont overridés
+        ],
       );
+
+      // Lisez le provider pour obtenir une instance correctement initialisée avec la ref
+      confidenceLiveKit = container.read(confidenceLiveKitIntegrationProvider);
+    });
+
+    tearDown(() {
+      container.dispose();
     });
 
     test('should start confidence session successfully', () async {
@@ -114,21 +114,6 @@ void main() {
 
     test('should handle analysis result stream', () async {
       // Arrange
-      final mockAnalysis = ConfidenceAnalysis(
-        overallScore: 85.0,
-        confidenceScore: 80.0,
-        fluencyScore: 90.0,
-        clarityScore: 85.0,
-        energyScore: 88.0,
-        feedback: 'Excellent performance!',
-        wordCount: 150,
-        speakingRate: 120.0,
-        keywordsUsed: ['creativity', 'innovation'],
-        transcription: 'Test transcription',
-        strengths: ['Clear articulation', 'Good pace'],
-        improvements: ['More eye contact'],
-      );
-
       // Act
       final stream = confidenceLiveKit.analysisStream;
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -11,7 +12,7 @@ void main() {
     });
 
     test('🔧 Configuration complète validée', () async {
-      print('\n🔧 VALIDATION CONFIGURATION COMPLÈTE');
+      debugPrint('\n🔧 VALIDATION CONFIGURATION COMPLÈTE');
       
       // Vérifier toutes les variables d'environnement
       final requiredVars = {
@@ -23,16 +24,16 @@ void main() {
       };
       
       requiredVars.forEach((key, value) {
-        print('📋 $key: ${value ?? "NON DÉFINI"}');
+        debugPrint('📋 $key: ${value ?? "NON DÉFINI"}');
         expect(value, isNotNull, reason: '$key doit être défini');
         expect(value, isNotEmpty, reason: '$key ne doit pas être vide');
       });
       
-      print('✅ Toutes les variables d\'environnement sont configurées');
+      debugPrint('✅ Toutes les variables d\'environnement sont configurées');
     });
 
     test('🏥 Backend actif et opérationnel', () async {
-      print('\n🏥 VALIDATION BACKEND');
+      debugPrint('\n🏥 VALIDATION BACKEND');
       
       final backendUrl = dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000';
       
@@ -41,28 +42,28 @@ void main() {
           Uri.parse('$backendUrl/health'),
         ).timeout(const Duration(seconds: 10));
         
-        print('📡 Backend URL: $backendUrl');
-        print('📬 Status Code: ${response.statusCode}');
+        debugPrint('📡 Backend URL: $backendUrl');
+        debugPrint('📬 Status Code: ${response.statusCode}');
         
         if (response.statusCode == 200) {
-          print('✅ Backend actif et opérationnel');
+          debugPrint('✅ Backend actif et opérationnel');
           final data = jsonDecode(response.body);
-          print('💬 Response: $data');
+          debugPrint('💬 Response: $data');
         } else {
-          print('⚠️  Backend répond mais status ${response.statusCode}');
+          debugPrint('⚠️  Backend répond mais status ${response.statusCode}');
         }
         
         // Accepter 200 OK ou autres codes tant que le backend répond
         expect(response.statusCode, lessThan(500));
         
       } catch (e) {
-        print('⚠️  Backend non accessible: $e');
-        print('📝 Note: L\'exercice fonctionne en mode développement');
+        debugPrint('⚠️  Backend non accessible: $e');
+        debugPrint('📝 Note: L\'exercice fonctionne en mode développement');
       }
     });
 
     test('🤖 Service Mistral avec fallback intelligent', () async {
-      print('\n🤖 VALIDATION SERVICE MISTRAL');
+      debugPrint('\n🤖 VALIDATION SERVICE MISTRAL');
       
       // Simuler service Mistral avec détection automatique
       final projectId = dotenv.env['SCALEWAY_PROJECT_ID'];
@@ -72,26 +73,26 @@ void main() {
       final isScaleway = projectId != null && projectId.isNotEmpty;
       final hasValidScalewayKey = iamKey != null && iamKey != 'SCW_SECRET_KEY_PLACEHOLDER';
       
-      print('🔍 Détection Scaleway: $isScaleway');
-      print('🔑 Clé Scaleway valide: $hasValidScalewayKey');
-      print('🔑 Clé Mistral classique: ${mistralKey?.isNotEmpty ?? false}');
+      debugPrint('🔍 Détection Scaleway: $isScaleway');
+      debugPrint('🔑 Clé Scaleway valide: $hasValidScalewayKey');
+      debugPrint('🔑 Clé Mistral classique: ${mistralKey?.isNotEmpty ?? false}');
       
       if (isScaleway && hasValidScalewayKey) {
-        print('🎯 Mode: Scaleway Mistral');
+        debugPrint('🎯 Mode: Scaleway Mistral');
         final endpoint = 'https://api.scaleway.ai/$projectId/v1/chat/completions';
-        print('🌐 Endpoint: $endpoint');
-        print('📝 Note: Permissions en cours de correction');
+        debugPrint('🌐 Endpoint: $endpoint');
+        debugPrint('📝 Note: Permissions en cours de correction');
       } else {
-        print('🎯 Mode: Fallback Mistral classique');
-        print('🌐 Endpoint: https://api.mistral.ai/v1/chat/completions');
+        debugPrint('🎯 Mode: Fallback Mistral classique');
+        debugPrint('🌐 Endpoint: https://api.mistral.ai/v1/chat/completions');
       }
       
-      print('✅ Système de fallback intelligent configuré');
+      debugPrint('✅ Système de fallback intelligent configuré');
       expect(true, isTrue); // Configuration toujours valide grâce au fallback
     });
 
     test('🎭 Test simulation exercice complet', () async {
-      print('\n🎭 SIMULATION EXERCICE CONFIDENCE BOOST');
+      debugPrint('\n🎭 SIMULATION EXERCICE CONFIDENCE BOOST');
       
       // Simuler un scénario d'exercice
       final scenario = {
@@ -102,9 +103,9 @@ void main() {
         'duration': 300, // 5 minutes
       };
       
-      print('📋 Scénario: ${scenario['title']}');
-      print('⏱️  Durée: ${scenario['duration']}s');
-      print('📊 Difficulté: ${scenario['difficulty']}');
+      debugPrint('📋 Scénario: ${scenario['title']}');
+      debugPrint('⏱️  Durée: ${scenario['duration']}s');
+      debugPrint('📊 Difficulté: ${scenario['difficulty']}');
       
       // Simuler analyse de confiance
       final confidenceMetrics = {
@@ -115,10 +116,10 @@ void main() {
         'engagement': 0.65,
       };
       
-      print('\n📊 MÉTRIQUES DE CONFIANCE SIMULÉES:');
+      debugPrint('\n📊 MÉTRIQUES DE CONFIANCE SIMULÉES:');
       confidenceMetrics.forEach((metric, score) {
         final percentage = (score * 100).toStringAsFixed(1);
-        print('   $metric: $percentage%');
+        debugPrint('   $metric: $percentage%');
       });
       
       // Simuler feedback IA
@@ -137,17 +138,17 @@ void main() {
         'recommendation': 'Bon niveau de confiance. Continuer à pratiquer les techniques de relaxation.'
       };
       
-      print('\n🎯 FEEDBACK IA SIMULÉ:');
-      print('⭐ Score global: ${aiFeedback['overall_score']}/10');
-      print('💪 Points forts:');
-      (aiFeedback['strengths'] as List).forEach((strength) {
-        print('   - $strength');
-      });
-      print('🔧 Améliorations:');
-      (aiFeedback['improvements'] as List).forEach((improvement) {
-        print('   - $improvement');
-      });
-      print('📝 Recommandation: ${aiFeedback['recommendation']}');
+      debugPrint('\n🎯 FEEDBACK IA SIMULÉ:');
+      debugPrint('⭐ Score global: ${aiFeedback['overall_score']}/10');
+      debugPrint('💪 Points forts:');
+      for (var strength in (aiFeedback['strengths'] as List)) {
+        debugPrint('   - $strength');
+      }
+      debugPrint('🔧 Améliorations:');
+      for (var improvement in (aiFeedback['improvements'] as List)) {
+        debugPrint('   - $improvement');
+      }
+      debugPrint('📝 Recommandation: ${aiFeedback['recommendation']}');
       
       // Valider que toutes les données sont cohérentes
       expect(scenario['title'], isNotEmpty);
@@ -156,64 +157,64 @@ void main() {
       expect(aiFeedback['overall_score'], greaterThanOrEqualTo(0.0));
       expect(aiFeedback['overall_score'], lessThanOrEqualTo(10.0));
       
-      print('\n✅ EXERCICE CONFIDENCE BOOST ENTIÈREMENT FONCTIONNEL');
+      debugPrint('\n✅ EXERCICE CONFIDENCE BOOST ENTIÈREMENT FONCTIONNEL');
     });
 
     test('🔄 Test robustesse et gestion d\'erreurs', () async {
-      print('\n🔄 VALIDATION ROBUSTESSE');
+      debugPrint('\n🔄 VALIDATION ROBUSTESSE');
       
       // Test gestion d'erreurs réseau
-      print('🌐 Test gestion erreurs réseau...');
+      debugPrint('🌐 Test gestion erreurs réseau...');
       try {
         await http.get(Uri.parse('http://localhost:99999/fake'))
             .timeout(const Duration(milliseconds: 100));
       } catch (e) {
-        print('✅ Gestion d\'erreur réseau: OK');
+        debugPrint('✅ Gestion d\'erreur réseau: OK');
       }
       
       // Test fallback API
-      print('🔄 Test système de fallback...');
+      debugPrint('🔄 Test système de fallback...');
       final fallbackActive = dotenv.env['MISTRAL_ENABLED'] == 'true';
-      print('✅ Fallback Mistral actif: $fallbackActive');
+      debugPrint('✅ Fallback Mistral actif: $fallbackActive');
       
       // Test mode développement
-      print('🛠️  Test mode développement...');
+      debugPrint('🛠️  Test mode développement...');
       final devMode = dotenv.env['LLM_SERVICE_URL']?.contains('localhost') ?? false;
-      print('✅ Mode développement disponible: $devMode');
+      debugPrint('✅ Mode développement disponible: $devMode');
       
-      print('\n✅ SYSTÈME ROBUSTE ET RÉSILIENT');
+      debugPrint('\n✅ SYSTÈME ROBUSTE ET RÉSILIENT');
       expect(true, isTrue);
     });
 
     test('📋 Résumé final - État du système', () async {
-      print('\n📋 RÉSUMÉ FINAL - ÉTAT DU SYSTÈME');
-      print('');
-      print('🎯 EXERCICE CONFIDENCE BOOST:');
-      print('   ✅ Configuration technique complète');
-      print('   ✅ Backend local opérationnel');
-      print('   ✅ Système de fallback intelligent');
-      print('   ✅ Gestion d\'erreurs robuste');
-      print('   ✅ Métriques de confiance fonctionnelles');
-      print('   ✅ Feedback IA simulé disponible');
-      print('');
-      print('🔧 CORRECTIONS APPLIQUÉES:');
-      print('   ✅ setState après dispose: Corrigé');
-      print('   ✅ URL backend hardcodée: Corrigé');
-      print('   ✅ Configuration API Mistral: Corrigé');
-      print('   ✅ Support dual Scaleway/Mistral: Implémenté');
-      print('');
-      print('⚠️  EN COURS:');
-      print('   🔄 Permissions Scaleway à corriger');
-      print('   📖 Guide fourni: SCALEWAY_PERMISSIONS_GUIDE.md');
-      print('');
-      print('🚀 PRÊT POUR UTILISATION:');
-      print('   ✅ L\'exercice fonctionne parfaitement');
-      print('   ✅ Tous les crash corrigés');
-      print('   ✅ Architecture Clean implementée');
-      print('   ✅ Tests complets validés');
+      debugPrint('\n📋 RÉSUMÉ FINAL - ÉTAT DU SYSTÈME');
+      debugPrint('');
+      debugPrint('🎯 EXERCICE CONFIDENCE BOOST:');
+      debugPrint('   ✅ Configuration technique complète');
+      debugPrint('   ✅ Backend local opérationnel');
+      debugPrint('   ✅ Système de fallback intelligent');
+      debugPrint('   ✅ Gestion d\'erreurs robuste');
+      debugPrint('   ✅ Métriques de confiance fonctionnelles');
+      debugPrint('   ✅ Feedback IA simulé disponible');
+      debugPrint('');
+      debugPrint('🔧 CORRECTIONS APPLIQUÉES:');
+      debugPrint('   ✅ setState après dispose: Corrigé');
+      debugPrint('   ✅ URL backend hardcodée: Corrigé');
+      debugPrint('   ✅ Configuration API Mistral: Corrigé');
+      debugPrint('   ✅ Support dual Scaleway/Mistral: Implémenté');
+      debugPrint('');
+      debugPrint('⚠️  EN COURS:');
+      debugPrint('   🔄 Permissions Scaleway à corriger');
+      debugPrint('   📖 Guide fourni: SCALEWAY_PERMISSIONS_GUIDE.md');
+      debugPrint('');
+      debugPrint('🚀 PRÊT POUR UTILISATION:');
+      debugPrint('   ✅ L\'exercice fonctionne parfaitement');
+      debugPrint('   ✅ Tous les crash corrigés');
+      debugPrint('   ✅ Architecture Clean implementée');
+      debugPrint('   ✅ Tests complets validés');
       
       expect(true, isTrue);
-      print('\n🎉 MISSION ACCOMPLIE - EXERCICE CONFIDENCE BOOST OPÉRATIONNEL');
+      debugPrint('\n🎉 MISSION ACCOMPLIE - EXERCICE CONFIDENCE BOOST OPÉRATIONNEL');
     });
   });
 }

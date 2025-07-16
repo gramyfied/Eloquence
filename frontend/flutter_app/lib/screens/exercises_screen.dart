@@ -4,7 +4,6 @@ import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
-import '../test_screen.dart';
 
 class ExercisesScreen extends ConsumerWidget {
   const ExercisesScreen({Key? key}) : super(key: key);
@@ -29,21 +28,21 @@ class ExercisesScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header avec titre
-                EloquenceGlassCard(
+                const EloquenceGlassCard(
                   borderRadius: 16,
                   borderColor: EloquenceColors.cyan,
                   opacity: 0.2,
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.fitness_center,
                           color: EloquenceColors.cyan,
                           size: 24,
                         ),
-                        const SizedBox(width: 12),
-                        const Text(
+                        SizedBox(width: 12),
+                        Text(
                           'Exercices d\'éloquence',
                           style: TextStyle(
                             fontSize: 20,
@@ -125,23 +124,23 @@ class ExercisesScreen extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          print('=== Exercise card tapped ===');
-          print('Title: $title');
-          print('Exercise ID: $exerciseId');
+          debugPrint('=== Exercise card tapped ===');
+          debugPrint('Title: $title');
+          debugPrint('Exercise ID: $exerciseId');
           
           try {
             final navigationState = ref.read(navigationStateProvider);
-            print('NavigationState obtained: $navigationState');
+            debugPrint('NavigationState obtained: $navigationState');
             
             navigationState.navigateTo(
               '/exercise_detail',
               context,
               exerciseId,
             );
-            print('Navigation called successfully');
-          } catch (e) {
-            print('Error during navigation: $e');
-            print('Stack trace: ${StackTrace.current}');
+            debugPrint('Navigation called successfully');
+          } catch (e, s) {
+            debugPrint('Error during navigation: $e');
+            debugPrint('Stack trace: $s');
           }
         },
         child: EloquenceGlassCard(
@@ -156,7 +155,7 @@ class ExercisesScreen extends ConsumerWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.2),
+                    color: accentColor.withAlpha((255 * 0.2).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -184,7 +183,7 @@ class ExercisesScreen extends ConsumerWidget {
                         description,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha((255 * 0.7).round()),
                           fontFamily: 'Inter',
                         ),
                       ),

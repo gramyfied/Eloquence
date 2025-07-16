@@ -217,17 +217,17 @@ class HomeScreen extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const Spacer(),
-            Row(
+            const Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.timer,
                   size: 14,
                   color: Colors.black54,
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Text(
                   '1 min', // Durée fixe pour la démo
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: Colors.black54,
                   ),

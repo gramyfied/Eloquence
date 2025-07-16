@@ -10,10 +10,10 @@ class ExerciseActiveScreen extends ConsumerStatefulWidget {
   const ExerciseActiveScreen({Key? key, required this.exerciseId}) : super(key: key);
 
   @override
-  _ExerciseActiveScreenState createState() => _ExerciseActiveScreenState();
+  ExerciseActiveScreenState createState() => ExerciseActiveScreenState();
 }
 
-class _ExerciseActiveScreenState extends ConsumerState<ExerciseActiveScreen> {
+class ExerciseActiveScreenState extends ConsumerState<ExerciseActiveScreen> {
   @override
   void initState() {
     super.initState();

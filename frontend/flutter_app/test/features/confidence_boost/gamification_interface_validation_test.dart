@@ -2,20 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
-import '../../../lib/features/confidence_boost/presentation/widgets/confidence_results_view.dart';
-import '../../../lib/features/confidence_boost/domain/entities/confidence_models.dart';
-import '../../../lib/features/confidence_boost/domain/entities/confidence_scenario.dart';
-import '../../../lib/features/confidence_boost/domain/entities/confidence_session.dart';
-import '../../../lib/features/confidence_boost/domain/entities/gamification_models.dart';
-import '../../../lib/features/confidence_boost/data/datasources/confidence_remote_datasource.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/confidence_results_view.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_session.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/datasources/confidence_remote_datasource.dart';
 
 // Mock complet pour les dépendances
 class MockConfidenceRemoteDataSource implements ConfidenceRemoteDataSource {
   @override
   Future<List<ConfidenceScenario>> getScenarios() async {
     return [
-      ConfidenceScenario(
+      const ConfidenceScenario(
         id: 'test_scenario',
         title: 'Test Scenario',
         description: 'A test scenario',
@@ -61,8 +60,8 @@ void main() {
       container = ProviderContainer(
         overrides: [
           // Override avec mock pour éviter l'erreur Supabase
-          confidenceRemoteDataSourceProvider.overrideWithProvider(
-            Provider((ref) => MockConfidenceRemoteDataSource()),
+          confidenceRemoteDataSourceProvider.overrideWithValue(
+            MockConfidenceRemoteDataSource(),
           ),
           // Override pour SharedPreferences avec mock initialisé
           sharedPreferencesProvider.overrideWithValue(mockSharedPrefs),
@@ -75,28 +74,33 @@ void main() {
       container.dispose();
     });
 
-    testWidgets('🎯 Test 1: Validation gamification de base avec affichage XP/badges', 
+    testWidgets('🎯 Test 1: Validation gamification de base avec affichage XP/badges',
         (WidgetTester tester) async {
-      print('\n🚀 [TEST 1] Démarrage du test de gamification de base...');
+      debugPrint('\n🚀 [TEST 1] Démarrage du test de gamification de base...');
       
       // 1. Créer des données de gamification de démonstration
       await confidenceProvider.createDemoGamificationData();
       
       // 2. Vérifier l'état après création
       var state = container.read(confidenceBoostProvider);
-      print('🔍 État gamification après création: ${state.lastGamificationResult != null ? "PRÉSENT" : "NULL"}');
+      debugPrint('🔍 État gamification après création: ${state.lastGamificationResult != null ? "PRÉSENT" : "NULL"}');
       
       if (state.lastGamificationResult != null) {
         final result = state.lastGamificationResult!;
-        print('   📈 XP gagné: ${result.earnedXP}');
-        print('   🏆 Nouveaux badges: ${result.newBadges.length}');
-        print('   📊 Niveau actuel: ${result.newLevel}');
-        print('   🔥 Streak: ${result.streakInfo.currentStreak}');
+        debugPrint('   📈 XP gagné: ${result.earnedXP}');
+        debugPrint('   🏆 Nouveaux badges: ${result.newBadges.length}');
+        debugPrint('   📊 Niveau actuel: ${result.newLevel}');
+        debugPrint('   🔥 Streak: ${result.streakInfo.currentStreak}');
         
         // 3. Test d'affichage dans le widget
         await tester.pumpWidget(
           ProviderScope(
-            parent: container,
+            overrides: [
+              confidenceRemoteDataSourceProvider.overrideWithValue(
+                MockConfidenceRemoteDataSource(),
+              ),
+              sharedPreferencesProvider.overrideWithValue(container.read(sharedPreferencesProvider)),
+            ],
             child: MaterialApp(
               home: Scaffold(
                 body: Consumer(
@@ -104,7 +108,7 @@ void main() {
                     final provider = ref.watch(confidenceBoostProvider);
                     
                     if (provider.lastGamificationResult == null) {
-                      return Text('🔄 Chargement gamification...');
+                      return const Text('🔄 Chargement gamification...');
                     }
                     
                     // Créer un SessionRecord complet pour le widget
@@ -119,7 +123,7 @@ void main() {
                         feedback: 'Test feedback excellent pour validation interface',
                         improvements: ['Continuez ainsi', 'Parfait timing'],
                       ),
-                      scenario: ConfidenceScenario(
+                      scenario: const ConfidenceScenario(
                         id: 'test_scenario',
                         title: 'Test Présentation',
                         description: 'Scénario de test',
@@ -138,16 +142,16 @@ void main() {
                       earnedXP: result.earnedXP,
                       newBadges: result.newBadges,
                       timestamp: DateTime.now(),
-                      sessionDuration: Duration(minutes: 3),
+                      sessionDuration: const Duration(minutes: 3),
                     );
                     
                     return ConfidenceResultsView(
                       session: testSession,
                       onRetry: () {
-                        print('🔄 Retry button pressed');
+                        debugPrint('🔄 Retry button pressed');
                       },
                       onComplete: () {
-                        print('✅ Complete button pressed');
+                        debugPrint('✅ Complete button pressed');
                       },
                     );
                   },
@@ -163,35 +167,40 @@ void main() {
         expect(find.text('Score global'), findsOneWidget);
         expect(find.text('Analyse détaillée'), findsOneWidget);
         
-        print('✅ [TEST 1] Interface gamification affichée avec succès!');
+        debugPrint('✅ [TEST 1] Interface gamification affichée avec succès!');
       } else {
         fail('❌ [TEST 1] Échec: Aucune donnée de gamification créée');
       }
     });
 
-    testWidgets('🆙 Test 2: Validation interface avec level up et badges épiques', 
+    testWidgets('🆙 Test 2: Validation interface avec level up et badges épiques',
         (WidgetTester tester) async {
-      print('\n🚀 [TEST 2] Démarrage du test de level up...');
+      debugPrint('\n🚀 [TEST 2] Démarrage du test de level up...');
       
       // 1. Créer des données de level up
       await confidenceProvider.createDemoGamificationDataWithLevelUp();
       
       // 2. Vérifier l'état
       var state = container.read(confidenceBoostProvider);
-      print('🔍 État gamification après level up: ${state.lastGamificationResult != null ? "PRÉSENT" : "NULL"}');
+      debugPrint('🔍 État gamification après level up: ${state.lastGamificationResult != null ? "PRÉSENT" : "NULL"}');
       
       if (state.lastGamificationResult != null) {
         final result = state.lastGamificationResult!;
-        print('   📈 XP massif: ${result.earnedXP}');
-        print('   🏆 Badges épiques: ${result.newBadges.length}');
-        print('   🆙 Niveau élevé: ${result.newLevel}');
-        print('   🔥 Streak record: ${result.streakInfo.currentStreak}');
-        print('   🎊 Level up: ${result.levelUp}');
+        debugPrint('   📈 XP massif: ${result.earnedXP}');
+        debugPrint('   🏆 Badges épiques: ${result.newBadges.length}');
+        debugPrint('   🆙 Niveau élevé: ${result.newLevel}');
+        debugPrint('   🔥 Streak record: ${result.streakInfo.currentStreak}');
+        debugPrint('   🎊 Level up: ${result.levelUp}');
         
         // 3. Test d'affichage avec level up
         await tester.pumpWidget(
           ProviderScope(
-            parent: container,
+            overrides: [
+              confidenceRemoteDataSourceProvider.overrideWithValue(
+                MockConfidenceRemoteDataSource(),
+              ),
+              sharedPreferencesProvider.overrideWithValue(container.read(sharedPreferencesProvider)),
+            ],
             child: MaterialApp(
               home: Scaffold(
                 body: Consumer(
@@ -199,7 +208,7 @@ void main() {
                     final provider = ref.watch(confidenceBoostProvider);
                     
                     if (provider.lastGamificationResult == null) {
-                      return Text('🔄 Chargement level up...');
+                      return const Text('🔄 Chargement level up...');
                     }
                     
                     // SessionRecord pour le test avec level up
@@ -214,7 +223,7 @@ void main() {
                         feedback: 'Performance exceptionnelle avec level up!',
                         improvements: ['Niveau supérieur atteint!'],
                       ),
-                      scenario: ConfidenceScenario(
+                      scenario: const ConfidenceScenario(
                         id: 'levelup_scenario',
                         title: 'Défi Level Up',
                         description: 'Scénario difficile réussi',
@@ -233,16 +242,16 @@ void main() {
                       earnedXP: result.earnedXP,
                       newBadges: result.newBadges,
                       timestamp: DateTime.now(),
-                      sessionDuration: Duration(minutes: 8),
+                      sessionDuration: const Duration(minutes: 8),
                     );
                     
                     return ConfidenceResultsView(
                       session: testSessionLevelUp,
                       onRetry: () {
-                        print('🔄 Retry level up test');
+                        debugPrint('🔄 Retry level up test');
                       },
                       onComplete: () {
-                        print('🎉 Level up completed');
+                        debugPrint('🎉 Level up completed');
                       },
                     );
                   },
@@ -258,19 +267,19 @@ void main() {
         expect(find.text('Score global'), findsOneWidget);
         expect(find.text('Badges débloqués'), findsWidgets);
         
-        print('🎉 [TEST 2] Interface level up validée avec succès!');
+        debugPrint('🎉 [TEST 2] Interface level up validée avec succès!');
       } else {
         fail('❌ [TEST 2] Échec: Aucune donnée de level up créée');
       }
     });
 
     test('🧹 Test 3: Validation effacement des données de gamification', () async {
-      print('\n🚀 [TEST 3] Test d\'effacement des données...');
+      debugPrint('\n🚀 [TEST 3] Test d\'effacement des données...');
       
       // 1. Créer des données
       await confidenceProvider.createDemoGamificationData();
       var state = container.read(confidenceBoostProvider);
-      print('🎮 Données créées: ${state.lastGamificationResult != null ? "OUI" : "NON"}');
+      debugPrint('🎮 Données créées: ${state.lastGamificationResult != null ? "OUI" : "NON"}');
       
       // Vérifier que les données existent
       expect(state.lastGamificationResult, isNotNull);
@@ -278,12 +287,12 @@ void main() {
       // 2. Test d'effacement (méthode synchrone)
       confidenceProvider.clearDemoGamificationData();
       state = container.read(confidenceBoostProvider);
-      print('🧹 Effacement effectué - état: ${state.lastGamificationResult == null ? "NULL (OK)" : "ENCORE PRÉSENT (ERREUR)"}');
+      debugPrint('🧹 Effacement effectué - état: ${state.lastGamificationResult == null ? "NULL (OK)" : "ENCORE PRÉSENT (ERREUR)"}');
       
       // 3. Vérifier que les données ont été effacées
       expect(state.lastGamificationResult, isNull);
       
-      print('✅ [TEST 3] Effacement des données validé avec succès!');
+      debugPrint('✅ [TEST 3] Effacement des données validé avec succès!');
     });
   });
 }

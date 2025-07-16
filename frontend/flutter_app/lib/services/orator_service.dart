@@ -2,7 +2,7 @@ import '../models/orator_model.dart';
 import '../utils/constants.dart';
 
 final List<Orator> orators = [
-  Orator(
+  const Orator(
     id: 'mlk',
     name: 'Martin Luther King Jr.',
     mainQuote: 'I have a dream that one day this nation will rise up and live out the true meaning of its creed.',
@@ -12,7 +12,7 @@ final List<Orator> orators = [
     period: '1929-1968',
     accentColor: EloquenceColors.cyan,
   ),
-  Orator(
+  const Orator(
     id: 'churchill',
     name: 'Winston Churchill',
     mainQuote: 'We shall never surrender.',
@@ -22,7 +22,7 @@ final List<Orator> orators = [
     period: '1874-1965',
     accentColor: EloquenceColors.violet,
   ),
-  Orator(
+  const Orator(
     id: 'mandela',
     name: 'Nelson Mandela',
     mainQuote: 'I have cherished the ideal of a democratic and free society in which all persons live together in harmony.',
@@ -32,7 +32,7 @@ final List<Orator> orators = [
     period: '1918-2013',
     accentColor: EloquenceColors.cyan,
   ),
-  Orator(
+  const Orator(
     id: 'maya',
     name: 'Maya Angelou',
     mainQuote: 'If you don\'t like something, change it. If you can\'t change it, change your attitude.',
@@ -42,7 +42,7 @@ final List<Orator> orators = [
     period: '1928-2014',
     accentColor: EloquenceColors.violet,
   ),
-  Orator(
+  const Orator(
     id: 'jfk',
     name: 'John F. Kennedy',
     mainQuote: 'Ask not what your country can do for you — ask what you can do for your country.',

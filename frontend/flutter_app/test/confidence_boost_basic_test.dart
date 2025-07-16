@@ -1,13 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
-import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_session.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 
 void main() {
   group('ConfidenceScenario Tests', () {
     test('devrait créer un scénario correctement', () {
-      final scenario = ConfidenceScenario(
+      const scenario = ConfidenceScenario(
         id: 'test-1',
         title: 'Test Scenario',
         description: 'Description test',
@@ -96,7 +95,7 @@ void main() {
 
   group('Scenario Equality Tests', () {
     test('devrait être égaux quand toutes les propriétés correspondent', () {
-      final scenario1 = ConfidenceScenario(
+      const scenario1 = ConfidenceScenario(
         id: 'same_id',
         title: 'Same Title',
         description: 'Same description',
@@ -109,7 +108,7 @@ void main() {
         icon: '👥',
       );
 
-      final scenario2 = ConfidenceScenario(
+      const scenario2 = ConfidenceScenario(
         id: 'same_id',
         title: 'Same Title',
         description: 'Same description',
@@ -127,7 +126,7 @@ void main() {
     });
 
     test('ne devrait pas être égaux quand les propriétés diffèrent', () {
-      final scenario1 = ConfidenceScenario(
+      const scenario1 = ConfidenceScenario(
         id: 'id1',
         title: 'Title 1',
         description: 'Description 1',
@@ -140,7 +139,7 @@ void main() {
         icon: '👥',
       );
 
-      final scenario2 = ConfidenceScenario(
+      const scenario2 = ConfidenceScenario(
         id: 'id2', // Different ID
         title: 'Title 1',
         description: 'Description 1',

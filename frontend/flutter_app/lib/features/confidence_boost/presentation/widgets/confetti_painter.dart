@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 import '../../domain/entities/confidence_models.dart';
 
 // Painter pour les confettis
@@ -22,7 +21,7 @@ class ConfettiPainter extends CustomPainter {
 
       // Ne dessiner que si visible
       if (particle.y < size.height + 20) {
-        paint.color = particle.color.withOpacity(1.0 - progress);
+        paint.color = particle.color.withAlpha((255 * (1.0 - progress)).round());
 
         canvas.save();
         canvas.translate(particle.x, particle.y);

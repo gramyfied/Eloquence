@@ -38,7 +38,7 @@ class AuthWrapper extends ConsumerWidget {
     return Scaffold(
       backgroundColor: EloquenceColors.navy,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -77,13 +77,13 @@ class AuthWrapper extends ConsumerWidget {
     return Scaffold(
       backgroundColor: EloquenceColors.navy,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
               EloquenceColors.navy,
-              const Color(0xFF8B0000), // Rouge foncé pour erreur
+              Color(0xFF8B0000), // Rouge foncé pour erreur
             ],
           ),
         ),

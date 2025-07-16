@@ -18,7 +18,7 @@ class MainScreen extends ConsumerWidget {
     final currentRoute = ref.watch(navigationStateProvider).currentRoute;
 
     // Map routes to actual screen widgets
-    Widget _getPageForRoute(String route) {
+    Widget getPageForRoute(String route) {
       switch (route) {
         case '/home':
           return const HomeScreen();
@@ -45,7 +45,7 @@ class MainScreen extends ConsumerWidget {
         child: Stack(
           children: [
             // Active screen based on currentRoute
-            _getPageForRoute(currentRoute),
+            getPageForRoute(currentRoute),
 
             // Main Navigation Bar below content
             Positioned(

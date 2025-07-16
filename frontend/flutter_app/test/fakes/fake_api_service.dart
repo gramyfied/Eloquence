@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
-import '../../lib/data/services/api_service.dart';
-import '../../lib/data/models/scenario_model.dart';
-import '../../lib/data/models/session_model.dart';
+import 'package:eloquence_2_0/data/services/api_service.dart';
+import 'package:eloquence_2_0/data/models/scenario_model.dart';
+import 'package:eloquence_2_0/data/models/session_model.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class FakeApiService extends ApiService {

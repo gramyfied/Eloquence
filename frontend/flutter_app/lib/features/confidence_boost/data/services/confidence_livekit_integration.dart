@@ -15,7 +15,6 @@ class ConfidenceLiveKitIntegration {
   final CleanLiveKitService livekitService;
   final ApiService apiService;
   final TextSupportGenerator textGenerator;
-  final Ref _ref; // Ajout de Ref
   static const String _tag = 'ConfidenceLiveKitIntegration';
 
   String? _currentSessionId;
@@ -29,8 +28,7 @@ class ConfidenceLiveKitIntegration {
     required this.apiService,
     required Ref ref, // Ref est maintenant requis
     TextSupportGenerator? textGenerator,
-  })  : _ref = ref,
-        textGenerator = textGenerator ?? TextSupportGenerator.create(ref);
+  }) : textGenerator = textGenerator ?? TextSupportGenerator.create(ref);
 
   /// Démarre une session avec contexte enrichi
   Future<bool> startSession({

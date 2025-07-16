@@ -14,10 +14,10 @@ class QuoteDisplay extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _QuoteDisplayState createState() => _QuoteDisplayState();
+  QuoteDisplayState createState() => QuoteDisplayState();
 }
 
-class _QuoteDisplayState extends State<QuoteDisplay>
+class QuoteDisplayState extends State<QuoteDisplay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
@@ -114,7 +114,7 @@ class _QuoteDisplayState extends State<QuoteDisplay>
                       Container(
                         height: 1,
                         width: 60,
-                        color: widget.orator.accentColor.withOpacity(0.5),
+                        color: widget.orator.accentColor.withAlpha((255 * 0.5).round()),
                       ),
                       const SizedBox(height: 8), // Réduit de 12 à 8
                       Text(

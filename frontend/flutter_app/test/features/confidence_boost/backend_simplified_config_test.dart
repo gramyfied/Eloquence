@@ -1,15 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../../../lib/features/confidence_boost/data/services/mistral_api_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
 
 void main() {
   group('Configuration Backend Simplifiée Tests', () {
     setUpAll(() async {
       // Charger le fichier .env
       await dotenv.load(fileName: '.env');
-      print('📋 Variables chargées depuis .env');
+      debugPrint('📋 Variables chargées depuis .env');
     });
 
     test('✅ Configuration identique au backend Python', () {
@@ -18,9 +19,9 @@ void main() {
       final mistralApiKey = dotenv.env['MISTRAL_API_KEY'];
       final mistralModel = dotenv.env['MISTRAL_MODEL'];
 
-      print('🔧 MISTRAL_BASE_URL: $mistralBaseUrl');
-      print('🔑 MISTRAL_API_KEY: ${mistralApiKey?.substring(0, 8)}...');
-      print('🤖 MISTRAL_MODEL: $mistralModel');
+      debugPrint('🔧 MISTRAL_BASE_URL: $mistralBaseUrl');
+      debugPrint('🔑 MISTRAL_API_KEY: ${mistralApiKey?.substring(0, 8)}...');
+      debugPrint('🤖 MISTRAL_MODEL: $mistralModel');
 
       expect(mistralBaseUrl, isNotNull);
       expect(mistralBaseUrl, contains('scaleway.ai'));
@@ -34,18 +35,18 @@ void main() {
       final mistralService = MistralApiService();
       
       try {
-        print('🚀 Test génération de texte avec configuration backend...');
+        debugPrint('🚀 Test génération de texte avec configuration backend...');
         final result = await mistralService.generateText(
           prompt: 'Hello, test simple configuration',
           maxTokens: 50,
         );
         
-        print('✅ Résultat: $result');
+        debugPrint('✅ Résultat: $result');
         expect(result, isNotEmpty);
         expect(result, isNot(contains('Feedback simulé')));
         
       } catch (e) {
-        print('❌ Erreur lors du test: $e');
+        debugPrint('❌ Erreur lors du test: $e');
         fail('Test échoué avec erreur: $e');
       }
     });
@@ -71,8 +72,8 @@ void main() {
         'max_tokens': 30,
       };
 
-      print('🌐 Appel direct API: $mistralBaseUrl');
-      print('📦 Headers: Authorization Bearer ${mistralApiKey?.substring(0, 8)}...');
+      debugPrint('🌐 Appel direct API: $mistralBaseUrl');
+      debugPrint('📦 Headers: Authorization Bearer ${mistralApiKey?.substring(0, 8)}...');
       
       try {
         final response = await http.post(
@@ -81,20 +82,20 @@ void main() {
           body: jsonEncode(data),
         ).timeout(const Duration(seconds: 30));
 
-        print('📊 Status Code: ${response.statusCode}');
-        print('📄 Response Body: ${response.body}');
+        debugPrint('📊 Status Code: ${response.statusCode}');
+        debugPrint('📄 Response Body: ${response.body}');
 
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
           expect(responseData['choices'], isNotNull);
-          print('✅ Succès! API Scaleway fonctionne avec configuration simplifiée');
+          debugPrint('✅ Succès! API Scaleway fonctionne avec configuration simplifiée');
         } else {
-          print('❌ Erreur ${response.statusCode}: ${response.body}');
+          debugPrint('❌ Erreur ${response.statusCode}: ${response.body}');
           fail('API call failed with status ${response.statusCode}');
         }
         
       } catch (e) {
-        print('❌ Exception lors de l\'appel API: $e');
+        debugPrint('❌ Exception lors de l\'appel API: $e');
         fail('Test échoué avec exception: $e');
       }
     });

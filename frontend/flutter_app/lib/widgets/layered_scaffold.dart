@@ -180,7 +180,7 @@ class _LayeredScaffoldState extends ConsumerState<LayeredScaffold>
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: EloquenceColors.navy.withOpacity(0.1),
+                  color: EloquenceColors.navy.withAlpha((255 * 0.1).round()),
                 ),
                 child: Material(
                   color: Colors.transparent,

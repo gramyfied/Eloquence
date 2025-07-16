@@ -8,13 +8,8 @@ import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence
 import 'package:eloquence_2_0/features/confidence_boost/data/services/prosody_analysis_interface.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
-import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
-import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
 import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
 import '../../fakes/fake_mistral_api_service.dart';
 /// Tests complets de communication backend pour l'exercice Confidence Boost Express
 ///
@@ -55,7 +50,6 @@ class MockConfidenceAnalysisBackendService extends Mock implements ConfidenceAna
     );
   }
 
-  @override
   Future<bool> checkBackendAvailability() async => true;
 }
 
@@ -68,14 +62,14 @@ class MockProsodyAnalysisInterface extends Mock implements ProsodyAnalysisInterf
   }) async {
     return ProsodyAnalysisResult(
       overallProsodyScore: 0.85,
-      speechRate: SpeechRateAnalysis(
+      speechRate: const SpeechRateAnalysis(
         wordsPerMinute: 150.0,
         syllablesPerSecond: 3.5,
         fluencyScore: 0.85,
         feedback: 'Débit optimal pour une communication claire',
         category: SpeechRateCategory.optimal,
       ),
-      intonation: IntonationAnalysis(
+      intonation: const IntonationAnalysis(
         f0Mean: 180.0,
         f0Std: 25.0,
         f0Range: 120.0,
@@ -83,7 +77,7 @@ class MockProsodyAnalysisInterface extends Mock implements ProsodyAnalysisInterf
         feedback: 'Intonation naturelle et engageante',
         pattern: IntonationPattern.natural,
       ),
-      pauses: PauseAnalysis(
+      pauses: const PauseAnalysis(
         totalPauses: 8,
         averagePauseDuration: 0.8,
         pauseRate: 5.0,
@@ -91,14 +85,14 @@ class MockProsodyAnalysisInterface extends Mock implements ProsodyAnalysisInterf
         feedback: 'Rythme bien maîtrisé avec pauses appropriées',
         pauseSegments: [],
       ),
-      energy: EnergyAnalysis(
+      energy: const EnergyAnalysis(
         averageEnergy: 0.72,
         energyVariance: 0.22,
         normalizedEnergyScore: 0.80,
         feedback: 'Énergie vocale équilibrée et constante',
         profile: EnergyProfile.balanced,
       ),
-      disfluency: DisfluencyAnalysis(
+      disfluency: const DisfluencyAnalysis(
         hesitationCount: 2,
         fillerWordsCount: 1,
         repetitionCount: 0,
@@ -116,7 +110,6 @@ class MockProsodyAnalysisInterface extends Mock implements ProsodyAnalysisInterf
 
   @override
   void configure({
-    required String voskServerUrl,
     Map<String, String>? modelPaths,
     Duration? timeout,
   }) {}
@@ -151,7 +144,6 @@ class MockConfidenceLiveKitIntegration extends Mock implements ConfidenceLiveKit
   @override
   Future<void> endSession() async {}
 
-  @override
   Future<bool> checkConnectionStatus() async => true;
 }
 
@@ -162,19 +154,17 @@ void main() {
     late MockConfidenceAnalysisBackendService mockBackendService;
     late MockProsodyAnalysisInterface mockProsodyAnalysis;
     late MockConfidenceLiveKitIntegration mockLiveKitIntegration;
-    late MockCleanLiveKitService mockCleanLiveKitService;
     late ProviderContainer container;
 
     setUp(() {
       mockBackendService = MockConfidenceAnalysisBackendService();
       mockProsodyAnalysis = MockProsodyAnalysisInterface();
       mockLiveKitIntegration = MockConfidenceLiveKitIntegration();
-      mockCleanLiveKitService = MockCleanLiveKitService();
 
       container = ProviderContainer(
         overrides: [
           // Importer correctement le provider et le fake MistralApiService
-          mistralApiServiceProvider.overrideWithProvider(Provider((ref) => FakeMistralApiService())),
+          mistralApiServiceProvider.overrideWithValue(FakeMistralApiService()),
           // Override des autres providers pour tests
         ],
       );
@@ -187,7 +177,7 @@ void main() {
     test('Backend Service - Intégration complète pipeline Whisper + Mistral', () async {
       // Arrange
       final testAudioData = Uint8List.fromList([1, 2, 3, 4, 5]); // Audio fictif
-      final testScenario = ConfidenceScenario(
+      const testScenario = ConfidenceScenario(
         id: 'test_scenario',
         title: 'Test Scenario',
         description: 'Scénario de test pour backend',
@@ -251,12 +241,6 @@ void main() {
     test('LiveKit Integration - Démarrage de session avec support', () async {
       // Arrange
       final testScenario = ConfidenceScenario.getDefaultScenarios().first;
-      final testSupport = confidence_models.TextSupport(
-        type: confidence_models.SupportType.guidedStructure,
-        content: 'Structure de test pour présentation',
-        suggestedWords: ['introduction', 'développement', 'conclusion'],
-      );
-
       // Act
       final sessionStarted = await mockLiveKitIntegration.startSession(
         scenario: testScenario,
@@ -274,8 +258,8 @@ void main() {
       // Ce test valide la logique de fallback d'urgence
       
       // Simuler une situation d'urgence où tous les services sont indisponibles
-      final backendUnavailable = false; // Backend indisponible
-      final liveKitUnavailable = false; // LiveKit indisponible
+      const backendUnavailable = false; // Backend indisponible
+      const liveKitUnavailable = false; // LiveKit indisponible
       
       // Assert - Vérifier que les services de fallback sont disponibles
       expect(backendUnavailable, isFalse);

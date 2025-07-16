@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -15,28 +16,28 @@ void main() {
     });
 
     test('🌐 DIAGNOSTIC 1: API Mistral Scaleway - Connectivité Réelle', () async {
-      print('\n🔍 [DIAGNOSTIC] Test connectivité API Mistral Scaleway...');
+      debugPrint('\n🔍 [DIAGNOSTIC] Test connectivité API Mistral Scaleway...');
       
       final mistralUrl = dotenv.env['MISTRAL_BASE_URL'] ?? '';
       final mistralKey = dotenv.env['MISTRAL_API_KEY'] ?? '';
       final mistralEnabled = dotenv.env['MISTRAL_ENABLED']?.toLowerCase() == 'true';
       
-      print('✅ [CONFIG] MISTRAL_ENABLED: $mistralEnabled');
-      print('✅ [CONFIG] MISTRAL_BASE_URL: $mistralUrl');
-      print('✅ [CONFIG] MISTRAL_API_KEY: ${mistralKey.isNotEmpty ? "Configurée (${mistralKey.length} chars)" : "MANQUANTE"}');
+      debugPrint('✅ [CONFIG] MISTRAL_ENABLED: $mistralEnabled');
+      debugPrint('✅ [CONFIG] MISTRAL_BASE_URL: $mistralUrl');
+      debugPrint('✅ [CONFIG] MISTRAL_API_KEY: ${mistralKey.isNotEmpty ? "Configurée (${mistralKey.length} chars)" : "MANQUANTE"}');
       
       if (!mistralEnabled) {
-        print('⚠️ [RÉSULTAT] Mistral DÉSACTIVÉ - Utilisation feedback simulé');
+        debugPrint('⚠️ [RÉSULTAT] Mistral DÉSACTIVÉ - Utilisation feedback simulé');
         return;
       }
       
       if (mistralKey.isEmpty || mistralKey == 'your_mistral_api_key') {
-        print('⚠️ [RÉSULTAT] Clé API Mistral INVALIDE - Utilisation feedback simulé');
+        debugPrint('⚠️ [RÉSULTAT] Clé API Mistral INVALIDE - Utilisation feedback simulé');
         return;
       }
       
       try {
-        print('🚀 [TEST] Appel API Mistral réel...');
+        debugPrint('🚀 [TEST] Appel API Mistral réel...');
         final response = await http.post(
           Uri.parse(mistralUrl),
           headers: {
@@ -59,84 +60,84 @@ void main() {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final responseText = data['choices']?[0]?['message']?['content'] ?? 'Pas de réponse';
-          print('🎉 [SUCCÈS] API Mistral FONCTIONNELLE !');
-          print('📝 [RÉPONSE] $responseText');
-          print('✅ [RÉSULTAT] Évaluations Mistral = RÉELLES');
+          debugPrint('🎉 [SUCCÈS] API Mistral FONCTIONNELLE !');
+          debugPrint('📝 [RÉPONSE] $responseText');
+          debugPrint('✅ [RÉSULTAT] Évaluations Mistral = RÉELLES');
         } else {
-          print('❌ [ERREUR] API Mistral - Status: ${response.statusCode}');
-          print('📄 [DÉTAIL] ${response.body}');
-          print('⚠️ [RÉSULTAT] Évaluations Mistral = SIMULÉES (erreur API)');
+          debugPrint('❌ [ERREUR] API Mistral - Status: ${response.statusCode}');
+          debugPrint('📄 [DÉTAIL] ${response.body}');
+          debugPrint('⚠️ [RÉSULTAT] Évaluations Mistral = SIMULÉES (erreur API)');
         }
       } catch (e) {
-        print('❌ [EXCEPTION] Erreur API Mistral: $e');
-        print('⚠️ [RÉSULTAT] Évaluations Mistral = SIMULÉES (timeout/erreur)');
+        debugPrint('❌ [EXCEPTION] Erreur API Mistral: $e');
+        debugPrint('⚠️ [RÉSULTAT] Évaluations Mistral = SIMULÉES (timeout/erreur)');
       }
     });
 
     test('🖥️ DIAGNOSTIC 2: Backend Whisper + Mistral - Connectivité Locale', () async {
-      print('\n🔍 [DIAGNOSTIC] Test connectivité Backend localhost...');
+      debugPrint('\n🔍 [DIAGNOSTIC] Test connectivité Backend localhost...');
       
       final backendUrl = dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000';
-      print('✅ [CONFIG] LLM_SERVICE_URL: $backendUrl');
+      debugPrint('✅ [CONFIG] LLM_SERVICE_URL: $backendUrl');
       
       try {
-        print('🚀 [TEST] Ping backend health check...');
+        debugPrint('🚀 [TEST] Ping backend health check...');
         final response = await http.get(
           Uri.parse('$backendUrl/health'),
         ).timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
-          print('🎉 [SUCCÈS] Backend DISPONIBLE !');
-          print('📄 [RÉPONSE] ${response.body}');
-          print('✅ [RÉSULTAT] Évaluations Backend = RÉELLES');
+          debugPrint('🎉 [SUCCÈS] Backend DISPONIBLE !');
+          debugPrint('📄 [RÉPONSE] ${response.body}');
+          debugPrint('✅ [RÉSULTAT] Évaluations Backend = RÉELLES');
         } else {
-          print('❌ [ERREUR] Backend - Status: ${response.statusCode}');
-          print('⚠️ [RÉSULTAT] Évaluations Backend = SIMULÉES (service erreur)');
+          debugPrint('❌ [ERREUR] Backend - Status: ${response.statusCode}');
+          debugPrint('⚠️ [RÉSULTAT] Évaluations Backend = SIMULÉES (service erreur)');
         }
       } catch (e) {
-        print('❌ [EXCEPTION] Backend indisponible: $e');
-        print('⚠️ [RÉSULTAT] Évaluations Backend = SIMULÉES (service down)');
+        debugPrint('❌ [EXCEPTION] Backend indisponible: $e');
+        debugPrint('⚠️ [RÉSULTAT] Évaluations Backend = SIMULÉES (service down)');
       }
     });
 
     test('🎮 DIAGNOSTIC 3: LiveKit - Connectivité WebRTC', () async {
-      print('\n🔍 [DIAGNOSTIC] Test connectivité LiveKit...');
+      debugPrint('\n🔍 [DIAGNOSTIC] Test connectivité LiveKit...');
       
       final livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'ws://localhost:7880';
-      print('✅ [CONFIG] LIVEKIT_URL: $livekitUrl');
+      debugPrint('✅ [CONFIG] LIVEKIT_URL: $livekitUrl');
       
       // Pour WebSocket, on teste juste si le port HTTP répond
       final httpUrl = livekitUrl.replaceFirst('ws://', 'http://').replaceFirst('wss://', 'https://');
       
       try {
-        print('🚀 [TEST] Ping LiveKit port...');
+        debugPrint('🚀 [TEST] Ping LiveKit port...');
         final response = await http.get(
           Uri.parse('$httpUrl/'),
         ).timeout(const Duration(seconds: 3));
 
-        print('🎉 [SUCCÈS] LiveKit port ACCESSIBLE !');
-        print('📄 [STATUT] ${response.statusCode}');
-        print('✅ [RÉSULTAT] Évaluations LiveKit = POTENTIELLEMENT RÉELLES');
+        debugPrint('🎉 [SUCCÈS] LiveKit port ACCESSIBLE !');
+        debugPrint('📄 [STATUT] ${response.statusCode}');
+        debugPrint('✅ [RÉSULTAT] Évaluations LiveKit = POTENTIELLEMENT RÉELLES');
       } catch (e) {
-        print('❌ [EXCEPTION] LiveKit indisponible: $e');
-        print('⚠️ [RÉSULTAT] Évaluations LiveKit = SIMULÉES (service down)');
+        debugPrint('❌ [EXCEPTION] LiveKit indisponible: $e');
+        debugPrint('⚠️ [RÉSULTAT] Évaluations LiveKit = SIMULÉES (service down)');
       }
     });
 
     test('📊 DIAGNOSTIC 4: Services Docker - État Global', () async {
-      print('\n🔍 [DIAGNOSTIC] Résumé état des services...');
+      debugPrint('\n🔍 [DIAGNOSTIC] Résumé état des services...');
       
-      print('📋 [ANALYSE] Configuration détectée:');
-      print('   🔧 Backend Whisper+Mistral: ${dotenv.env['LLM_SERVICE_URL']}');
-      print('   🤖 API Mistral Scaleway: ${dotenv.env['MISTRAL_ENABLED'] == "true" ? "ACTIVÉ" : "DÉSACTIVÉ"}');
-      print('   🎭 LiveKit WebRTC: ${dotenv.env['LIVEKIT_URL']}');
-      print('   🗣️ Whisper STT: ${dotenv.env['WHISPER_STT_URL']}');
-      print('   🔊 OpenAI TTS: ${dotenv.env['OPENAI_TTS_URL']}');
+      debugPrint('📋 [ANALYSE] Configuration détectée:');
+      debugPrint('   🔧 Backend Whisper+Mistral: ${dotenv.env['LLM_SERVICE_URL']}');
+      debugPrint('   🤖 API Mistral Scaleway: ${dotenv.env['MISTRAL_ENABLED'] == "true" ? "ACTIVÉ" : "DÉSACTIVÉ"}');
+      debugPrint('   🎭 LiveKit WebRTC: ${dotenv.env['LIVEKIT_URL']}');
+      debugPrint('   🗣️ Whisper STT: ${dotenv.env['WHISPER_STT_URL']}');
+      debugPrint('   🔊 OpenAI TTS: ${dotenv.env['OPENAI_TTS_URL']}');
       
-      print('\n🎯 [CONCLUSION] Système d\'évaluation:');
-      print('   ✅ Configuration complète présente');
-      print('   ⚠️ Nécessite services démarrés pour évaluations réelles');
-      print('   🔄 Fallbacks simulés fonctionnels en cas d\'indisponibilité');
+      debugPrint('\n🎯 [CONCLUSION] Système d\'évaluation:');
+      debugPrint('   ✅ Configuration complète présente');
+      debugPrint('   ⚠️ Nécessite services démarrés pour évaluations réelles');
+      debugPrint('   🔄 Fallbacks simulés fonctionnels en cas d\'indisponibilité');
     });
   });
 }

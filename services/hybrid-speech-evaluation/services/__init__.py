@@ -1,1 +1,0 @@
-# Services du système d'évaluation hybride VOSK + Whisper

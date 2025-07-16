@@ -53,7 +53,7 @@ enum ConfidenceScenarioType {
 
 extension ConfidenceScenarioTypeExtension on ConfidenceScenarioType {
   String toJson() {
-    return this.name;
+    return name;
   }
 
   String get displayName {
