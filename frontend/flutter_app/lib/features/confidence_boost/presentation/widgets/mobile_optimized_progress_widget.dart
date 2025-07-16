@@ -53,7 +53,7 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
   // État des optimisations mobile
   bool _cacheHitDetected = false;
   bool _parallelExecutionActive = false;
-  int _currentTimeout = 8; // Timeout optimisé mobile
+  final int _currentTimeout = 8; // Timeout optimisé mobile
   Timer? _timeoutTimer;
   Timer? _stageTimer;
   String _currentOptimizedStage = 'Initialisation mobile...';
@@ -297,10 +297,10 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          border: Border.all(color: Colors.blue.withAlpha((255 * 0.3).round())),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withAlpha((255 * 0.1).round()),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -426,10 +426,10 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _cacheHitDetected ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+        color: _cacheHitDetected ? Colors.green.withAlpha((255 * 0.1).round()) : Colors.blue.withAlpha((255 * 0.1).round()),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: _cacheHitDetected ? Colors.green.withOpacity(0.3) : Colors.blue.withOpacity(0.3),
+          color: _cacheHitDetected ? Colors.green.withAlpha((255 * 0.3).round()) : Colors.blue.withAlpha((255 * 0.3).round()),
         ),
       ),
       child: Text(
@@ -450,9 +450,9 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.purple.withOpacity(0.1),
+        color: Colors.purple.withAlpha((255 * 0.1).round()),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.purple.withOpacity(0.3)),
+        border: Border.all(color: Colors.purple.withAlpha((255 * 0.3).round())),
       ),
       child: Row(
         children: [
@@ -494,9 +494,9 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withAlpha((255 * 0.1).round()),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green.withOpacity(0.5)),
+              border: Border.all(color: Colors.green.withAlpha((255 * 0.5).round())),
             ),
             child: Row(
               children: [
@@ -558,7 +558,7 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
           label,
           style: TextStyle(
             fontSize: 10,
-            color: color.withOpacity(0.7),
+            color: color.withAlpha((255 * 0.7).round()),
           ),
         ),
       ],

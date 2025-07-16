@@ -59,7 +59,7 @@ class _ConfidenceTipsCarouselState extends State<ConfidenceTipsCarousel> {
         // Titre
         Row(
           children: [
-            Icon(
+            const Icon(
               Icons.lightbulb_outline,
               color: EloquenceColors.cyan,
               size: 20,
@@ -100,7 +100,7 @@ class _ConfidenceTipsCarouselState extends State<ConfidenceTipsCarousel> {
                           Icon(
                             _getTipIcon(index),
                             size: 48,
-                            color: EloquenceColors.violet.withOpacity(0.8),
+                            color: EloquenceColors.violet.withAlpha((255 * 0.8).round()),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -136,7 +136,7 @@ class _ConfidenceTipsCarouselState extends State<ConfidenceTipsCarousel> {
               decoration: BoxDecoration(
                 color: _currentIndex == index
                     ? EloquenceColors.cyan
-                    : EloquenceColors.white.withOpacity(0.3),
+                    : EloquenceColors.white.withAlpha((255 * 0.3).round()),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),

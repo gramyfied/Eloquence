@@ -20,17 +20,17 @@ class EloquenceGlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: EloquenceColors.navy.withOpacity(opacity),
+        color: EloquenceColors.navy.withAlpha((255 * opacity).round()),
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
-          color: borderColor.withOpacity(0.3),
+          color: borderColor.withAlpha((255 * 0.3).round()),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha((255 * 0.1).round()),
             blurRadius: 20,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
         ],
       ),

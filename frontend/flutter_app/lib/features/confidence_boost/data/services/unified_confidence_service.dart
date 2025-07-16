@@ -12,6 +12,7 @@ import 'mistral_api_service.dart';
 import 'prosody_analysis_interface.dart';
 import 'streak_service.dart';
 import 'xp_calculator_service.dart';
+import 'text_support_generator.dart';
 
 // Imports des providers Riverpod
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
@@ -88,21 +89,8 @@ class UnifiedConfidenceService {
   }
 
   // Factory pour TextSupportGenerator
-  // Factory pour TextSupportGenerator
-  // ignore: non_constant_identifier_names
-  // Factory pour TextSupportGenerator
-  // ignore: non_constant_identifier_names
-  dynamic get textSupportGenerator {
-    try {
-      // ignore: undefined_class
-      // Import dynamique pour éviter l'erreur de compilation si non utilisé
-      // ignore: prefer_typing_uninitialized_variables
-      var TextSupportGenerator = (ref) => null;
-      // ignore: unnecessary_cast
-      return (TextSupportGenerator as dynamic).create(ref);
-    } catch (_) {
-      return null;
-    }
+  TextSupportGenerator getTextSupportGenerator() {
+    return TextSupportGenerator(ref.read(mistralApiServiceProvider));
   }
 
   // Ajoutez ici d'autres méthodes unifiées selon les besoins...

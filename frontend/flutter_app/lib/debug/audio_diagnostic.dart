@@ -497,7 +497,7 @@ class ClientAudioEndToEndTest {
 
         // Attendre et vérifier réception données
         debugPrint("🔍 [E2E] Attente réception données...");
-        await Future.delayed(Duration(seconds: 3));
+        await Future.delayed(const Duration(seconds: 3));
 
         // LiveKit_client n'expose pas directement getStats() sur livekit_client.RemoteAudioTrack ou sa publication
         // On va simuler la réception de données pour le diagnostic.

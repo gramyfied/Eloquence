@@ -15,10 +15,10 @@ class OratorCarousel extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _OratorCarouselState createState() => _OratorCarouselState();
+  OratorCarouselState createState() => OratorCarouselState();
 }
 
-class _OratorCarouselState extends State<OratorCarousel>
+class OratorCarouselState extends State<OratorCarousel>
     with TickerProviderStateMixin {
   late PageController _pageController;
   late AnimationController _animationController;
@@ -65,7 +65,7 @@ class _OratorCarouselState extends State<OratorCarousel>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 280, // Réduit drastiquement de 320 à 280
       child: PageView.builder(
         controller: _pageController,
@@ -103,7 +103,7 @@ class _OratorCarouselState extends State<OratorCarousel>
                           boxShadow: isActive
                               ? [
                                   BoxShadow(
-                                    color: orator.accentColor.withOpacity(0.4),
+                                    color: orator.accentColor.withAlpha((255 * 0.4).round()),
                                     blurRadius: 30,
                                     spreadRadius: 10,
                                   ),

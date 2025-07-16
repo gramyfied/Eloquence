@@ -31,7 +31,7 @@ class ApiConstants {
   
   /// URL de base pour l'API backend
   static String get baseUrl {
-    final protocol = kIsWeb ? 'http' : 'http'; // HTTPS en production
+    const protocol = kIsWeb ? 'http' : 'http'; // HTTPS en production
     final host = hostIP;
     final port = dotenv.env['API_PORT'] ?? defaultPort;
     return '$protocol://$host:$port';
@@ -39,7 +39,7 @@ class ApiConstants {
   
   /// URL pour Whisper STT
   static String get whisperUrl {
-    final protocol = kIsWeb ? 'http' : 'http';
+    const protocol = kIsWeb ? 'http' : 'http';
     final host = hostIP;
     final port = dotenv.env['WHISPER_PORT'] ?? defaultWhisperPort;
     return '$protocol://$host:$port';
@@ -47,15 +47,15 @@ class ApiConstants {
   
   /// URL de base pour Whisper (pour le streaming)
   static String get whisperBaseUrl {
-    final protocol = kIsWeb ? 'http' : 'http';
+    const protocol = kIsWeb ? 'http' : 'http';
     final host = hostIP;
-    final port = '8006'; // Port du service whisper-realtime
+    const port = '8006'; // Port du service whisper-realtime
     return '$protocol://$host:$port';
   }
   
   /// URL pour LiveKit
   static String get liveKitUrl {
-    final protocol = kIsWeb ? 'ws' : 'ws'; // WSS en production
+    const protocol = kIsWeb ? 'ws' : 'ws'; // WSS en production
     final host = hostIP;
     final port = dotenv.env['LIVEKIT_PORT'] ?? defaultLiveKitPort;
     return '$protocol://$host:$port';
@@ -70,7 +70,7 @@ class ApiConstants {
     }
     
     // Sinon construire l'URL
-    final protocol = kIsWeb ? 'http' : 'http';
+    const protocol = kIsWeb ? 'http' : 'http';
     final host = hostIP;
     final port = dotenv.env['LLM_PORT'] ?? defaultMistralPort;
     return '$protocol://$host:$port/api/v1/eloquence/llm/analyze';

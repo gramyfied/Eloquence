@@ -1,6 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../domain/entities/confidence_models.dart';
-import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_session.dart';
 import '../../domain/entities/gamification_models.dart';
 
@@ -27,9 +26,7 @@ class HiveGamificationRepository implements GamificationRepository {
     if (!Hive.isAdapterRegistered(20)) {
       Hive.registerAdapter(UserGamificationProfileAdapter());
     }
-    if (!Hive.isAdapterRegistered(21)) {
-      Hive.registerAdapter(ConfidenceScenarioAdapter());
-    }
+    // L'adapter pour ConfidenceScenario (21) est supprimé car l'entité n'est plus stockée dans Hive.
     if (!Hive.isAdapterRegistered(22)) {
       Hive.registerAdapter(BadgeAdapter());
     }

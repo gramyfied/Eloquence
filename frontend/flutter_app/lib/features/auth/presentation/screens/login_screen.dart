@@ -143,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 60),
                 
                 // Logo et titre
-                Icon(
+                const Icon(
                   Icons.psychology,
                   size: 80,
                   color: EloquenceColors.cyan,
@@ -162,7 +162,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   'Connectez-vous à votre compte',
                   style: EloquenceTextStyles.bodyLarge.copyWith(
-                    color: EloquenceColors.white.withOpacity(0.7),
+                    color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -171,21 +171,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // Mode développeur toggle
                 Card(
-                  color: _isDeveloperMode ? ConfidenceBoostColors.warningOrange.withOpacity(0.1) : EloquenceColors.glassBackground,
+                  color: _isDeveloperMode ? ConfidenceBoostColors.warningOrange.withAlpha((255 * 0.1).round()) : EloquenceColors.glassBackground,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
                         Icon(
                           Icons.code,
-                          color: _isDeveloperMode ? ConfidenceBoostColors.warningOrange : EloquenceColors.white.withOpacity(0.7),
+                          color: _isDeveloperMode ? ConfidenceBoostColors.warningOrange : EloquenceColors.white.withAlpha((255 * 0.7).round()),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Mode Développeur',
                             style: EloquenceTextStyles.bodyMedium.copyWith(
-                              color: _isDeveloperMode ? ConfidenceBoostColors.warningOrange : EloquenceColors.white.withOpacity(0.7),
+                              color: _isDeveloperMode ? ConfidenceBoostColors.warningOrange : EloquenceColors.white.withAlpha((255 * 0.7).round()),
                             ),
                           ),
                         ),
@@ -216,23 +216,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.email_outlined,
                       color: EloquenceColors.cyan,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.cyan),
+                      borderSide: const BorderSide(color: EloquenceColors.cyan),
                     ),
                     filled: true,
                     fillColor: EloquenceColors.glassBackground,
@@ -250,16 +250,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Mot de passe',
                     labelStyle: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.lock_outlined,
                       color: EloquenceColors.cyan,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                        color: EloquenceColors.white.withOpacity(0.7),
+                        color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                       ),
                       onPressed: () {
                         setState(() {
@@ -269,15 +269,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.cyan),
+                      borderSide: const BorderSide(color: EloquenceColors.cyan),
                     ),
                     filled: true,
                     fillColor: EloquenceColors.glassBackground,
@@ -298,7 +298,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       },
                       activeColor: EloquenceColors.cyan,
                     ),
-                    Text(
+                    const Text(
                       'Se souvenir de moi',
                       style: EloquenceTextStyles.bodyMedium,
                     ),
@@ -338,7 +338,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   child: isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
@@ -376,7 +376,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'Pas encore de compte ? ',
                       style: EloquenceTextStyles.bodyMedium,
                     ),
@@ -400,7 +400,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 if (_isDeveloperMode) ...[
                   const SizedBox(height: 32),
                   Card(
-                    color: ConfidenceBoostColors.warningOrange.withOpacity(0.1),
+                    color: ConfidenceBoostColors.warningOrange.withAlpha((255 * 0.1).round()),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(

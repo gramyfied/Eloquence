@@ -1,21 +1,22 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
-  print('🔍 TEST CHARGEMENT VARIABLES FLUTTER');
-  print('=' * 50);
+  debugPrint('🔍 TEST CHARGEMENT VARIABLES FLUTTER');
+  debugPrint('=' * 50);
   
   try {
     // Charger le fichier .env depuis la racine du projet
     final envFile = File('../../.env');
     if (!envFile.existsSync()) {
-      print('❌ ERREUR: Fichier .env non trouvé à la racine');
+      debugPrint('❌ ERREUR: Fichier .env non trouvé à la racine');
       return;
     }
     
     // Charger dotenv comme le fait Flutter
     await dotenv.load(fileName: '../../.env');
-    print('✅ Fichier .env chargé avec succès');
+    debugPrint('✅ Fichier .env chargé avec succès');
     
     // Tester les variables critiques
     final criticalVars = {
@@ -26,42 +27,41 @@ Future<void> main() async {
       'ENVIRONMENT': 'Environnement'
     };
     
-    print('\n🎯 VARIABLES CRITIQUES:');
+    debugPrint('\n🎯 VARIABLES CRITIQUES:');
     bool allGood = true;
     
     for (final entry in criticalVars.entries) {
       final key = entry.key;
-      final description = entry.value;
       final value = dotenv.env[key];
       
       if (value != null) {
-        print('  ✅ $key: $value');
+        debugPrint('  ✅ $key: $value');
         
         // Vérification spéciale pour LLM_SERVICE_URL
         if (key == 'LLM_SERVICE_URL') {
           if (value.contains('192.168.1.44:8000')) {
-            print('     🎯 URL réseau correcte (192.168.1.44:8000)');
+            debugPrint('     🎯 URL réseau correcte (192.168.1.44:8000)');
           } else if (value.contains('localhost')) {
-            print('     ⚠️  ATTENTION: Utilise encore localhost !');
+            debugPrint('     ⚠️  ATTENTION: Utilise encore localhost !');
             allGood = false;
           }
         }
       } else {
-        print('  ❌ $key: NON DÉFINIE');
+        debugPrint('  ❌ $key: NON DÉFINIE');
         allGood = false;
       }
     }
     
-    print('\n📊 RÉSUMÉ FINAL:');
+    debugPrint('\n📊 RÉSUMÉ FINAL:');
     if (allGood) {
-      print('✅ SUCCÈS: Toutes les variables critiques sont correctement configurées');
-      print('🎯 LLM_SERVICE_URL pointe vers le réseau (192.168.1.44:8000)');
-      print('🚀 L\'application mobile devrait maintenant utiliser les URLs réseau');
+      debugPrint('✅ SUCCÈS: Toutes les variables critiques sont correctement configurées');
+      debugPrint('🎯 LLM_SERVICE_URL pointe vers le réseau (192.168.1.44:8000)');
+      debugPrint('🚀 L\'application mobile devrait maintenant utiliser les URLs réseau');
     } else {
-      print('❌ PROBLÈME: Certaines variables ne sont pas correctement configurées');
+      debugPrint('❌ PROBLÈME: Certaines variables ne sont pas correctement configurées');
     }
     
   } catch (e) {
-    print('❌ ERREUR lors du chargement: $e');
+    debugPrint('❌ ERREUR lors du chargement: $e');
   }
 }

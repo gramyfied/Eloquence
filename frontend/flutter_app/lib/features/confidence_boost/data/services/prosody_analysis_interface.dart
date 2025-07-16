@@ -3,12 +3,11 @@ import 'dart:typed_data';
 import 'package:logger/logger.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
-import '../../../../core/utils/logger.dart';
 
-/// Interface pour l'analyse prosodique utilisant VOSK (future implémentation)
-/// 
+/// Interface pour l'analyse prosodique (analyse simplifiée)
+///
 /// Cette interface définit les contrats pour l'analyse prosodique avancée
-/// qui sera implémentée avec VOSK pour l'analyse de débit, intonation, pauses, etc.
+/// qui sera implémentée avec une analyse simplifiée pour l'analyse de débit, intonation, pauses, etc.
 abstract class ProsodyAnalysisInterface {
   /// Analyse prosodique complète d'un enregistrement audio
   /// 
@@ -38,12 +37,11 @@ abstract class ProsodyAnalysisInterface {
   /// Détection d'hésitations et disfluences
   Future<DisfluencyAnalysis?> analyzeDisfluencies(Uint8List audioData);
   
-  /// Vérification de la disponibilité du service VOSK
+  /// Vérification de la disponibilité du service
   Future<bool> isAvailable();
   
-  /// Configuration du service (serveur VOSK, modèles, etc.)
+  /// Configuration du service (serveur, modèles, etc.)
   void configure({
-    required String voskServerUrl,
     Map<String, String>? modelPaths,
     Duration? timeout,
   });
@@ -271,7 +269,7 @@ enum DisfluencyType {
 }
 
 /// Implémentation de fallback pour l'interface prosodique
-/// Utilisée quand VOSK n'est pas encore disponible
+/// Utilisée quand le service principal n'est pas encore disponible
 class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
   static const String _tag = 'FallbackProsodyAnalysis';
   static final Logger _logger = Logger();
@@ -334,13 +332,12 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
   
   @override
   Future<bool> isAvailable() async {
-    _logger.i('$_tag: Service prosodique en mode fallback (VOSK indisponible)');
+    _logger.i('$_tag: Service prosodique en mode fallback (service principal indisponible)');
     return true; // Fallback toujours disponible
   }
   
   @override
   void configure({
-    required String voskServerUrl,
     Map<String, String>? modelPaths,
     Duration? timeout,
   }) {
@@ -374,7 +371,7 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
       f0Std: 25.0,
       f0Range: 100.0,
       clarityScore: 0.75,
-      feedback: 'Intonation estimée normale. Analyse VOSK requise pour détails.',
+      feedback: 'Intonation estimée normale. Analyse complète requise pour détails.',
       pattern: IntonationPattern.natural,
     );
   }
@@ -387,7 +384,7 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
       averagePauseDuration: 0.8,
       pauseRate: estimatedPauses / (duration / 60),
       rhythmScore: 0.70,
-      feedback: 'Rythme estimé correct. Analyse VOSK requise pour précision.',
+      feedback: 'Rythme estimé correct. Analyse complète requise pour précision.',
       pauseSegments: [],
     );
   }
@@ -414,23 +411,23 @@ class FallbackProsodyAnalysis implements ProsodyAnalysisInterface {
   }
   
   String _createFallbackDetailedFeedback(ConfidenceScenario scenario) {
-    return '''
-📊 **Analyse Prosodique Estimée**
-
-Cette analyse utilise des estimations basiques en l'absence du système VOSK complet.
-
-🎯 **Pour ${scenario.title}** :
-• Débit de parole dans la norme estimée
-• Intonation probablement naturelle
-• Rythme régulier présumé
-• Énergie vocale équilibrée
-
-⚡ **Prochaines améliorations** :
-L'intégration de VOSK permettra une analyse prosodique détaillée incluant :
-• Analyse spectrale précise
-• Détection fine des pauses
-• Mesure exacte du débit
-• Identification des patterns d'hésitation
+      return '''
+   📊 **Analyse Prosodique Estimée**
+   
+   Cette analyse utilise des estimations basiques en l'absence du système d'analyse complet.
+   
+   🎯 **Pour ${scenario.title}** :
+   • Débit de parole dans la norme estimée
+   • Intonation probablement naturelle
+   • Rythme régulier présumé
+   • Énergie vocale équilibrée
+   
+   ⚡ **Prochaines améliorations** :
+   L'intégration du service unifié permettra une analyse prosodique détaillée incluant :
+   • Analyse spectrale précise
+   • Détection fine des pauses
+   • Mesure exacte du débit
+   • Identification des patterns d'hésitation
 
 💡 **Conseils généraux** :
 ${scenario.tips.take(2).join('\n• ')}

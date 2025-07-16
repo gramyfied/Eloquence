@@ -11,10 +11,10 @@ class AnimatedTapEffect extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _AnimatedTapEffectState createState() => _AnimatedTapEffectState();
+  AnimatedTapEffectState createState() => AnimatedTapEffectState();
 }
 
-class _AnimatedTapEffectState extends State<AnimatedTapEffect>
+class AnimatedTapEffectState extends State<AnimatedTapEffect>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;

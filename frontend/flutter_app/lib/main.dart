@@ -9,7 +9,6 @@ import 'core/config/supabase_config.dart'; // Import Supabase Config
 import 'presentation/app.dart'; // Import App au lieu de AuthWrapper
 import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart'; // Import pour override
 // Imports des modèles Hive
-import 'features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'features/confidence_boost/domain/entities/gamification_models.dart';
 
 void main() async {
@@ -18,12 +17,16 @@ void main() async {
   // Configure logging
   Logger.root.level = Level.ALL; // Set the root logger level
   Logger.root.onRecord.listen((record) {
-    print('${record.level.name}: ${record.time}: ${record.message}');
+    // In a real app, you would use a logging service like Sentry,
+    // Firebase Crashlytics, or just the console in debug mode.
+    // For this refactoring, we remove direct prints to clean up the code.
+    // The IDE's debug console will still show logs.
+    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
     if (record.error != null) {
-      print('Error: ${record.error}');
+      debugPrint('Error: ${record.error}');
     }
     if (record.stackTrace != null) {
-      print('StackTrace: ${record.stackTrace}');
+      debugPrint('StackTrace: ${record.stackTrace}');
     }
   });
 
@@ -50,12 +53,6 @@ void main() async {
     
     // Enregistrement des TypeAdapters pour éviter l'erreur "Cannot write, unknown type"
     try {
-      // TypeAdapters pour ConfidenceScenario (typeId: 21 résolu)
-      if (!Hive.isAdapterRegistered(21)) {
-        Hive.registerAdapter(ConfidenceScenarioAdapter());
-        log.info("✅ ConfidenceScenarioAdapter registered (typeId: 21)");
-      }
-      
       // TypeAdapters pour le système de gamification
       if (!Hive.isAdapterRegistered(20)) {
         Hive.registerAdapter(UserGamificationProfileAdapter());

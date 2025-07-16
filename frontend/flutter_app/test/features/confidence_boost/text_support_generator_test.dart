@@ -16,7 +16,7 @@ void main() {
       fakeMistralService = FakeMistralApiService();
       container = ProviderContainer(
         overrides: [
-          mistralApiServiceProvider.overrideWithProvider(Provider((ref) => fakeMistralService)),
+          mistralApiServiceProvider.overrideWith((ref) => fakeMistralService),
         ],
       );
       final textSupportGeneratorProvider = Provider<TextSupportGenerator>((ref) => TextSupportGenerator.create(ref));

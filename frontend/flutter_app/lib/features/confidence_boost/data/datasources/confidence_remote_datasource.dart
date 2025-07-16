@@ -98,20 +98,4 @@ class ConfidenceRemoteDataSourceImpl implements ConfidenceRemoteDataSource {
       icon: json['icon'] ?? '🎯',
     );
   }
-
-
-  ConfidenceScenario _createPlaceholderScenario() {
-    return ConfidenceScenario(
-      id: 'placeholder',
-      title: 'Scénario non disponible',
-      description: 'Le scénario original n\'est plus disponible',
-      prompt: 'Exprimez-vous librement',
-      type: ConfidenceScenarioType.presentation,
-      durationSeconds: 30,
-      tips: [],
-      keywords: [],
-      difficulty: 'beginner',
-      icon: '🎯',
-    );
-  }
 }

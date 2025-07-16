@@ -55,10 +55,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
           margin: const EdgeInsets.all(20),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
-            color: EloquenceColors.navy.withOpacity(0.5),
+            color: EloquenceColors.navy.withAlpha((255 * 0.5).round()),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: EloquenceColors.cyan.withOpacity(0.3),
+              color: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
               width: 1,
             ),
           ),
@@ -145,20 +145,20 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                 });
               },
               borderRadius: BorderRadius.circular(20),
-              splashColor: EloquenceColors.cyan.withOpacity(0.3),
-              highlightColor: EloquenceColors.cyan.withOpacity(0.1),
+              splashColor: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
+              highlightColor: EloquenceColors.cyan.withAlpha((255 * 0.1).round()),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: isActive
-                    ? EloquenceColors.cyan.withOpacity(0.2)
+                    ? EloquenceColors.cyan.withAlpha((255 * 0.2).round())
                     : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   border: isActive
                     ? Border.all(
-                        color: EloquenceColors.cyan.withOpacity(0.5),
+                        color: EloquenceColors.cyan.withAlpha((255 * 0.5).round()),
                         width: 1,
                       )
                     : null,

@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/utils/logger_service.dart';
-import '../../../../core/utils/constants.dart';
 import '../../../../core/services/optimized_http_service.dart';
 import 'mistral_cache_service.dart';
 

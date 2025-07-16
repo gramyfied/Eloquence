@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
-import '../../lib/src/services/clean_livekit_service.dart';
-import '../../lib/features/confidence_boost/domain/entities/confidence_models.dart';
-import '../../lib/features/confidence_boost/domain/entities/confidence_scenario.dart';
+import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
 
 class FakeCleanLiveKitService extends CleanLiveKitService {
   FakeCleanLiveKitService() : super();
@@ -18,7 +18,7 @@ class FakeCleanLiveKitService extends CleanLiveKitService {
   LocalParticipant? get localParticipant => null;
 
   @override
-  Stream<Uint8List> get onAudioReceivedStream => Stream.empty();
+  Stream<Uint8List> get onAudioReceivedStream => const Stream.empty();
 
   @override
   Future<bool> connect(String url, String token) async => true;
@@ -53,33 +53,27 @@ class FakeCleanLiveKitService extends CleanLiveKitService {
     );
   }
   
-  @override
   // TODO: implement analysisStream
   Stream<ConfidenceAnalysis> get analysisStream => throw UnimplementedError();
   
-  @override
   Future<void> endSession() {
     // TODO: implement endSession
     throw UnimplementedError();
   }
   
-  @override
   // TODO: implement isSessionActive
   bool get isSessionActive => throw UnimplementedError();
   
-  @override
   Future<bool> startRecording() {
     // TODO: implement startRecording
     throw UnimplementedError();
   }
   
-  @override
   Future<String?> startSession(Map<String, dynamic> sessionData) {
     // TODO: implement startSession
     throw UnimplementedError();
   }
   
-  @override
   Future<bool> stopRecordingAndAnalyze() {
     // TODO: implement stopRecordingAndAnalyze
     throw UnimplementedError();

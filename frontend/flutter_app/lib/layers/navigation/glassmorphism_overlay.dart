@@ -16,7 +16,7 @@ class GlassmorphismOverlay extends StatelessWidget {
       duration: const Duration(milliseconds: 500),
       opacity: opacity,
       child: Container(
-        color: Colors.black.withOpacity(0.1),
+        color: Colors.black.withAlpha((255 * 0.1).round()),
         child: child,
       ),
     );

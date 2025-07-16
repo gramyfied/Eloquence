@@ -19,14 +19,14 @@ class ScenarioSelectionScreen extends StatelessWidget {
             children: [
               // Header avec progression utilisateur
               _buildProgressHeader(),
-              SizedBox(height: EloquenceSpacing.xl),
+              const SizedBox(height: EloquenceSpacing.xl),
 
               // Titre principal
-              Text(
+              const Text(
                 'Choisissez votre scénario',
                 style: EloquenceTextStyles.headline1,
               ),
-              SizedBox(height: EloquenceSpacing.lg),
+              const SizedBox(height: EloquenceSpacing.lg),
 
               // Liste des scénarios
               Expanded(
@@ -38,25 +38,25 @@ class ScenarioSelectionScreen extends StatelessWidget {
                       difficulty: 'Débutant',
                       difficultyColor: EloquenceColors.cyan,
                       icon: Icons.business_center,
-                      scenario: ConfidenceScenario.professional(),
+                      scenario: const ConfidenceScenario.professional(),
                     ),
-                    SizedBox(height: EloquenceSpacing.md),
+                    const SizedBox(height: EloquenceSpacing.md),
                     _buildScenarioCard(
                       title: 'Entretien d\'Embauche',
                       description: 'Brillez lors de votre prochain entretien',
                       difficulty: 'Intermédiaire',
                       difficultyColor: EloquenceColors.violet,
                       icon: Icons.work,
-                      scenario: ConfidenceScenario.interview(),
+                      scenario: const ConfidenceScenario.interview(),
                     ),
-                    SizedBox(height: EloquenceSpacing.md),
+                    const SizedBox(height: EloquenceSpacing.md),
                     _buildScenarioCard(
                       title: 'Prise de Parole Publique',
                       description: 'Captivez votre audience avec confiance',
                       difficulty: 'Avancé',
                       difficultyColor: ConfidenceBoostColors.warningOrange,
                       icon: Icons.mic,
-                      scenario: ConfidenceScenario.publicSpeaking(),
+                      scenario: const ConfidenceScenario.publicSpeaking(),
                     ),
                   ],
                 ),
@@ -78,8 +78,8 @@ class ScenarioSelectionScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text('Level 5', style: EloquenceTextStyles.headline2),
-          Spacer(),
+          const Text('Level 5', style: EloquenceTextStyles.headline2),
+          const Spacer(),
           Text('350 XP', style: EloquenceTextStyles.body1.copyWith(
             color: EloquenceColors.cyan,
           )),
@@ -111,12 +111,12 @@ class ScenarioSelectionScreen extends StatelessWidget {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: difficultyColor.withOpacity(0.2),
+                color: difficultyColor.withAlpha((255 * 0.2).round()),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: difficultyColor, size: 28),
             ),
-            SizedBox(width: EloquenceSpacing.md),
+            const SizedBox(width: EloquenceSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +127,7 @@ class ScenarioSelectionScreen extends StatelessWidget {
                       height: 1.2, // Contrôle de la hauteur de ligne
                     ),
                   ),
-                  SizedBox(height: EloquenceSpacing.xs),
+                  const SizedBox(height: EloquenceSpacing.xs),
                   Text(
                     description,
                     style: EloquenceTextStyles.body1.copyWith(

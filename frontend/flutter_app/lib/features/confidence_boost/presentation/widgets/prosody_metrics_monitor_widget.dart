@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import '../../data/services/prosody_analysis_interface.dart';
-import '../../domain/entities/confidence_models.dart';
 
 /// Widget de monitoring avancé des métriques prosodiques
 /// 
@@ -293,7 +292,7 @@ class _ProsodyMetricsMonitorWidgetState extends ConsumerState<ProsodyMetricsMoni
                     ),
                   ),
                   Text(
-                    '${(score * _progressAnimation.value).toStringAsFixed(0)}',
+                    (score * _progressAnimation.value).toStringAsFixed(0),
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -313,10 +312,10 @@ class _ProsodyMetricsMonitorWidgetState extends ConsumerState<ProsodyMetricsMoni
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _getScoreColor(score * 100).withOpacity(0.1),
+        color: _getScoreColor(score * 100).withAlpha((255 * 0.1).round()),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: _getScoreColor(score * 100).withOpacity(0.3),
+          color: _getScoreColor(score * 100).withAlpha((255 * 0.3).round()),
         ),
       ),
       child: Column(
@@ -466,7 +465,7 @@ class _ProsodyMetricsMonitorWidgetState extends ConsumerState<ProsodyMetricsMoni
       title: '🔊 Analyse d\'Énergie',
       children: [
         _buildDetailRow('Énergie moyenne', '${energy.averageEnergy.toStringAsFixed(2)} dB'),
-        _buildDetailRow('Variance', '${energy.energyVariance.toStringAsFixed(2)}'),
+        _buildDetailRow('Variance', energy.energyVariance.toStringAsFixed(2)),
         _buildDetailRow('Score normalisé', '${(energy.normalizedEnergyScore * 100).toStringAsFixed(0)}%'),
         _buildDetailRow('Profil', _getEnergyProfileText(energy.profile)),
       ],

@@ -1,7 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../lib/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
+import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
 import '../../fakes/fake_mistral_api_service.dart';
 
 void main() {
@@ -20,7 +21,7 @@ void main() {
     test('devrait générer du texte avec FakeMistralApiService injecté via Riverpod', () async {
       const prompt = '''
       Analysez cette présentation orale et donnez des conseils constructifs :
-      "Bonjour tout le monde, je vais vous parler de l\'importance de la communication dans le travail d\'équipe."
+      "Bonjour tout le monde, je vais vous parler de l'importance de la communication dans le travail d'équipe."
 
       Donnez un feedback bref et encourageant en français.
       ''';
@@ -35,10 +36,10 @@ void main() {
 
       final result = await service.generateText(prompt: prompt);
 
-      print('=== RÉSULTAT GÉNÉRATION MISTRAL (Fake) ===');
-      print('Prompt: \$prompt');
-      print('Réponse: \$result');
-      print('=== FIN RÉSULTAT ===');
+      debugPrint('=== RÉSULTAT GÉNÉRATION MISTRAL (Fake) ===');
+      debugPrint('Prompt: \$prompt');
+      debugPrint('Réponse: \$result');
+      debugPrint('=== FIN RÉSULTAT ===');
 
       // Vérifier que le résultat n'est pas vide
       expect(result, isNotEmpty);

@@ -129,7 +129,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: EloquenceColors.white),
+          icon: const Icon(Icons.arrow_back, color: EloquenceColors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -154,7 +154,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 Text(
                   'Rejoignez Eloquence dès aujourd\'hui',
                   style: EloquenceTextStyles.bodyLarge.copyWith(
-                    color: EloquenceColors.white.withOpacity(0.7),
+                    color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -169,23 +169,23 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   decoration: InputDecoration(
                     labelText: 'Nom d\'affichage (optionnel)',
                     labelStyle: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.person_outline,
                       color: EloquenceColors.cyan,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.cyan),
+                      borderSide: const BorderSide(color: EloquenceColors.cyan),
                     ),
                     filled: true,
                     fillColor: EloquenceColors.glassBackground,
@@ -204,23 +204,23 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.email_outlined,
                       color: EloquenceColors.cyan,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.cyan),
+                      borderSide: const BorderSide(color: EloquenceColors.cyan),
                     ),
                     filled: true,
                     fillColor: EloquenceColors.glassBackground,
@@ -238,16 +238,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   decoration: InputDecoration(
                     labelText: 'Mot de passe',
                     labelStyle: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.lock_outlined,
                       color: EloquenceColors.cyan,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                        color: EloquenceColors.white.withOpacity(0.7),
+                        color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                       ),
                       onPressed: () {
                         setState(() {
@@ -257,15 +257,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.cyan),
+                      borderSide: const BorderSide(color: EloquenceColors.cyan),
                     ),
                     filled: true,
                     fillColor: EloquenceColors.glassBackground,
@@ -283,16 +283,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   decoration: InputDecoration(
                     labelText: 'Confirmer le mot de passe',
                     labelStyle: EloquenceTextStyles.bodyMedium.copyWith(
-                      color: EloquenceColors.white.withOpacity(0.7),
+                      color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                     ),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.lock_outlined,
                       color: EloquenceColors.cyan,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                        color: EloquenceColors.white.withOpacity(0.7),
+                        color: EloquenceColors.white.withAlpha((255 * 0.7).round()),
                       ),
                       onPressed: () {
                         setState(() {
@@ -302,15 +302,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.glassBorder),
+                      borderSide: const BorderSide(color: EloquenceColors.glassBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: EloquenceColors.cyan),
+                      borderSide: const BorderSide(color: EloquenceColors.cyan),
                     ),
                     filled: true,
                     fillColor: EloquenceColors.glassBackground,
@@ -331,7 +331,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       },
                       activeColor: EloquenceColors.cyan,
                     ),
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'J\'accepte les conditions d\'utilisation et la politique de confidentialité',
                         style: EloquenceTextStyles.caption,
@@ -354,7 +354,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     ),
                   ),
                   child: isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
@@ -376,7 +376,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'Déjà un compte ? ',
                       style: EloquenceTextStyles.bodyMedium,
                     ),

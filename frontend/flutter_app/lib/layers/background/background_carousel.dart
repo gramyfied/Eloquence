@@ -168,7 +168,7 @@ class _BackgroundCarouselState extends ConsumerState<BackgroundCarousel>
                     boxShadow: isActive
                         ? [
                             BoxShadow(
-                              color: orator.accentColor.withOpacity(0.4),
+                              color: orator.accentColor.withAlpha((255 * 0.4).round()),
                               blurRadius: 30,
                               spreadRadius: 10,
                             ),

@@ -7,7 +7,6 @@ import 'package:eloquence_2_0/features/confidence_boost/presentation/screens/res
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/gamification_models.dart' as gamification;
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
-import 'package:eloquence_2_0/data/services/api_service.dart';
 
 // Mock provider simple qui simule les getters sans dépendances complexes
 class TestConfidenceBoostProvider extends ChangeNotifier {
@@ -24,13 +23,12 @@ void main() {
   group('ResultsScreen Gamification UI Tests', () {
     late ConfidenceAnalysis mockAnalysis;
     late gamification.GamificationResult mockGamificationResult;
-    late TestConfidenceBoostProvider mockProvider;
 
     setUpAll(() async {
       // 1. Initialiser SharedPreferences pour les tests Flutter
       SharedPreferences.setMockInitialValues({});
       await SharedPreferences.getInstance();
-      print('✅ [TEST_SETUP] SharedPreferences initialized');
+      debugPrint('✅ [TEST_SETUP] SharedPreferences initialized');
       
       // 2. Initialiser Supabase pour les tests
       try {
@@ -39,19 +37,19 @@ void main() {
           anonKey: 'test-anon-key-for-testing-purposes-only',
           debug: false,
         );
-        print('✅ [TEST_SETUP] Supabase initialized for testing');
+        debugPrint('✅ [TEST_SETUP] Supabase initialized for testing');
       } catch (e) {
         if (e.toString().contains('already initialized')) {
-          print('✅ [TEST_SETUP] Supabase already initialized');
+          debugPrint('✅ [TEST_SETUP] Supabase already initialized');
         } else {
-          print('⚠️ [TEST_SETUP] Supabase initialization error: $e');
+          debugPrint('⚠️ [TEST_SETUP] Supabase initialization error: $e');
         }
         // Continue anyway - tests should still work
       }
     });
 
     setUp(() {
-      print('🧪 [TEST_SETUP] Starting test setup...');
+      debugPrint('🧪 [TEST_SETUP] Starting test setup...');
       
       // Créer une analyse avec la vraie structure
       mockAnalysis = ConfidenceAnalysis(
@@ -100,12 +98,12 @@ void main() {
       );
 
       // 2. Créer un mock du provider avec des données factices
-      mockProvider = TestConfidenceBoostProvider(gamificationResult: mockGamificationResult);
-      print('✅ [TEST_SETUP] Mock provider created with gamification data');
+      TestConfidenceBoostProvider(gamificationResult: mockGamificationResult);
+      debugPrint('✅ [TEST_SETUP] Mock provider created with gamification data');
     });
 
     testWidgets('affiche la section gamification avec les données - Version Simplifiée', (WidgetTester tester) async {
-      print('🧪 [TEST] Starting simplified gamification section test...');
+      debugPrint('🧪 [TEST] Starting simplified gamification section test...');
       
       // Arrange - Test sans override, avec providers par défaut et gestion d'erreur
       await tester.pumpWidget(
@@ -126,13 +124,13 @@ void main() {
         ),
       );
 
-      print('🧪 [TEST] Widget pumped, waiting for animations...');
+      debugPrint('🧪 [TEST] Widget pumped, waiting for animations...');
       
       // Attendre avec timeout court pour éviter les blocages
       try {
         await tester.pumpAndSettle(const Duration(seconds: 2));
       } catch (e) {
-        print('⚠️ [TEST] PumpAndSettle timeout, continuing with basic pump...');
+        debugPrint('⚠️ [TEST] PumpAndSettle timeout, continuing with basic pump...');
         await tester.pump();
       }
 
@@ -140,7 +138,7 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
       expect(find.byType(ResultsScreen), findsOneWidget);
       
-      print('✅ [TEST] Interface loads without crashes - Phase 4 validation passed');
+      debugPrint('✅ [TEST] Interface loads without crashes - Phase 4 validation passed');
     });
 
     testWidgets('affiche les éléments de base sans crash', (WidgetTester tester) async {
@@ -167,7 +165,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         await tester.pumpAndSettle(const Duration(seconds: 1));
       } catch (e) {
-        print('⚠️ [TEST] Animation timeout, but test continues...');
+        debugPrint('⚠️ [TEST] Animation timeout, but test continues...');
         await tester.pump();
       }
 
@@ -217,7 +215,6 @@ void main() {
 
     testWidgets('peut appeler la fonction onContinue', (WidgetTester tester) async {
       // Arrange
-      var continueCalled = false;
       
       await tester.pumpWidget(
         ProviderScope(
@@ -231,7 +228,6 @@ void main() {
             home: ResultsScreen(
               analysis: mockAnalysis,
               onContinue: () {
-                continueCalled = true;
               },
             ),
           ),
@@ -252,7 +248,7 @@ void main() {
     });
 
     testWidgets('DEBUG: affiche le feedback correctement avec logs', (WidgetTester tester) async {
-      print('🔍 [DEBUG] Starting test with detailed logs...');
+      debugPrint('🔍 [DEBUG] Starting test with detailed logs...');
       
       try {
         await tester.pumpWidget(
@@ -266,15 +262,15 @@ void main() {
               theme: ThemeData.dark(),
               home: Builder(
                 builder: (context) {
-                  print('🔍 [DEBUG] Building MaterialApp home...');
+                  debugPrint('🔍 [DEBUG] Building MaterialApp home...');
                   try {
                     return ResultsScreen(
                       analysis: mockAnalysis,
                       onContinue: () {},
                     );
                   } catch (e, stackTrace) {
-                    print('❌ [DEBUG] Error building ResultsScreen: $e');
-                    print('❌ [DEBUG] StackTrace: $stackTrace');
+                    debugPrint('❌ [DEBUG] Error building ResultsScreen: $e');
+                    debugPrint('❌ [DEBUG] StackTrace: $stackTrace');
                     rethrow;
                   }
                 },
@@ -282,19 +278,19 @@ void main() {
             ),
           ),
         );
-        print('🔍 [DEBUG] Widget tree pumped successfully');
+        debugPrint('🔍 [DEBUG] Widget tree pumped successfully');
       } catch (e, stackTrace) {
-        print('❌ [DEBUG] Error during pumpWidget: $e');
-        print('❌ [DEBUG] StackTrace: $stackTrace');
+        debugPrint('❌ [DEBUG] Error during pumpWidget: $e');
+        debugPrint('❌ [DEBUG] StackTrace: $stackTrace');
         rethrow;
       }
       
       try {
         await tester.pumpAndSettle();
-        print('🔍 [DEBUG] PumpAndSettle completed');
+        debugPrint('🔍 [DEBUG] PumpAndSettle completed');
       } catch (e, stackTrace) {
-        print('❌ [DEBUG] Error during pumpAndSettle: $e');
-        print('❌ [DEBUG] StackTrace: $stackTrace');
+        debugPrint('❌ [DEBUG] Error during pumpAndSettle: $e');
+        debugPrint('❌ [DEBUG] StackTrace: $stackTrace');
         rethrow;
       }
       
@@ -302,24 +298,24 @@ void main() {
       final materialApps = find.byType(MaterialApp);
       final resultsScreens = find.byType(ResultsScreen);
       
-      print('🔍 [DEBUG] MaterialApp found: ${materialApps.evaluate().length}');
-      print('🔍 [DEBUG] ResultsScreen found: ${resultsScreens.evaluate().length}');
+      debugPrint('🔍 [DEBUG] MaterialApp found: ${materialApps.evaluate().length}');
+      debugPrint('🔍 [DEBUG] ResultsScreen found: ${resultsScreens.evaluate().length}');
       
       // Afficher tous les widgets dans l'arbre pour diagnostic
       final allWidgets = find.byType(Widget);
-      print('🔍 [DEBUG] Total widgets in tree: ${allWidgets.evaluate().length}');
+      debugPrint('🔍 [DEBUG] Total widgets in tree: ${allWidgets.evaluate().length}');
       
       // Si ResultsScreen n'est pas trouvé, afficher les types de widgets présents
       if (resultsScreens.evaluate().isEmpty) {
-        print('❌ [DEBUG] ResultsScreen not found! Checking widget tree...');
+        debugPrint('❌ [DEBUG] ResultsScreen not found! Checking widget tree...');
         final homeWidget = find.byType(Scaffold);
-        print('🔍 [DEBUG] Scaffold found: ${homeWidget.evaluate().length}');
+        debugPrint('🔍 [DEBUG] Scaffold found: ${homeWidget.evaluate().length}');
         
         final containers = find.byType(Container);
-        print('🔍 [DEBUG] Container found: ${containers.evaluate().length}');
+        debugPrint('🔍 [DEBUG] Container found: ${containers.evaluate().length}');
         
         final centers = find.byType(Center);
-        print('🔍 [DEBUG] Center found: ${centers.evaluate().length}');
+        debugPrint('🔍 [DEBUG] Center found: ${centers.evaluate().length}');
       }
 
       // Assert - Vérifier que l'interface se charge sans crash

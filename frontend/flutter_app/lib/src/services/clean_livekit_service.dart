@@ -49,8 +49,8 @@ class CleanLiveKitService extends ChangeNotifier {
         adaptiveStream: true, // Réactivé pour la performance
         dynacast: true,       // Réactivé pour la performance
         // Configuration optimisée pour mobile
-        defaultAudioPublishOptions: const AudioPublishOptions(),
-        defaultVideoPublishOptions: const VideoPublishOptions(),
+        defaultAudioPublishOptions: AudioPublishOptions(),
+        defaultVideoPublishOptions: VideoPublishOptions(),
       );
       _logger.i('[DIAGNOSTIC] RoomOptions: adaptiveStream et dynacast activés.');
 
@@ -87,7 +87,7 @@ class CleanLiveKitService extends ChangeNotifier {
       const connectOptions = ConnectOptions(
         autoSubscribe: true,
         // Configuration ICE pour appareil physique ET Docker avec TURN servers
-        rtcConfiguration: const RTCConfiguration(
+        rtcConfiguration: RTCConfiguration(
           iceServers: [
             // Serveurs STUN publics gratuits
             RTCIceServer(
@@ -445,7 +445,8 @@ class CleanLiveKitService extends ChangeNotifier {
       await Future.delayed(const Duration(seconds: 3));
 
       if (_room != null) {
-        final stats = await _room!.engine.subscriber?.pc?.getStats() ?? [];
+        // ignore: invalid_use_of_internal_member
+        final stats = await _room!.engine.subscriber?.pc.getStats() ?? [];
         _logger.i('🔊 [STATS] Stats complètes LiveKit (nombre de rapports: ${stats.length})');
 
         for (final report in stats) {
@@ -480,9 +481,8 @@ class CleanLiveKitService extends ChangeNotifier {
       }
       
       // Collect stats from publisher (if available)
-      final List<dynamic> publisherStats = await _room!
-          .engine.publisher?.pc
-          ?.getStats() ?? [];
+      // ignore: invalid_use_of_internal_member
+      final List<dynamic> publisherStats = await _room!.engine.publisher?.pc.getStats() ?? [];
       
       for (final report in publisherStats) {
         _logger.i('   - Publisher Report ID: ${report.id}, Type: ${report.type}, Timestamp: ${report.timestamp}');
@@ -507,9 +507,11 @@ class CleanLiveKitService extends ChangeNotifier {
         if (timer.tick <= 3) {
           _logger.d('🐛 🔊 [STATS - Périodique] Track actif: ${audioTrack.sid}, muted: ${audioTrack.muted}');
           if (_room != null) {
-            final newStats = await _room!.engine.subscriber?.pc?.getStats() ?? [];
+            // ignore: invalid_use_of_internal_member
+            final newStats = await _room!.engine.subscriber?.pc.getStats() ?? [];
             for (final report in newStats) {
-              final Map<String, dynamic> values = Map<String, dynamic>.from(report.values);
+              final Map<String, dynamic> values =
+                  Map<String, dynamic>.from(report.values);
               if (values['type'] == 'inbound-rtp') {
                 final String? kind = values['kind'] as String?;
                 if (kind == 'audio') {

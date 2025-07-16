@@ -7,7 +7,7 @@ part 'confidence_scenario.g.dart';
 /// Représente un scénario de confiance pour l'exercice Confidence Boost Express
 /// CONFORME AUX SPÉCIFICATIONS EXACTES DU PROMPT
 @HiveType(typeId: 21)
-class ConfidenceScenario extends HiveObject with EquatableMixin {
+class ConfidenceScenario extends Equatable {
   @HiveField(0)
   final String id;
   @HiveField(1)
@@ -29,7 +29,7 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
   @HiveField(9)
   final String icon;
 
-  ConfidenceScenario({
+  const ConfidenceScenario({
     required this.id,
     required this.title,
     required this.description,
@@ -44,6 +44,56 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
 
   @override
   List<Object?> get props => [id, title, description, prompt, type, durationSeconds, tips, keywords, difficulty, icon];
+
+  // Ajout du constructeur const
+  const ConfidenceScenario.professional()
+      : id = 'professional_presentation',
+        title = 'Présentation Professionnelle',
+        description = 'Présentez votre projet avec assurance',
+        prompt =
+            'Présentez votre projet à des collègues ou à des supérieurs hiérarchiques.',
+        type = ConfidenceScenarioType.presentation,
+        durationSeconds = 180,
+        tips = const [
+          'Structurez votre discours',
+          'Soyez clair et concis',
+          'Utilisez des visuels'
+        ],
+        keywords = const ['projet', 'résultats', 'stratégie'],
+        difficulty = 'Débutant',
+        icon = 'business_center';
+
+  const ConfidenceScenario.interview()
+      : id = 'job_interview',
+        title = 'Entretien d\'Embauche',
+        description = 'Brillez lors de votre prochain entretien',
+        prompt = 'Répondez à la question "Parlez-moi de vous" de manière percutante.',
+        type = ConfidenceScenarioType.pitch,
+        durationSeconds = 120,
+        tips = const [
+          'Mettez en avant vos forces',
+          'Soyez authentique',
+          'Préparez des questions'
+        ],
+        keywords = const ['compétences', 'expérience', 'motivation'],
+        difficulty = 'Intermédiaire',
+        icon = 'work';
+
+  const ConfidenceScenario.publicSpeaking()
+      : id = 'public_speaking',
+        title = 'Prise de Parole Publique',
+        description = 'Captivez votre audience avec confiance',
+        prompt = 'Donnez un discours inspirant sur un sujet qui vous passionne.',
+        type = ConfidenceScenarioType.presentation,
+        durationSeconds = 300,
+        tips = const [
+          'Utilisez le storytelling',
+          'Modulez votre voix',
+          'Interagissez avec le public'
+        ],
+        keywords = const ['passion', 'message', 'audience'],
+        difficulty = 'Avancé',
+        icon = 'mic';
 
   Map<String, dynamic> toJson() {
     return {
@@ -75,54 +125,9 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
     );
   }
 
-  /// Factory pour créer les scénarios exacts spécifiés dans le prompt
-  static ConfidenceScenario professional() {
-    return ConfidenceScenario(
-        id: 'professional_presentation',
-        title: 'Présentation Professionnelle',
-        description: 'Présentez votre projet avec assurance',
-        prompt: 'Présentez votre projet à des collègues ou à des supérieurs hiérarchiques.',
-        type: ConfidenceScenarioType.presentation,
-        durationSeconds: 180,
-        tips: ['Structurez votre discours', 'Soyez clair et concis', 'Utilisez des visuels'],
-        keywords: ['projet', 'résultats', 'stratégie'],
-        difficulty: 'Débutant',
-        icon: 'business_center',
-    );
-  }
-
-  static ConfidenceScenario interview() {
-    return ConfidenceScenario(
-        id: 'job_interview',
-        title: 'Entretien d\'Embauche',
-        description: 'Brillez lors de votre prochain entretien',
-        prompt: 'Répondez à la question "Parlez-moi de vous" de manière percutante.',
-        type: ConfidenceScenarioType.pitch,
-        durationSeconds: 120,
-        tips: ['Mettez en avant vos forces', 'Soyez authentique', 'Préparez des questions'],
-        keywords: ['compétences', 'expérience', 'motivation'],
-        difficulty: 'Intermédiaire',
-        icon: 'work',
-    );
-  }
-
-  static ConfidenceScenario publicSpeaking() {
-    return ConfidenceScenario(
-        id: 'public_speaking',
-        title: 'Prise de Parole Publique',
-        description: 'Captivez votre audience avec confiance',
-        prompt: 'Donnez un discours inspirant sur un sujet qui vous passionne.',
-        type: ConfidenceScenarioType.presentation,
-        durationSeconds: 300,
-        tips: ['Utilisez le storytelling', 'Modulez votre voix', 'Interagissez avec le public'],
-        keywords: ['passion', 'message', 'audience'],
-        difficulty: 'Avancé',
-        icon: 'mic',
-    );
-  }
 
   static List<ConfidenceScenario> getDefaultScenarios() {
-    return [
+    return const [
       ConfidenceScenario(
         id: 'team_meeting',
         title: 'Réunion d\'équipe',
@@ -140,7 +145,6 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
         ],
         keywords: ['projet', 'objectifs', 'défis', 'étapes', 'équipe'],
       ),
-      
       ConfidenceScenario(
         id: 'client_presentation',
         title: 'Présentation client',
@@ -158,7 +162,6 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
         ],
         keywords: ['solution', 'problème', 'bénéfices', 'innovation', 'entreprise'],
       ),
-      
       ConfidenceScenario(
         id: 'elevator_pitch',
         title: 'Elevator Pitch',
@@ -176,7 +179,6 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
         ],
         keywords: ['startup', 'vision', 'marché', 'investissement', 'solution'],
       ),
-      
       ConfidenceScenario(
         id: 'team_motivation',
         title: 'Motivation d\'équipe',
@@ -194,7 +196,6 @@ class ConfidenceScenario extends HiveObject with EquatableMixin {
         ],
         keywords: ['motivation', 'projet', 'objectifs', 'confiance', 'réussir'],
       ),
-      
       ConfidenceScenario(
         id: 'product_demo',
         title: 'Démonstration produit',

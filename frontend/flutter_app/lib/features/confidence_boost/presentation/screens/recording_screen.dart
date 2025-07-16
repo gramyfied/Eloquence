@@ -87,7 +87,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           // Section des contrôles en bas (fixe)
           Container(
             padding: const EdgeInsets.all(EloquenceSpacing.lg),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: EloquenceColors.navy,
               border: Border(
                 top: BorderSide(
@@ -105,7 +105,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                   style: ConfidenceBoostTextStyles.timerDisplay,
                 ),
 
-                SizedBox(height: EloquenceSpacing.md),
+                const SizedBox(height: EloquenceSpacing.md),
 
                 // Waveform visualizer
                 _buildWaveformVisualizer(),
@@ -113,7 +113,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 // Status d'analyse
                 _buildAnalysisStatus(),
 
-                SizedBox(height: EloquenceSpacing.md),
+                const SizedBox(height: EloquenceSpacing.md),
 
                 // Bouton d'enregistrement
                 _buildRecordButton(),
@@ -139,8 +139,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         children: [
           Row(
             children: [
-              Icon(Icons.text_snippet, color: EloquenceColors.cyan, size: 20),
-              SizedBox(width: EloquenceSpacing.sm),
+              const Icon(Icons.text_snippet, color: EloquenceColors.cyan, size: 20),
+              const SizedBox(width: EloquenceSpacing.sm),
               Expanded(
                 child: Text(
                   'Support : ${_getSupportTypeName(widget.textSupport.type)}',
@@ -154,7 +154,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               ),
             ],
           ),
-          SizedBox(height: EloquenceSpacing.md),
+          const SizedBox(height: EloquenceSpacing.md),
           _buildSupportContent(),
         ],
       ),
@@ -189,7 +189,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           ),
         ),
         if (widget.textSupport.suggestedWords.isNotEmpty) ...[
-          SizedBox(height: EloquenceSpacing.md),
+          const SizedBox(height: EloquenceSpacing.md),
           Text(
             '💡 Suggestions disponibles:',
             style: EloquenceTextStyles.body1.copyWith(
@@ -197,7 +197,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: EloquenceSpacing.sm),
+          const SizedBox(height: EloquenceSpacing.sm),
           Wrap(
             spacing: EloquenceSpacing.sm,
             runSpacing: EloquenceSpacing.sm,
@@ -208,10 +208,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                   vertical: EloquenceSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: EloquenceColors.violet.withOpacity(0.2),
+                  color: EloquenceColors.violet.withAlpha((255 * 0.2).round()),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: EloquenceColors.violet.withOpacity(0.5),
+                    color: EloquenceColors.violet.withAlpha((255 * 0.5).round()),
                   ),
                 ),
                 child: Text(
@@ -240,7 +240,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         spans.add(TextSpan(
           text: '_____',
           style: TextStyle(
-            backgroundColor: EloquenceColors.cyan.withOpacity(0.3),
+            backgroundColor: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
             color: EloquenceColors.cyan,
             fontWeight: FontWeight.bold,
           ),
@@ -252,7 +252,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Widget _buildWaveformVisualizer() {
-    return Container(
+    return SizedBox(
       height: 80,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -279,13 +279,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [color, color.withOpacity(0.6)],
+                    colors: [color, color.withAlpha((255 * 0.6).round())],
                   ),
                   borderRadius: BorderRadius.circular(2),
                   boxShadow: _isRecording && height > 30
                       ? [
                           BoxShadow(
-                            color: color.withOpacity(0.6),
+                            color: color.withAlpha((255 * 0.6).round()),
                             blurRadius: 4,
                             offset: const Offset(0, 0),
                           ),
@@ -321,7 +321,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 boxShadow: [
                   BoxShadow(
                     color: (_isRecording ? Colors.red : EloquenceColors.cyan)
-                        .withOpacity(0.5),
+                        .withAlpha((255 * 0.5).round()),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -347,13 +347,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         margin: const EdgeInsets.symmetric(vertical: EloquenceSpacing.md),
         padding: const EdgeInsets.all(EloquenceSpacing.md),
         decoration: BoxDecoration(
-          color: EloquenceColors.cyan.withOpacity(0.1),
+          color: EloquenceColors.cyan.withAlpha((255 * 0.1).round()),
           borderRadius: EloquenceRadii.card,
-          border: Border.all(color: EloquenceColors.cyan.withOpacity(0.3)),
+          border: Border.all(color: EloquenceColors.cyan.withAlpha((255 * 0.3).round())),
         ),
         child: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
@@ -361,7 +361,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 color: EloquenceColors.cyan,
               ),
             ),
-            SizedBox(width: EloquenceSpacing.sm),
+            const SizedBox(width: EloquenceSpacing.sm),
             Text(
               'Analyse en cours...',
               style: EloquenceTextStyles.body1.copyWith(
@@ -373,7 +373,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       );
     }
     
-    return SizedBox.shrink();
+    return const SizedBox.shrink();
   }
 
   void _toggleRecording() {
@@ -421,6 +421,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // Analyse terminée, retourner à l'écran précédent
       widget.onRecordingComplete(_recordingDuration);
     }).catchError((error) {
+      if (!mounted) return;
       // Gérer les erreurs d'analyse
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

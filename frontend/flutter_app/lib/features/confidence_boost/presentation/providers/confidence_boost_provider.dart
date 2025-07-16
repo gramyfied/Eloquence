@@ -14,7 +14,7 @@ import '../../data/services/confidence_livekit_integration.dart';
 import '../../data/services/text_support_generator.dart';
 import '../../data/services/confidence_analysis_backend_service.dart';
 import '../../data/services/prosody_analysis_interface.dart';
-import '../../data/services/hybrid_speech_evaluation_service.dart';
+import '../../data/services/unified_speech_analysis_service.dart';
 import '../../data/services/mistral_api_service.dart';
 import '../../data/services/gamification_service.dart';
 import '../../data/services/xp_calculator_service.dart';
@@ -25,7 +25,6 @@ import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_scenario.dart' as confidence_scenarios;
 import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/repositories/confidence_repository.dart';
-import '../widgets/mobile_optimized_progress_widget.dart';
 import 'mistral_api_service_provider.dart'; // Import du nouveau provider
 import 'network_config_provider.dart'; // Provider réseau adaptatif
 // Provider pour SharedPreferences
@@ -89,13 +88,18 @@ final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBack
   return ConfidenceAnalysisBackendService();
 });
 
-// Provider pour l'interface d'analyse prosodique Whisper temps réel
+// Provider pour l'interface d'analyse prosodique (maintenant unifié)
+final unifiedSpeechAnalysisProvider = Provider<UnifiedSpeechAnalysisService>((ref) {
+  return UnifiedSpeechAnalysisService();
+});
+
+// L'ancien provider prosodyAnalysisInterfaceProvider est maintenant un alias
+// ou devrait être remplacé là où il est utilisé. Pour l'instant, on le fait pointer
+// vers un Fallback pour éviter de casser le code qui en dépendrait encore.
 final prosodyAnalysisInterfaceProvider = Provider<ProsodyAnalysisInterface>((ref) {
-  // Utiliser le service whisper-realtime opérationnel
-  return HybridSpeechEvaluationService(
-    baseUrl: 'http://192.168.1.44:8006', // Service whisper-realtime sur adresse IP réseau
-    timeout: const Duration(seconds: 15),
-  );
+  // On retourne un Fallback par défaut. Le code devrait être migré
+  // pour utiliser unifiedSpeechAnalysisProvider directement.
+  return FallbackProsodyAnalysis();
 });
 
 // Provider pour le fallback prosodique (utilisé en cas d'échec du service hybride)
@@ -108,7 +112,7 @@ final gamificationRepositoryProvider = Provider<GamificationRepository>((ref) {
   final repository = HiveGamificationRepository();
   // Initialize asynchronously - this will be handled by the consumer
   repository.initialize().catchError((error) {
-    print('❌ [HIVE_INIT_ERROR] Failed to initialize Hive: $error');
+    Logger().e('❌ [HIVE_INIT_ERROR] Failed to initialize Hive: $error');
   });
   return repository;
 });
@@ -323,7 +327,6 @@ class ConfidenceBoostProvider with ChangeNotifier {
         logger.i("🏁 Racing ${analysisAttempts.length} analysis methods (8s timeout)");
         
         confidence_models.ConfidenceAnalysis? winningAnalysis;
-        int completedAttempts = 0;
         
         // Surveiller chaque tentative en parallèle
         final futures = analysisAttempts.map((attemptFuture) async {
@@ -338,8 +341,6 @@ class ConfidenceBoostProvider with ChangeNotifier {
           } catch (e) {
             logger.w("Analysis attempt failed: $e");
             return null;
-          } finally {
-            completedAttempts++;
           }
         }).toList();
         
