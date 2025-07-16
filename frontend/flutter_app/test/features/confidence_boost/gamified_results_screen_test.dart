@@ -7,51 +7,164 @@ import 'package:eloquence_2_0/features/confidence_boost/presentation/screens/res
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/gamification_models.dart' as gamification;
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
+import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
+import 'package:eloquence_2_0/data/services/api_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence_livekit_integration.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/repositories/confidence_repository.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence_analysis_backend_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/prosody_analysis_interface.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/gamification_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/repositories/gamification_repository.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/xp_calculator_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/badge_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/streak_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart' as confidence_scenarios;
+import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
+import 'dart:typed_data';
+import 'package:logger/logger.dart';
 
-// Mock provider simple qui simule les getters sans dépendances complexes
-class TestConfidenceBoostProvider extends ChangeNotifier {
-  final gamification.GamificationResult? _gamificationResult;
-  
-  TestConfidenceBoostProvider({gamification.GamificationResult? gamificationResult})
-      : _gamificationResult = gamificationResult;
-  
-  gamification.GamificationResult? get lastGamificationResult => _gamificationResult;
+// --- Fakes & Mocks ---
+
+// Un "Fake" est une implémentation légère qui est parfaite pour les tests d'UI.
+// Il étend ChangeNotifier et implémente l'interface du vrai provider pour garantir la compatibilité des types.
+class FakeConfidenceBoostProvider extends ChangeNotifier implements ConfidenceBoostProvider {
+  // --- Membres importants pour ce test ---
+  @override
+  gamification.GamificationResult? lastGamificationResult;
+
+  FakeConfidenceBoostProvider({this.lastGamificationResult});
+
+  // --- Implémentations vides ou par défaut pour le reste de l'interface ---
+
+  @override
   bool get isProcessingGamification => false;
+
+  @override
+  Future<void> analyzePerformance({
+    required confidence_scenarios.ConfidenceScenario scenario,
+    required confidence_models.TextSupport textSupport,
+    required Duration recordingDuration,
+    Uint8List? audioData,
+  }) async {}
+
+  @override
+  void clearDemoGamificationData() {}
+
+  @override
+  Future<void> createDemoGamificationData() async {}
+
+  @override
+  Future<void> createDemoGamificationDataWithLevelUp() async {}
+
+  @override
+  int get currentStage => 0;
+
+  @override
+  String get currentStageDescription => '';
+
+  @override
+  confidence_models.TextSupport? get currentTextSupport => null;
+
+  @override
+  Future<void> generateTextSupport({
+    required confidence_scenarios.ConfidenceScenario scenario,
+    required confidence_models.SupportType type,
+  }) async {}
+
+  @override
+  bool get isAnalyzing => false;
+
+  @override
+  bool get isGeneratingSupport => false;
+
+  @override
+  bool get isUsingMobileOptimization => false;
+
+  @override
+  confidence_models.ConfidenceAnalysis? get lastAnalysis => null;
+
+  @override
+  confidence_models.SupportType get selectedSupportType => confidence_models.SupportType.fullText;
+
+  @override
+  final Logger logger = Logger();
+
+  // --- Getters de services complexes : lèvent une erreur si appelés ---
+  // Cela garantit que notre UI ne dépend pas de ces services.
+  @override
+  CleanLiveKitService get livekitService => throw UnimplementedError('livekitService not implemented in Fake');
+  
+  @override
+  ConfidenceLiveKitIntegration get livekitIntegration => throw UnimplementedError('livekitIntegration not implemented in Fake');
+
+  @override
+  ConfidenceRepository get repository => throw UnimplementedError('repository not implemented in Fake');
+
+  @override
+  ConfidenceAnalysisBackendService get backendAnalysisService => throw UnimplementedError('backendAnalysisService not implemented in Fake');
+
+  @override
+  ProsodyAnalysisInterface get prosodyAnalysisInterface => throw UnimplementedError('prosodyAnalysisInterface not implemented in Fake');
+
+  @override
+  GamificationService get gamificationService => throw UnimplementedError('gamificationService not implemented in Fake');
+
+  @override
+  IMistralApiService get mistralApiService => throw UnimplementedError('mistralApiService not implemented in Fake');
+}
+
+
+class FakeConfidenceRepository implements ConfidenceRepository {
+  @override
+  Future<List<confidence_scenarios.ConfidenceScenario>> getScenarios() async => [];
+  @override
+  Future<void> saveSession(confidence_models.ConfidenceAnalysis analysis, confidence_scenarios.ConfidenceScenario scenario) async {}
+  @override
+  Future<confidence_models.ConfidenceAnalysis> analyzePerformance({required String audioFilePath, required Duration recordingDuration, required confidence_scenarios.ConfidenceScenario scenario}) async => confidence_models.ConfidenceAnalysis(overallScore: 0, confidenceScore: 0, fluencyScore: 0, clarityScore: 0, energyScore: 0, feedback: '', wordCount: 0, speakingRate: 0, keywordsUsed: [], transcription: '');
+  @override
+  Future<confidence_scenarios.ConfidenceScenario> getRandomScenario() async => confidence_scenarios.ConfidenceScenario(id: '', title: '', description: '', prompt: '', type: confidence_models.ConfidenceScenarioType.presentation, durationSeconds: 0, tips: [], keywords: [], difficulty: '', icon: '');
+  @override
+  Future<confidence_scenarios.ConfidenceScenario?> getScenarioById(String id) async => null;
+}
+
+class FakeMistralApiService implements IMistralApiService {
+  @override
+  Future<Map<String, dynamic>> analyzeContent({required String prompt, int maxTokens = 200}) async => {};
+  @override
+  Future<String> generateText({required String prompt, int maxTokens = 150, double temperature = 0.7}) async => '';
+  @override
+  Future<void> clearCache() async {}
+  @override
+  void dispose() {}
+  @override
+  Map<String, dynamic> getCacheStatistics() => {};
+  @override
+  Future<void> preloadCommonPrompts() async {}
 }
 
 void main() {
   group('ResultsScreen Gamification UI Tests', () {
     late ConfidenceAnalysis mockAnalysis;
     late gamification.GamificationResult mockGamificationResult;
+    late FakeConfidenceBoostProvider fakeConfidenceProvider;
 
     setUpAll(() async {
-      // 1. Initialiser SharedPreferences pour les tests Flutter
       SharedPreferences.setMockInitialValues({});
       await SharedPreferences.getInstance();
-      debugPrint('✅ [TEST_SETUP] SharedPreferences initialized');
       
-      // 2. Initialiser Supabase pour les tests
       try {
         await Supabase.initialize(
           url: 'https://test.supabase.co',
           anonKey: 'test-anon-key-for-testing-purposes-only',
           debug: false,
         );
-        debugPrint('✅ [TEST_SETUP] Supabase initialized for testing');
       } catch (e) {
-        if (e.toString().contains('already initialized')) {
-          debugPrint('✅ [TEST_SETUP] Supabase already initialized');
-        } else {
-          debugPrint('⚠️ [TEST_SETUP] Supabase initialization error: $e');
-        }
-        // Continue anyway - tests should still work
+        // Ignore if already initialized
       }
     });
 
     setUp(() {
-      debugPrint('🧪 [TEST_SETUP] Starting test setup...');
-      
-      // Créer une analyse avec la vraie structure
       mockAnalysis = ConfidenceAnalysis(
         overallScore: 85.0,
         confidenceScore: 0.9,
@@ -65,7 +178,6 @@ void main() {
         transcription: 'Bonjour, je vous présente aujourd\'hui...',
       );
 
-      // Créer un résultat de gamification réaliste
       mockGamificationResult = gamification.GamificationResult(
         earnedXP: 75,
         newBadges: [
@@ -97,19 +209,20 @@ void main() {
         ),
       );
 
-      // 2. Créer un mock du provider avec des données factices
-      TestConfidenceBoostProvider(gamificationResult: mockGamificationResult);
-      debugPrint('✅ [TEST_SETUP] Mock provider created with gamification data');
+      // Créer une instance du fake provider
+      fakeConfidenceProvider = FakeConfidenceBoostProvider(
+        lastGamificationResult: mockGamificationResult,
+      );
     });
 
-    testWidgets('affiche la section gamification avec les données - Version Simplifiée', (WidgetTester tester) async {
-      debugPrint('🧪 [TEST] Starting simplified gamification section test...');
+    testWidgets('affiche la section gamification avec les données', (WidgetTester tester) async {
+      debugPrint('🧪 [TEST] Starting gamification section test...');
       
-      // Arrange - Test sans override, avec providers par défaut et gestion d'erreur
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            // Override seulement les providers critiques avec des mocks minimaux
+            // On utilise overrideWith pour fournir notre fake provider.
+            confidenceBoostProvider.overrideWith((ref) => fakeConfidenceProvider),
             sharedPreferencesProvider.overrideWithValue(
               await SharedPreferences.getInstance(),
             ),
@@ -126,13 +239,9 @@ void main() {
 
       debugPrint('🧪 [TEST] Widget pumped, waiting for animations...');
       
-      // Attendre avec timeout court pour éviter les blocages
-      try {
-        await tester.pumpAndSettle(const Duration(seconds: 2));
-      } catch (e) {
-        debugPrint('⚠️ [TEST] PumpAndSettle timeout, continuing with basic pump...');
-        await tester.pump();
-      }
+      // Attendre que toutes les animations (comme les barres de progression) se terminent.
+      // C'est crucial pour éviter les erreurs de "transient state".
+      await tester.pumpAndSettle();
 
       // Assert - Vérifier que l'interface ne crash pas (test de non-régression)
       expect(find.byType(MaterialApp), findsOneWidget);

@@ -3,18 +3,15 @@ import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'fakes/fake_clean_livekit_service.dart';
 import 'fakes/fake_api_service.dart';
-import 'test_helpers.dart';
+import 'test_setup.dart';
 
 void main() {
   group('ConfidenceLiveKitIntegration Tests', () {
     setUpAll(() async {
-      // Load environment variables
-      await dotenv.load(fileName: ".env");
-      await setupTestHive();
+      await setupTestEnvironment();
     });
     late ConfidenceLiveKitIntegration confidenceLiveKit;
     late FakeCleanLiveKitService fakeLiveKitService;
