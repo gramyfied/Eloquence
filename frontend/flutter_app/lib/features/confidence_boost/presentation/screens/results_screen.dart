@@ -32,42 +32,15 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
 
   final List<ConfettiParticle> _confettiParticles = [];
   bool _showBadge = false;
-  GamificationResult? _gamificationResult;
+  bool _needsConfettiGeneration = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _loadGamificationData();
     _startAnimationSequence();
   }
 
-  void _loadGamificationData() {
-    final logger = Logger();
-    try {
-      logger.d("🎮 DEBUG: Attempting to read confidenceBoostProvider...");
-      final provider = ref.read(confidenceBoostProvider);
-      logger.d("🎮 DEBUG: Provider obtained successfully");
-      
-      _gamificationResult = provider.lastGamificationResult;
-      logger.d("🎮 DEBUG: Provider lastGamificationResult: $_gamificationResult");
-      
-      if (_gamificationResult != null) {
-        logger.i("🎮 DEBUG: ✅ XP earned: ${_gamificationResult!.earnedXP}");
-        logger.i("🎮 DEBUG: ✅ New level: ${_gamificationResult!.newLevel}");
-        logger.i("🎮 DEBUG: ✅ New badges: ${_gamificationResult!.newBadges.length}");
-        logger.i("🎮 DEBUG: ✅ Level up: ${_gamificationResult!.levelUp}");
-      } else {
-        logger.w("❌ DEBUG: Gamification result is NULL - XP section will not display");
-        logger.w("❌ DEBUG: CAUSE: No analysis session has been processed via _processGamification()");
-        logger.w("❌ DEBUG: SOLUTION: Complete a full exercise analysis to generate gamification data");
-      }
-    } catch (e) {
-      logger.e("💥 DEBUG: ERREUR loading gamification data: $e");
-      logger.e("💥 DEBUG: Provider might not be properly initialized");
-    }
-  }
-  
   @override
   void dispose() {
     _scoreController.dispose();
@@ -110,42 +83,35 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
   }
 
   void _startAnimationSequence() async {
-    // 1. Animation du score principal
-    if (mounted) {
-      _scoreController.forward();
-    }
+    if (!mounted) return;
+    _scoreController.forward();
 
-    // 2. Animation des métriques après 500ms
     await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) {
-      _metricsController.forward();
-    }
+    if (!mounted) return;
+    _metricsController.forward();
 
-    // 3. Confettis et badge si score élevé
     if (widget.analysis.overallScore >= 65) {
       await Future.delayed(const Duration(milliseconds: 1000));
-      if (mounted) {
-        _triggerCelebration();
-      }
+      if (!mounted) return;
+      _triggerCelebration();
     }
   }
 
   void _triggerCelebration() {
     setState(() {
       _showBadge = true;
+      _needsConfettiGeneration = true;
     });
-
-    _generateConfetti();
     _confettiController.forward();
   }
 
-  void _generateConfetti() {
+  void _generateConfetti(BuildContext context) {
     final random = Random();
     _confettiParticles.clear();
-
+    final screenWidth = MediaQuery.of(context).size.width;
     for (int i = 0; i < 50; i++) {
       _confettiParticles.add(ConfettiParticle(
-        x: random.nextDouble() * MediaQuery.of(context).size.width,
+        x: random.nextDouble() * screenWidth,
         y: -20,
         color: [
           ConfidenceBoostColors.celebrationGold,
@@ -163,25 +129,26 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_needsConfettiGeneration) {
+      _generateConfetti(context);
+      _needsConfettiGeneration = false;
+    }
+    final gamificationResult = ref.watch(confidenceBoostProvider).lastGamificationResult;
+
     return Scaffold(
       backgroundColor: EloquenceColors.navy,
       body: Stack(
         children: [
-          // Contenu principal
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(EloquenceSpacing.lg),
               child: Column(
                 children: [
-                  // Header fixe
                   Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () {
-                          Logger().d("🔍 DEBUG: Close button pressed - using onContinue for PageView navigation");
-                          widget.onContinue();
-                        },
+                        onPressed: widget.onContinue,
                       ),
                       const Expanded(
                         child: Text(
@@ -190,50 +157,29 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      const SizedBox(width: 48), // Équilibrer avec le bouton close
+                      const SizedBox(width: 48),
                     ],
                   ),
-
-                  // Contenu scrollable
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const ClampingScrollPhysics(),
                       child: Column(
                         children: [
                           const SizedBox(height: EloquenceSpacing.xl),
-
-                          // Score principal animé
                           _buildAnimatedScoreCircle(),
-
                           const SizedBox(height: EloquenceSpacing.xl),
-
-                          // Métriques détaillées
                           _buildMetricsSection(),
-
                           const SizedBox(height: EloquenceSpacing.xl),
-
-                          // Section Gamification
-                          if (_gamificationResult != null) _buildGamificationSection(),
-
+                          if (gamificationResult != null)
+                            _buildGamificationSection(gamificationResult),
                           const SizedBox(height: EloquenceSpacing.xl),
-
-                          // Badge de réussite (si applicable) - remplacé par les nouveaux badges de gamification
-                          // Les badges sont maintenant affichés dans la section gamification ci-dessus
-                          // Pas besoin d'afficher le badge générique si on a des badges réels
-                          if (_showBadge && (_gamificationResult == null || _gamificationResult!.newBadges.isEmpty))
+                          if (_showBadge && (gamificationResult == null || gamificationResult.newBadges.isEmpty))
                             _buildAchievementBadge(),
-
                           const SizedBox(height: EloquenceSpacing.xl),
-
-                          // Feedback textuel
                           _buildFeedbackSection(),
-
                           const SizedBox(height: EloquenceSpacing.xl),
-
-                          // Boutons d'action
-                          _buildActionButtons(),
-
-                          const SizedBox(height: EloquenceSpacing.lg), // Padding bas
+                          _buildActionButtons(gamificationResult),
+                          const SizedBox(height: EloquenceSpacing.lg),
                         ],
                       ),
                     ),
@@ -242,13 +188,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
               ),
             ),
           ),
-
-          // Système de confettis
           if (_confettiParticles.isNotEmpty)
             AnimatedBuilder(
               animation: _confettiController,
               builder: (context, child) {
-                return IgnorePointer( // CORRECTION: Rendre transparent aux gestes
+                return IgnorePointer(
                   child: CustomPaint(
                     painter: ConfettiPainter(
                       particles: _confettiParticles,
@@ -278,7 +222,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
               gradient: _getScoreGradient(_scoreAnimation.value),
               boxShadow: [
                 BoxShadow(
-                  color: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
+                  color: EloquenceColors.cyan.withAlpha(76),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -289,14 +233,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${_scoreAnimation.value.round()}', // Score déjà sur base 100
+                    '${_scoreAnimation.value.round()}',
                     style: ConfidenceBoostTextStyles.scoreDisplay,
                   ),
                   Text(
                     '/100',
-                    style: EloquenceTextStyles.body1.copyWith(
-                      color: Colors.white70,
-                    ),
+                    style: EloquenceTextStyles.body1.copyWith(color: Colors.white70),
                   ),
                 ],
               ),
@@ -313,33 +255,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
       builder: (context, child) {
         return Column(
           children: [
-            _buildAnimatedMetricBar(
-              'Confiance',
-              widget.analysis.confidenceScore,
-              EloquenceColors.cyan,
-              0,
-            ),
+            _buildAnimatedMetricBar('Confiance', widget.analysis.confidenceScore, EloquenceColors.cyan, 0),
             const SizedBox(height: EloquenceSpacing.md),
-            _buildAnimatedMetricBar(
-              'Fluidité',
-              widget.analysis.fluencyScore,
-              EloquenceColors.violet,
-              200,
-            ),
+            _buildAnimatedMetricBar('Fluidité', widget.analysis.fluencyScore, EloquenceColors.violet, 200),
             const SizedBox(height: EloquenceSpacing.md),
-            _buildAnimatedMetricBar(
-              'Clarté',
-              widget.analysis.clarityScore,
-              ConfidenceBoostColors.successGreen,
-              400,
-            ),
+            _buildAnimatedMetricBar('Clarté', widget.analysis.clarityScore, ConfidenceBoostColors.successGreen, 400),
             const SizedBox(height: EloquenceSpacing.md),
-            _buildAnimatedMetricBar(
-              'Énergie',
-              widget.analysis.energyScore,
-              ConfidenceBoostColors.warningOrange,
-              600,
-            ),
+            _buildAnimatedMetricBar('Énergie', widget.analysis.energyScore, ConfidenceBoostColors.warningOrange, 600),
           ],
         );
       },
@@ -352,11 +274,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
       end: value,
     ).animate(CurvedAnimation(
       parent: _metricsController,
-      curve: Interval(
-        (delay / 1000).clamp(0.0, 0.8),
-        1.0,
-        curve: Curves.easeOutCubic,
-      ),
+      curve: Interval((delay / 1000).clamp(0.0, 0.8), 1.0, curve: Curves.easeOutCubic),
     ));
 
     return AnimatedBuilder(
@@ -371,10 +289,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                 Text(label, style: EloquenceTextStyles.body1),
                 Text(
                   '${(delayedAnimation.value * 100).round()}%',
-                  style: EloquenceTextStyles.body1.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: EloquenceTextStyles.body1.copyWith(color: color, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -390,13 +305,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                 widthFactor: delayedAnimation.value,
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color.withAlpha((255 * 0.8).round()), color],
-                    ),
+                    gradient: LinearGradient(colors: [color.withAlpha(204), color]),
                     borderRadius: BorderRadius.circular(4),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withAlpha((255 * 0.3).round()),
+                        color: color.withAlpha(76),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -425,13 +338,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
               gradient: RadialGradient(
                 colors: [
                   ConfidenceBoostColors.celebrationGold,
-                  ConfidenceBoostColors.celebrationGold.withAlpha((255 * 0.8).round()),
+                  ConfidenceBoostColors.celebrationGold.withAlpha(204),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: ConfidenceBoostColors.celebrationGold.withAlpha((255 * 0.5).round()),
+                  color: ConfidenceBoostColors.celebrationGold.withAlpha(127),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -444,10 +357,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                 const SizedBox(width: EloquenceSpacing.sm),
                 Text(
                   'NOUVEAU BADGE DÉBLOQUÉ',
-                  style: EloquenceTextStyles.body1.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: EloquenceTextStyles.body1.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ],
             ),
@@ -475,24 +385,18 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
               const SizedBox(width: EloquenceSpacing.sm),
               Text(
                 'Coaching IA',
-                style: EloquenceTextStyles.body1.copyWith(
-                  color: EloquenceColors.cyan,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: EloquenceTextStyles.body1.copyWith(color: EloquenceColors.cyan, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: EloquenceSpacing.md),
-          Text(
-            widget.analysis.feedback,
-            style: EloquenceTextStyles.body1,
-          ),
+          Text(widget.analysis.feedback, style: EloquenceTextStyles.body1),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(GamificationResult? gamificationResult) {
     return Row(
       children: [
         Expanded(
@@ -507,14 +411,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: EloquenceRadii.button,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: EloquenceRadii.button),
               ),
-              child: const Text(
-                'CONTINUER',
-                style: EloquenceTextStyles.buttonLarge,
-              ),
+              child: const Text('CONTINUER', style: EloquenceTextStyles.buttonLarge),
             ),
           ),
         ),
@@ -527,23 +426,14 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
           ),
           child: TextButton(
             onPressed: () {
-              Logger().d("🏆 DEBUG: Bouton 'VOIR BADGES' cliqué - mais pas d'implémentation");
-              Logger().d("🏆 DEBUG: Gamification result exists: ${_gamificationResult != null}");
-              if (_gamificationResult != null) {
-                Logger().d("🏆 DEBUG: New badges count: ${_gamificationResult!.newBadges.length}");
-              }
               // TODO: Implémenter la navigation vers la page des badges
             },
             style: TextButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: EloquenceRadii.button,
-              ),
+              shape: RoundedRectangleBorder(borderRadius: EloquenceRadii.button),
             ),
             child: Text(
               'VOIR BADGES',
-              style: EloquenceTextStyles.buttonLarge.copyWith(
-                color: EloquenceColors.cyan,
-              ),
+              style: EloquenceTextStyles.buttonLarge.copyWith(color: EloquenceColors.cyan),
             ),
           ),
         ),
@@ -551,9 +441,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
     );
   }
 
-  Widget _buildGamificationSection() {
-    if (_gamificationResult == null) return const SizedBox.shrink();
-
+  Widget _buildGamificationSection(GamificationResult gamificationResult) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(EloquenceSpacing.lg),
@@ -565,47 +453,35 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header de la section
           Row(
             children: [
               const Icon(Icons.emoji_events, color: ConfidenceBoostColors.celebrationGold, size: 24),
               const SizedBox(width: EloquenceSpacing.sm),
               Text(
                 'Récompenses Gagnées',
-                style: EloquenceTextStyles.body1.copyWith(
-                  color: ConfidenceBoostColors.celebrationGold,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: EloquenceTextStyles.body1.copyWith(color: ConfidenceBoostColors.celebrationGold, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: EloquenceSpacing.lg),
-
-          // XP gagnés avec animation
-          _buildXPSection(),
+          _buildXPSection(gamificationResult),
           const SizedBox(height: EloquenceSpacing.md),
-
-          // Barre de progression du niveau
-          _buildLevelProgressBar(),
+          _buildLevelProgressBar(gamificationResult),
           const SizedBox(height: EloquenceSpacing.md),
-
-          // Badges débloqués (s'il y en a)
-          if (_gamificationResult!.newBadges.isNotEmpty) ...[
-            _buildNewBadgesSection(),
+          if (gamificationResult.newBadges.isNotEmpty) ...[
+            _buildNewBadgesSection(gamificationResult),
             const SizedBox(height: EloquenceSpacing.md),
           ],
-
-          // Streak actuel
-          _buildStreakSection(),
+          _buildStreakSection(gamificationResult),
         ],
       ),
     );
   }
 
-  Widget _buildXPSection() {
+  Widget _buildXPSection(GamificationResult gamificationResult) {
     return TweenAnimationBuilder<int>(
       duration: const Duration(milliseconds: 1500),
-      tween: IntTween(begin: 0, end: _gamificationResult!.earnedXP),
+      tween: IntTween(begin: 0, end: gamificationResult.earnedXP),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Row(
@@ -615,19 +491,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
               children: [
                 Icon(Icons.star, color: EloquenceColors.cyan, size: 20),
                 SizedBox(width: EloquenceSpacing.sm),
-                Text(
-                  'XP Gagnés',
-                  style: EloquenceTextStyles.body1,
-                ),
+                Text('XP Gagnés', style: EloquenceTextStyles.body1),
               ],
             ),
             Text(
               '+$value XP',
-              style: EloquenceTextStyles.body1.copyWith(
-                color: EloquenceColors.cyan,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+              style: EloquenceTextStyles.body1.copyWith(color: EloquenceColors.cyan, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         );
@@ -635,9 +504,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
     );
   }
 
-  Widget _buildLevelProgressBar() {
-    final currentLevelXP = _gamificationResult!.xpInCurrentLevel;
-    final nextLevelXP = _gamificationResult!.xpRequiredForNextLevel;
+  Widget _buildLevelProgressBar(GamificationResult gamificationResult) {
+    final currentLevelXP = gamificationResult.xpInCurrentLevel;
+    final nextLevelXP = gamificationResult.xpRequiredForNextLevel;
     final progress = nextLevelXP > 0 ? currentLevelXP / nextLevelXP : 1.0;
 
     return Column(
@@ -647,17 +516,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Niveau ${_gamificationResult!.newLevel}',
-              style: EloquenceTextStyles.body1.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              'Niveau ${gamificationResult.newLevel}',
+              style: EloquenceTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(
               '$currentLevelXP / $nextLevelXP XP',
-              style: EloquenceTextStyles.body1.copyWith(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: EloquenceTextStyles.body1.copyWith(color: Colors.white70, fontSize: 14),
             ),
           ],
         ),
@@ -670,7 +534,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
             return Container(
               height: 12,
               decoration: BoxDecoration(
-                color: EloquenceColors.navy.withAlpha((255 * 0.3).round()),
+                color: EloquenceColors.navy.withAlpha(76),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: FractionallySizedBox(
@@ -679,15 +543,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [
-                        EloquenceColors.cyan,
-                        ConfidenceBoostColors.celebrationGold,
-                      ],
+                      colors: [EloquenceColors.cyan, ConfidenceBoostColors.celebrationGold],
                     ),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
+                        color: EloquenceColors.cyan.withAlpha(76),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -702,21 +563,19 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
     );
   }
 
-  Widget _buildNewBadgesSection() {
+  Widget _buildNewBadgesSection(GamificationResult gamificationResult) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Nouveaux Badges',
-          style: EloquenceTextStyles.body1.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: EloquenceTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: EloquenceSpacing.sm),
         Wrap(
           spacing: EloquenceSpacing.sm,
           runSpacing: EloquenceSpacing.sm,
-          children: _gamificationResult!.newBadges.map((badge) {
+          children: gamificationResult.newBadges.map((badge) {
             return TweenAnimationBuilder<double>(
               duration: const Duration(milliseconds: 800),
               tween: Tween(begin: 0.0, end: 1.0),
@@ -725,21 +584,18 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                 return Transform.scale(
                   scale: value,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: EloquenceSpacing.md,
-                      vertical: EloquenceSpacing.sm,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: EloquenceSpacing.md, vertical: EloquenceSpacing.sm),
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
                         colors: [
                           ConfidenceBoostColors.celebrationGold,
-                          ConfidenceBoostColors.celebrationGold.withAlpha((255 * 0.8).round()),
+                          ConfidenceBoostColors.celebrationGold.withAlpha(204),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: ConfidenceBoostColors.celebrationGold.withAlpha((255 * 0.3).round()),
+                          color: ConfidenceBoostColors.celebrationGold.withAlpha(76),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -748,19 +604,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          _getBadgeIcon(badge.id),
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                        Icon(_getBadgeIcon(badge.id), color: Colors.white, size: 16),
                         const SizedBox(width: EloquenceSpacing.xs),
                         Text(
                           badge.name,
-                          style: EloquenceTextStyles.body1.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                          style: EloquenceTextStyles.body1.copyWith(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                       ],
                     ),
@@ -774,8 +622,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
     );
   }
 
-  Widget _buildStreakSection() {
-    final streak = _gamificationResult!.streakInfo.currentStreak;
+  Widget _buildStreakSection(GamificationResult gamificationResult) {
+    final streak = gamificationResult.streakInfo.currentStreak;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -783,10 +631,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
           children: [
             Icon(Icons.local_fire_department, color: ConfidenceBoostColors.warningOrange, size: 20),
             SizedBox(width: EloquenceSpacing.sm),
-            Text(
-              'Série Actuelle',
-              style: EloquenceTextStyles.body1,
-            ),
+            Text('Série Actuelle', style: EloquenceTextStyles.body1),
           ],
         ),
         TweenAnimationBuilder<int>(
@@ -796,10 +641,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
           builder: (context, value, child) {
             return Text(
               '$value jours',
-              style: EloquenceTextStyles.body1.copyWith(
-                color: ConfidenceBoostColors.warningOrange,
-                fontWeight: FontWeight.bold,
-              ),
+              style: EloquenceTextStyles.body1.copyWith(color: ConfidenceBoostColors.warningOrange, fontWeight: FontWeight.bold),
             );
           },
         ),
@@ -839,7 +681,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
   }
 
   LinearGradient _getScoreGradient(double score) {
-    if (score >= 0.8) { // score est entre 0 et 1
+    if (score >= 0.8) {
       return const LinearGradient(
         colors: [ConfidenceBoostColors.successGreen, EloquenceColors.cyan],
         begin: Alignment.topCenter,

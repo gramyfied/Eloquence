@@ -205,17 +205,13 @@ class OptimizedHttpService {
   
   /// Prépare les headers avec compression et keep-alive
   Map<String, String> _prepareHeaders(Map<String, String>? userHeaders) {
+    // Les headers de l'utilisateur (userHeaders) surchargent les valeurs par défaut.
     final headers = <String, String>{
-      'Accept-Encoding': 'gzip, deflate', // Compression
-      'Connection': 'keep-alive', // Keep-alive
-      'Cache-Control': 'no-cache', // Éviter le cache pour les APIs
-      'Accept': 'application/json', // Format par défaut
+      'Accept-Encoding': 'gzip, deflate',
+      'Connection': 'keep-alive',
+      'Accept': 'application/json',
+      ...?userHeaders,
     };
-    
-    // Ajouter les headers utilisateur
-    if (userHeaders != null) {
-      headers.addAll(userHeaders);
-    }
     
     return headers;
   }

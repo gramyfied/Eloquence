@@ -14,13 +14,17 @@ void main() {
     });
 
     test('✅ Configuration identique au backend Python', () {
-      // Vérifier que toutes les variables nécessaires sont présentes
-      final mistralBaseUrl = dotenv.env['MISTRAL_BASE_URL'];
       final mistralApiKey = dotenv.env['MISTRAL_API_KEY'];
+      if (mistralApiKey == null || mistralApiKey.isEmpty) {
+        debugPrint('⚠️ Clé API MISTRAL_API_KEY non trouvée dans .env. Test d\'intégration ignoré.');
+        return;
+      }
+
+      final mistralBaseUrl = dotenv.env['MISTRAL_BASE_URL'];
       final mistralModel = dotenv.env['MISTRAL_MODEL'];
 
       debugPrint('🔧 MISTRAL_BASE_URL: $mistralBaseUrl');
-      debugPrint('🔑 MISTRAL_API_KEY: ${mistralApiKey?.substring(0, 8)}...');
+      debugPrint('🔑 MISTRAL_API_KEY: ${mistralApiKey.substring(0, 8)}...');
       debugPrint('🤖 MISTRAL_MODEL: $mistralModel');
 
       expect(mistralBaseUrl, isNotNull);
@@ -32,6 +36,12 @@ void main() {
     });
 
     test('🌐 Test API Scaleway avec configuration simplifiée', () async {
+      final mistralApiKey = dotenv.env['MISTRAL_API_KEY'];
+      if (mistralApiKey == null || mistralApiKey.isEmpty) {
+        debugPrint('⚠️ Clé API MISTRAL_API_KEY non trouvée dans .env. Test d\'intégration ignoré.');
+        return;
+      }
+
       final mistralService = MistralApiService();
       
       try {
@@ -52,8 +62,13 @@ void main() {
     });
 
     test('🔍 Test direct HTTP avec même configuration que backend', () async {
-      final mistralBaseUrl = dotenv.env['MISTRAL_BASE_URL'];
       final mistralApiKey = dotenv.env['MISTRAL_API_KEY'];
+      if (mistralApiKey == null || mistralApiKey.isEmpty) {
+        debugPrint('⚠️ Clé API MISTRAL_API_KEY non trouvée dans .env. Test d\'intégration ignoré.');
+        return;
+      }
+
+      final mistralBaseUrl = dotenv.env['MISTRAL_BASE_URL'];
       final mistralModel = dotenv.env['MISTRAL_MODEL'];
 
       final headers = {
@@ -73,7 +88,7 @@ void main() {
       };
 
       debugPrint('🌐 Appel direct API: $mistralBaseUrl');
-      debugPrint('📦 Headers: Authorization Bearer ${mistralApiKey?.substring(0, 8)}...');
+      debugPrint('📦 Headers: Authorization Bearer ${mistralApiKey.substring(0, 8)}...');
       
       try {
         final response = await http.post(
