@@ -33,8 +33,8 @@ address = localhost, port = 8000
 5. **Architecture services manquante** → ❌ KISS préféré
 
 ### Scripts de Diagnostic Créés
-- `diagnostic_backend_connectivity.py` - Validation connectivité réseau
-- `test_env_fix_simple.py` - Validation configuration Flutter
+- `diagnostics/diagnostic_backend_connectivity.py` - Validation connectivité réseau
+- `tests/test_env_fix_simple.py` - Validation configuration Flutter
 
 ## 📱 Détails Techniques
 
@@ -65,7 +65,7 @@ assets:
 
 ### 1. Diagnostic Initial
 ```bash
-python diagnostic_backend_connectivity.py
+python diagnostics/diagnostic_backend_connectivity.py
 # Résultat : Backend (8000) ✅, Hybrid (8007) ❌ mais inutile
 ```
 
@@ -82,7 +82,7 @@ cp .env frontend/flutter_app/.env
 
 ### 4. Validation de la Correction
 ```bash
-python test_env_fix_simple.py
+python tests/test_env_fix_simple.py
 # Résultat : SUCCESS - Configuration IP locale correcte!
 ```
 
@@ -153,8 +153,8 @@ MOBILE_MISTRAL_CACHE_EXPIRATION=600
 - `docs/GUIDE_RESOLUTION_FINALE_MOBILE.md` - Guide détaillé précédent
 - `docs/GUIDE_VALIDATION_FINALE_MOBILE.md` - Procédures de test
 - `docs/RESULTATS_OPTIMISATION_MOBILE.md` - Métriques performance
-- `diagnostic_backend_connectivity.py` - Script diagnostic réseau
-- `test_env_fix_simple.py` - Script validation configuration
+- `diagnostics/diagnostic_backend_connectivity.py` - Script diagnostic réseau
+- `tests/test_env_fix_simple.py` - Script validation configuration
 
 ## ✅ Checklist de Validation
 

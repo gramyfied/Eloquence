@@ -58,7 +58,7 @@ MISTRAL_MODEL=mistral-nemo-instruct-2407                   # Modèle Scaleway co
 
 ### **Test de Validation Exécuté**
 
-**Script** : [`test_mistral_config_corrected.py`](../test_mistral_config_corrected.py)
+**Script** : [`tests/test_mistral_config_corrected.py`](tests/test_mistral_config_corrected.py)
 
 **Résultats** :
 ```

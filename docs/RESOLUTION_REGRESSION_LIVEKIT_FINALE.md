@@ -51,11 +51,11 @@ LIVEKIT_WS_URL=ws://192.168.1.44:7880
 
 ### **3. Scripts de Diagnostic Créés**
 
-#### [`diagnostic_regression_simple.py`](diagnostic_regression_simple.py)
+#### [`diagnostics/diagnostic_regression_simple.py`](diagnostics/diagnostic_regression_simple.py)
 - Test initial révélant 4 variables LiveKit manquantes
 - Validation de l'hypothèse de régression
 
-#### [`test_correction_simple.py`](test_correction_simple.py)
+#### [`tests/test_correction_simple.py`](tests/test_correction_simple.py)
 - Test de validation final post-correction
 - Confirmation du succès 100%
 
@@ -93,7 +93,7 @@ LIVEKIT_API_SECRET=devsecret...           ✅ Présente
 
 ### **Test de Validation Finale**
 ```bash
-python test_correction_simple.py
+python tests/test_correction_simple.py
 ```
 
 ### **Résultats 100% Positifs**
@@ -146,9 +146,9 @@ LIVEKIT_API_SECRET=devsecret123456789abcdef
 ```
 
 ### **2. Script de Vérification Automatique**
-Utiliser [`test_correction_simple.py`](test_correction_simple.py) pour validation régulière :
+Utiliser [`tests/test_correction_simple.py`](tests/test_correction_simple.py) pour validation régulière :
 ```bash
-python test_correction_simple.py
+python tests/test_correction_simple.py
 ```
 
 ### **3. Checklist de Déploiement**
@@ -175,6 +175,6 @@ python test_correction_simple.py
 
 **Fichiers de référence** :
 - Configuration : [`.env`](.env)
-- Script diagnostic : [`diagnostic_regression_simple.py`](diagnostic_regression_simple.py)  
-- Script validation : [`test_correction_simple.py`](test_correction_simple.py)
-- Rapport JSON : [`rapport_validation_correction_1752407193.json`](rapport_validation_correction_1752407193.json)
+- Script diagnostic : [`diagnostics/diagnostic_regression_simple.py`](diagnostics/diagnostic_regression_simple.py)
+- Script validation : [`tests/test_correction_simple.py`](tests/test_correction_simple.py)
+- Rapport JSON : [`diagnostic_reports/rapport_validation_correction_1752407193.json`](diagnostic_reports/rapport_validation_correction_1752407193.json)

@@ -41,7 +41,7 @@ Future<void> _clearMistralCache() async {
 
 Future<void> _resetPreferences() async {
   debugPrint('\nRéinitialisation des préférences utilisateur...');
-  final prefsFile = File('test_env_simple.dart');
+  final prefsFile = File('../tests/test_env_simple.dart');
   if (prefsFile.existsSync()) {
     prefsFile.deleteSync();
     debugPrint('✅ Fichier de préférences supprimé.');

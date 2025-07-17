@@ -28,7 +28,7 @@
 
 ### Phase 2 : Validation de l'Hypothèse Principale
 
-**Script de diagnostic personnalisé créé :** [`diagnostic_gunicorn_simple.py`](diagnostic_gunicorn_simple.py)
+**Script de diagnostic personnalisé créé :** [`diagnostics/diagnostic_gunicorn_simple.py`](diagnostics/diagnostic_gunicorn_simple.py)
 
 **Preuves collectées :**
 - ✅ Configuration attendue : `--workers 3 --timeout 120 --worker-connections 1000`
@@ -52,7 +52,7 @@ docker-compose build --no-cache api-backend
 docker-compose up -d api-backend
 
 # 4. Validation du succès
-python diagnostic_gunicorn_simple.py
+python diagnostics/diagnostic_gunicorn_simple.py
 ```
 
 ### Détails Techniques du Rebuild
@@ -123,7 +123,7 @@ python diagnostic_gunicorn_simple.py
 
 ```bash
 # Script de surveillance des workers (à exécuter périodiquement)
-python diagnostic_gunicorn_simple.py
+python diagnostics/diagnostic_gunicorn_simple.py
 
 # Vérification rapide via Docker
 docker exec eloquence-api-backend-1 ps aux | grep gunicorn

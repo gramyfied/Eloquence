@@ -15,7 +15,7 @@
 ### 1. ✅ DIAGNOSTIC CONFIGURATION
 ```bash
 # Test du contenu .env
-dart test_env_simple.dart
+dart ../tests/test_env_simple.dart
 ```
 **RÉSULTAT :** Configuration mobile CORRECTE
 - ✅ LLM_SERVICE_URL: http://192.168.1.44:8000

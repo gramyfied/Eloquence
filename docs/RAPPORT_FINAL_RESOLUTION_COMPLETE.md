@@ -153,9 +153,9 @@ final response = await http.post(
 - `services/whisper-realtime/main.py` - API session_id modifiée
 
 ### Scripts de Test et Validation
-- `test_validation_finale_complete.py` - Suite de tests complète
-- `test_confidence_analysis_simple.py` - Test spécifique Unicode
-- `diagnostic_backend_connectivity.py` - Outil de diagnostic
+- `tests/test_validation_finale_complete.py` - Suite de tests complète
+- `tests/test_confidence_analysis_simple.py` - Test spécifique Unicode
+- `diagnostics/diagnostic_backend_connectivity.py` - Outil de diagnostic
 
 ### Documentation
 - `docs/RESOLUTION_FINALE_CONNECTIVITE_FLUTTER.md`

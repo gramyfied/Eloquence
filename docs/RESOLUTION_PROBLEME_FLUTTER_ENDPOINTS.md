@@ -144,7 +144,7 @@ Future<void> _connectWebSocket(String sessionId) async {
 
 ### Tests de Validation Exécutés
 
-**Script** : [`test_whisper_endpoint_fix_validation.py`](../test_whisper_endpoint_fix_validation.py)
+**Script** : [`tests/test_whisper_endpoint_fix_validation.py`](tests/test_whisper_endpoint_fix_validation.py)
 
 #### Résultats des Tests
 ```
@@ -315,7 +315,7 @@ Future<Map<String, dynamic>> _getFinalEvaluation() async {
 ### Validation de la Correction 405
 
 #### Test de Validation Exécuté
-**Script** : [`test_http_method_simple.py`](../test_http_method_simple.py)
+**Script** : [`tests/test_http_method_simple.py`](tests/test_http_method_simple.py)
 
 #### Résultats du Test
 ```
