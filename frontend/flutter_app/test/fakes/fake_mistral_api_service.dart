@@ -7,8 +7,8 @@ class FakeMistralApiService implements IMistralApiService {
   @override
   Future<String> generateText({
     required String prompt,
-    int maxTokens = 150,
-    double temperature = 0.7,
+    int? maxTokens,
+    double? temperature,
   }) async {
     // TODO: implement generateText
     if (shouldFail) {
@@ -67,7 +67,7 @@ En conclusion, je suis convaincu que ce projet apportera une valeur ajoutée sig
   @override
   Future<Map<String, dynamic>> analyzeContent({
     required String prompt,
-    int maxTokens = 800,
+    int? maxTokens,
   }) async {
     // TODO: implement analyzeContent
     if (shouldFail) {

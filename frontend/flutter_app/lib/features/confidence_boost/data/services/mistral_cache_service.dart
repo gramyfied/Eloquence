@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/utils/logger_service.dart';
-import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/constants.dart'; // Pour CacheConstants
 
 /// Modèle pour une réponse en cache
 class CachedResponse {

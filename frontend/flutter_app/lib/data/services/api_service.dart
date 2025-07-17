@@ -16,9 +16,9 @@ class ApiService {
 
   final String baseUrl;
   final String? authToken; // Token d'authentification
-  final String apiKey; // Clé API
+  final String? apiKey; // Clé API rendue optionnelle
 
-  ApiService({String? baseUrl, this.authToken, required this.apiKey}) : baseUrl = baseUrl ?? AppConfig.apiBaseUrl {
+  ApiService({String? baseUrl, this.authToken, this.apiKey}) : baseUrl = baseUrl ?? AppConfig.apiBaseUrl {
     logger.i(_tag, 'Service API initialisé avec URL: $baseUrl');
   }
 
@@ -26,18 +26,21 @@ class ApiService {
   Map<String, String> get headers {
     final Map<String, String> headers = {
       'Content-Type': 'application/json',
-      'X-API-Key': apiKey, // Utiliser la clé API configurable
     };
+
+    if (apiKey != null && apiKey!.isNotEmpty) {
+      headers['X-API-Key'] = apiKey!; // Utiliser la clé API configurable si elle existe
+      logger.i(_tag, '🔑 Clé API utilisée dans les en-têtes: $apiKey');
+    } else {
+      logger.i(_tag, '🔑 Aucune clé API spécifiée ou elle est vide.');
+    }
 
     if (authToken != null) {
       headers['Authorization'] = 'Bearer $authToken';
-      logger.v(_tag, 'En-têtes avec authentification et clé API');
+      logger.v(_tag, 'En-têtes avec authentification');
     } else {
-      logger.v(_tag, 'En-têtes sans authentification mais avec clé API');
+      logger.v(_tag, 'En-têtes sans authentification');
     }
-
-    // Ajouter des logs pour le débogage
-    logger.i(_tag, '🔑 Clé API utilisée dans les en-têtes: $apiKey');
 
     return headers;
   }

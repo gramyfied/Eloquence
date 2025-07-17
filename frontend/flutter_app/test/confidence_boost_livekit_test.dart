@@ -48,10 +48,12 @@ void main() {
       );
 
       // Act
-      final result = await confidenceLiveKit.startConfidenceSession(
-        userId: 'test_user',
+      final result = await confidenceLiveKit.startSession(
         scenario: scenario,
-        textSupport: textSupport,
+        userContext: 'test_user_context',
+        preferredSupportType: textSupport.type,
+        livekitUrl: 'ws://mock-livekit-url.com', // Fournir une URL factice
+        livekitToken: 'mock_livekit_token', // Fournir un token factice
       );
 
       // Assert
@@ -69,10 +71,12 @@ void main() {
 
       // Act & Assert - Ne devrait pas lever d'exception de sérialisation
       expect(() async {
-        await confidenceLiveKit.startConfidenceSession(
-          userId: 'test_user',
+        await confidenceLiveKit.startSession(
           scenario: scenario,
-          textSupport: textSupport,
+          userContext: 'test_user_context',
+          preferredSupportType: textSupport.type,
+          livekitUrl: 'ws://mock-livekit-url.com', // Fournir une URL factice
+          livekitToken: 'mock_livekit_token', // Fournir un token factice
         );
       }, returnsNormally);
     });

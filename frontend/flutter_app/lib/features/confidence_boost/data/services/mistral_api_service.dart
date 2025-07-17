@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/config/app_config.dart'; // Importer AppConfig
 import '../../../../core/utils/logger_service.dart';
 import '../../../../core/services/optimized_http_service.dart';
 import 'mistral_cache_service.dart';
@@ -7,13 +8,13 @@ import 'mistral_cache_service.dart';
 abstract class IMistralApiService {
   Future<String> generateText({
     required String prompt,
-    int maxTokens,
-    double temperature,
+    int? maxTokens,
+    double? temperature,
   });
 
   Future<Map<String, dynamic>> analyzeContent({
     required String prompt,
-    int maxTokens,
+    int? maxTokens,
   });
 
   Map<String, dynamic> getCacheStatistics();
@@ -32,7 +33,8 @@ class MistralApiService implements IMistralApiService {
 
   MistralApiService({OptimizedHttpService? httpService})
       : _httpService = httpService ?? OptimizedHttpService(),
-        _endpoint = dotenv.env['MISTRAL_BASE_URL'] ?? 'https://api.mistral.ai/v1/chat/completions',
+        // Utilise AppConfig.mistralBaseUrl au lieu de dotenv
+        _endpoint = AppConfig.mistralBaseUrl,
         _model = dotenv.env['MISTRAL_MODEL'] ?? 'mistral-nemo-instruct-2407',
         _apiKey = dotenv.env['MISTRAL_API_KEY'] ?? '',
         _isEnabled = dotenv.env['MISTRAL_ENABLED']?.toLowerCase() == 'true';
@@ -46,8 +48,8 @@ class MistralApiService implements IMistralApiService {
   @override
   Future<String> generateText({
     required String prompt,
-    int maxTokens = 500,
-    double temperature = 0.7,
+    int? maxTokens = 500,
+    double? temperature = 0.7,
   }) async {
     // === CACHE CHECK PRIORITAIRE POUR PERFORMANCE MOBILE ===
     final cachedResult = await MistralCacheService.getCachedResponse(
@@ -160,7 +162,7 @@ class MistralApiService implements IMistralApiService {
   @override
   Future<Map<String, dynamic>> analyzeContent({
     required String prompt,
-    int maxTokens = 800,
+    int? maxTokens = 800,
   }) async {
     // === CACHE CHECK PRIORITAIRE POUR ANALYSES RÉPÉTÉES ===
     final cachedResult = await MistralCacheService.getCachedResponse(

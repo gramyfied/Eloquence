@@ -9,9 +9,10 @@ import 'package:path/path.dart' as path;
 import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_scenario.dart';
 import 'package:logger/logger.dart';
-import '../../domain/entities/confidence_models.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/config/app_config.dart'; // Importer AppConfig
 import '../../../../core/services/optimized_http_service.dart';
+import '../../domain/entities/confidence_models.dart';
 
 /// Service pour l'analyse backend utilisant Whisper + Mistral sur Scaleway
 class ConfidenceAnalysisBackendService {
@@ -21,13 +22,11 @@ class ConfidenceAnalysisBackendService {
   // Utilisation du service HTTP optimisé
   static final OptimizedHttpService _httpService = OptimizedHttpService();
   
-  // Configuration backend depuis .env
+  // Configuration backend depuis AppConfig
   static String get _baseUrl {
-    final envUrl = dotenv.env['LLM_SERVICE_URL'];
-    final finalUrl = envUrl ?? 'http://localhost:8000';
+    final finalUrl = AppConfig.apiBaseUrl;
     _logger.i('$_tag: 🔍 DEBUG URL Configuration:');
-    _logger.i('  - Variable LLM_SERVICE_URL: $envUrl');
-    _logger.i('  - URL finale utilisée: $finalUrl');
+    _logger.i('  - URL finale utilisée (AppConfig.apiBaseUrl): $finalUrl');
     return finalUrl;
   }
   static const String _analysisEndpoint = '/api/confidence-analysis';
@@ -106,21 +105,9 @@ class ConfidenceAnalysisBackendService {
     int? recordingDurationSeconds,
   }) async {
     final uri = Uri.parse('$_baseUrl$_analysisEndpoint');
-    
+
     try {
-      // Créer la requête multipart
-      final request = http.MultipartRequest('POST', uri);
-      
-      // Ajouter le fichier audio
-      final audioFileField = await http.MultipartFile.fromPath(
-        'audio_file',
-        audioFile.path,
-        filename: path.basename(audioFile.path),
-        // contentType: MediaType('audio', 'wav'), // Si package mime disponible  
-      );
-      request.files.add(audioFileField);
-      
-      // Ajouter les métadonnées en JSON
+      // Préparer les métadonnées en JSON
       final metadata = {
         'scenario': {
           'id': scenario.id,
@@ -142,18 +129,31 @@ class ConfidenceAnalysisBackendService {
           'language': 'fr',
         },
       };
-      
-      request.fields['metadata'] = jsonEncode(metadata);
-      
-      _logger.i('$_tag: Envoi requête vers backend: $uri');
-      
-      // Utiliser le service HTTP optimisé qui gère automatiquement :
-      // - Pool de connexions persistantes
-      // - Compression gzip
-      // - Retry logic avec backoff exponentiel
-      // - Timeouts optimisés (8s pour API)
-      final streamedResponse = await _httpService.sendMultipartRequest(request);
-      final response = await http.Response.fromStream(streamedResponse);
+
+      // Préparer les champs pour la requête multipart
+      final fields = {'metadata': jsonEncode(metadata)};
+
+    _logger.i('$_tag: Envoi requête vers backend: $uri');
+
+    // Utiliser le service HTTP optimisé qui gère automatiquement :
+    // - Pool de connexions persistantes
+    // - Compression gzip
+    // - Retry logic avec backoff exponentiel
+    // - Timeouts optimisés (8s pour API)
+    final streamedResponse = await _httpService.sendMultipart(
+      uri.toString(),
+      'POST',
+      fields: fields,
+      fileProvider: () async => [ // Passe une fonction pour créer le MultipartFile sur demande
+        await http.MultipartFile.fromPath(
+          'audio',
+          audioFile.path,
+          filename: path.basename(audioFile.path),
+        ),
+      ],
+      timeout: OptimizedHttpService.longTimeout, // Utilise le timeout long pour les uploads
+    );
+    final response = await http.Response.fromStream(streamedResponse);
       
       _logger.d('$_tag: Réponse backend - Status: ${response.statusCode}');
       

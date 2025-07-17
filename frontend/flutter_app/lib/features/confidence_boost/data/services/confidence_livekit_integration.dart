@@ -23,6 +23,10 @@ class ConfidenceLiveKitIntegration {
   DateTime? _recordingStartTime;
   StreamController<ConfidenceAnalysis>? _analysisController;
 
+  // Nouvelle variable pour stocker l'URL et le token LiveKit
+  String? _livekitUrl;
+  String? _livekitToken;
+
   ConfidenceLiveKitIntegration({
     required this.livekitService,
     required this.apiService,
@@ -36,9 +40,18 @@ class ConfidenceLiveKitIntegration {
     required String userContext,
     String? customInstructions,
     SupportType? preferredSupportType,
+    // Ajout des paramètres livekitUrl et livekitToken
+    required String livekitUrl,
+    required String livekitToken,
   }) async {
     try {
       logger.i(_tag, 'Démarrage session Confidence Boost: ${scenario.title}');
+
+      // Stocker l'URL et le token LiveKit
+      _livekitUrl = livekitUrl;
+      _livekitToken = livekitToken;
+
+      logger.i(_tag, 'LiveKit URL configurée: $_livekitUrl');
       
       _currentScenario = scenario;
       _currentSessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
@@ -78,19 +91,6 @@ class ConfidenceLiveKitIntegration {
     }
   }
 
-  /// Méthode de compatibilité pour ancienne API
-  Future<String?> startConfidenceSession({
-    required String userId,
-    required ConfidenceScenario scenario,
-    required TextSupport textSupport,
-  }) async {
-    final success = await startSession(
-      scenario: scenario,
-      userContext: 'Utilisateur: $userId',
-      preferredSupportType: textSupport.type,
-    );
-    return success ? _currentSessionId : null;
-  }
 
   /// Prépare le contexte enrichi pour l'agent
   String _prepareEnrichedContext({
@@ -127,7 +127,11 @@ class ConfidenceLiveKitIntegration {
       // Vérifier et reconnecter si nécessaire
       if (!livekitService.isConnected) {
         logger.w(_tag, 'LiveKit non connecté, tentative de reconnexion...');
-        final connected = await _connectWithRetry(maxRetries: 3);
+        final connected = await _connectWithRetry(
+          url: _livekitUrl!,
+          token: _livekitToken!,
+          maxRetries: 3,
+        );
         if (!connected) {
           logger.e(_tag, 'Impossible de connecter à LiveKit après 3 tentatives');
           return await _startLocalRecordingFallback();
@@ -164,12 +168,16 @@ class ConfidenceLiveKitIntegration {
   }
   
   /// Connexion avec retry automatique
-  Future<bool> _connectWithRetry({int maxRetries = 3}) async {
+  Future<bool> _connectWithRetry({
+    required String url,
+    required String token,
+    int maxRetries = 3,
+  }) async {
     for (int i = 0; i < maxRetries; i++) {
       try {
-        logger.i(_tag, 'Tentative de connexion ${i + 1}/$maxRetries');
-        // TODO: Implémenter la connexion LiveKit
-        // await livekitService.connect();
+        logger.i(_tag, 'Tentative de connexion ${i + 1}/$maxRetries à $url');
+        // Implémenter la connexion LiveKit
+        await livekitService.connect(url, token);
         if (livekitService.isConnected) {
           logger.i(_tag, 'Connexion LiveKit réussie');
           return true;

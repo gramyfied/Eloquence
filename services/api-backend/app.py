@@ -10,6 +10,7 @@ import threading
 import logging
 from datetime import datetime, timedelta
 import logging # Ajouter l'import de logging ici
+import httpx # Ajout de l'import httpx
  
 # Configuration du logging pour le diagnostic
 logging.basicConfig(level=logging.DEBUG)
@@ -27,7 +28,7 @@ app.config['CELERY_RESULT_BACKEND'] = os.getenv('REDIS_URL', 'redis://redis:6379
 
 # Configuration LiveKit
 LIVEKIT_URL_INTERNAL = os.getenv('LIVEKIT_URL', 'ws://livekit:7880')  # Pour Docker interne
-LIVEKIT_URL_EXTERNAL = 'ws://192.168.1.44:7880' # TODO: Rendre cette variable configurable via .env
+LIVEKIT_URL_EXTERNAL = os.getenv('LIVEKIT_URL_EXTERNAL', 'ws://192.168.1.44:7880') # Rendre cette variable configurable
 
 # Initialisation Celery
 celery = Celery(
@@ -490,6 +491,34 @@ def get_diagnostic_logs():
     except Exception as e:
         logger.error(f"❌ DIAGNOSTIC: Erreur récupération logs: {str(e)}")
         return jsonify({"error": f"Erreur logs diagnostic: {str(e)}"}), 500
+
+@app.route('/api/confidence-analysis', methods=['POST'])
+async def analyze_confidence():
+    """
+    Proxy pour l'analyse de confiance vocale vers Whisper Realtime
+    """
+    logger.info("🎯 Requête reçue sur /api/confidence-analysis - transfert vers whisper-realtime")
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+
+    audio_file = request.files['audio']
+    
+    # Utiliser httpx pour forwarder le fichier audio
+    try:
+        async with httpx.AsyncClient() as client:
+            files = {'audio': (audio_file.filename, audio_file.read(), audio_file.mimetype)}
+            response = await client.post("http://whisper-realtime:8006/evaluate/final", files=files, timeout=60) # Augmenter le timeout pour l'analyse
+            response.raise_for_status() # Lève une exception pour les codes 4xx/5xx
+
+        logger.info(f"✅ Analyse envoyée à whisper-realtime. Status: {response.status_code}")
+        return jsonify(response.json()), response.status_code
+
+    except httpx.RequestError as e:
+        logger.error(f"❌ Erreur lors de l'envoi à whisper-realtime: {e}")
+        return jsonify({"error": f"Backend communication error: {str(e)}"}), 500
+    except Exception as e:
+        logger.error(f"❌ Erreur inattendue dans /api/confidence-analysis: {e}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @app.route('/api/sessions/active', methods=['GET'])
 def get_active_sessions():

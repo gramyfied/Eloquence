@@ -324,14 +324,14 @@ class ConfidenceBoostProvider with ChangeNotifier {
       // Timeout global mobile : 8 secondes au lieu de 35s+ !
       
       if (analysisAttempts.isNotEmpty) {
-        logger.i("🏁 Racing ${analysisAttempts.length} analysis methods (8s timeout)");
+        logger.i("🏁 Racing ${analysisAttempts.length} analysis methods (32s timeout)");
         
         confidence_models.ConfidenceAnalysis? winningAnalysis;
         
         // Surveiller chaque tentative en parallèle
         final futures = analysisAttempts.map((attemptFuture) async {
           try {
-            final result = await attemptFuture.timeout(const Duration(seconds: 8));
+            final result = await attemptFuture.timeout(const Duration(seconds: 32));
             if (result != null && winningAnalysis == null) {
               winningAnalysis = result;
               logger.i("🏆 WINNER: Analysis completed successfully!");
@@ -346,9 +346,9 @@ class ConfidenceBoostProvider with ChangeNotifier {
         
         // Attendre soit un succès, soit que toutes les tentatives échouent
         await Future.wait(futures, eagerError: false).timeout(
-          const Duration(seconds: 8),
+          const Duration(seconds: 35), // Augmenté pour correspondre aux timeouts backend
           onTimeout: () {
-            logger.w("Global parallel analysis timeout reached");
+            logger.w("Global parallel analysis timeout reached (35s)");
             return <confidence_models.ConfidenceAnalysis?>[];
           },
         );
@@ -517,9 +517,9 @@ class ConfidenceBoostProvider with ChangeNotifier {
         userContext: 'Session mobile optimisée - Support: ${textSupport.type.name}',
         recordingDurationSeconds: recordingDuration.inSeconds,
       ).timeout(
-        const Duration(seconds: 8), // Réduit de 12s à 8s pour mobile
+        const Duration(seconds: 30), // Augmenté pour correspondre au temps de traitement de Whisper Realtime (~25s)
         onTimeout: () {
-          logger.w("Backend analysis timed out (8s)");
+          logger.w("Backend analysis timed out (30s)");
           return null;
         },
       );
@@ -543,10 +543,28 @@ class ConfidenceBoostProvider with ChangeNotifier {
     Duration recordingDuration,
   ) async {
     try {
+      // 1. Obtenir les informations de session (URL et Token LiveKit) du backend
+      logger.i("LiveKit: Tentative de démarrage de session via ApiService...");
+      final apiService = _ref.read(apiServiceProvider);
+      final session = await apiService.startSession(
+        scenario.id,
+        "livekit_user", // TODO: Remplacer par l'ID utilisateur réel si disponible
+      ).timeout(const Duration(seconds: 7)); // Timeout pour l'appel API
+
+      if (session.livekitUrl == null || session.token == null) {
+        logger.e("LiveKit: URL ou Token LiveKit manquants dans la réponse de session.");
+        return null;
+      }
+
+      logger.i("LiveKit: Session démarrée avec succès. URL: ${session.livekitUrl}, Token: (masqué)");
+
+      // 2. Démarrer la session LiveKit avec les URL et token obtenus
       final success = await livekitIntegration.startSession(
         scenario: scenario,
         userContext: 'Session d\'analyse de performance (fallback)',
         preferredSupportType: textSupport.type,
+        livekitUrl: session.livekitUrl!, // Passer l'URL obtenue
+        livekitToken: session.token!, // Passer le token obtenu
       );
 
       if (success) {
@@ -576,6 +594,8 @@ class ConfidenceBoostProvider with ChangeNotifier {
       }
       
       // Fallback vers CleanLiveKitService si session échoue
+      // Ceci est un fallback vers une analyse statique de LiveKitService si l'intégration échoue.
+      // S'assurer que cela a du sens ou le supprimer si CleanLiveKitService est purement un service de connexion.
       final analysis = await livekitService.requestConfidenceAnalysis(
         scenario: scenario,
         recordingDurationSeconds: recordingDuration.inSeconds,

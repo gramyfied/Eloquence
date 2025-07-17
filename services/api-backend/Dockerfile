@@ -60,19 +60,13 @@ COPY services/api-backend/api ./api
 COPY services/api-backend/services ./services
 COPY services/api-backend/tests ./tests
 COPY services/api-backend/wsgi.py .
-COPY services/api-backend/start-agent-v1.sh .
-COPY services/api-backend/start-both.sh .
-COPY services/api-backend/generate_jwt.py .
 
 # Définition de l'utilisateur non-root et changement des permissions
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Rendre les scripts exécutables
-RUN chmod +x start-agent-v1.sh start-both.sh
-
 # Exposition du port
 EXPOSE 8000
 
-# Commande de démarrage qui lance le backend Flask ET l'agent LiveKit
-CMD ["./start-both.sh"]
+# Commande de démarrage
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "wsgi:app"]

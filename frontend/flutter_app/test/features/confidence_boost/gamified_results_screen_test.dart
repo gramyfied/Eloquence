@@ -130,17 +130,22 @@ class FakeConfidenceRepository implements ConfidenceRepository {
 
 class FakeMistralApiService implements IMistralApiService {
   @override
-  Future<Map<String, dynamic>> analyzeContent({required String prompt, int maxTokens = 200}) async => {};
+  Future<Map<String, dynamic>> analyzeContent({required String prompt, int? maxTokens}) async => {};
+  
   @override
-  Future<String> generateText({required String prompt, int maxTokens = 150, double temperature = 0.7}) async => '';
+  Future<String> generateText({required String prompt, int? maxTokens, double? temperature}) async => '';
+  
   @override
   Future<void> clearCache() async {}
+  
   @override
   void dispose() {}
+  
   @override
   Map<String, dynamic> getCacheStatistics() => {};
+  
   @override
-  Future<void> preloadCommonPrompts() async {}
+  Future<void> preloadCommonPrompts() async => {};
 }
 
 void main() {

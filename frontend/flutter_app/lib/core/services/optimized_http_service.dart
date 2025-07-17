@@ -26,9 +26,14 @@ class OptimizedHttpService {
   
   // Configuration du pool de connexions
   static const int _maxConnectionsPerHost = 6; // Limite recommandée HTTP/1.1
-  static const Duration _connectionTimeout = Duration(seconds: 3);
-  static const Duration _idleTimeout = Duration(seconds: 120);
+  static const Duration _connectionTimeout = Duration(seconds: 3); // Temps pour établir la connexion
+  static const Duration _idleTimeout = Duration(seconds: 120); // Temps avant de fermer une connexion inactive
   
+  // Nouveaux timeouts adaptatifs
+  static const Duration shortTimeout = Duration(seconds: 5);   // Pour Whisper (plus rapide)
+  static const Duration mediumTimeout = Duration(seconds: 8);  // Pour Mistral API (analyse)
+  static const Duration longTimeout = Duration(seconds: 12);   // Pour Upload de fichiers volumineux
+
   // Configuration retry
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(milliseconds: 500);
@@ -57,6 +62,9 @@ class OptimizedHttpService {
     - Timeout idle: ${_idleTimeout.inSeconds}s
     - Keep-alive: activé
     - Compression gzip: activée
+    - Default Short Timeout: ${shortTimeout.inSeconds}s (Whisper)
+    - Default Medium Timeout: ${mediumTimeout.inSeconds}s (Mistral)
+    - Default Long Timeout: ${longTimeout.inSeconds}s (Upload)
     ''');
   }
   
@@ -71,7 +79,7 @@ class OptimizedHttpService {
       () => _httpClient.get(
         Uri.parse(url),
         headers: _prepareHeaders(headers),
-      ).timeout(timeout ?? ApiConstants.apiTimeout),
+      ).timeout(timeout ?? mediumTimeout), // Default to mediumTimeout
       url: url,
       method: 'GET',
       maxRetries: maxRetries ?? _maxRetries,
@@ -93,7 +101,7 @@ class OptimizedHttpService {
         headers: _prepareHeaders(headers),
         body: body,
         encoding: encoding,
-      ).timeout(timeout ?? ApiConstants.apiTimeout),
+      ).timeout(timeout ?? mediumTimeout), // Default to mediumTimeout
       url: url,
       method: 'POST',
       maxRetries: maxRetries ?? _maxRetries,
@@ -115,7 +123,7 @@ class OptimizedHttpService {
         headers: _prepareHeaders(headers),
         body: body,
         encoding: encoding,
-      ).timeout(timeout ?? ApiConstants.apiTimeout),
+      ).timeout(timeout ?? mediumTimeout), // Default to mediumTimeout
       url: url,
       method: 'PUT',
       maxRetries: maxRetries ?? _maxRetries,
@@ -137,7 +145,7 @@ class OptimizedHttpService {
         headers: _prepareHeaders(headers),
         body: body,
         encoding: encoding,
-      ).timeout(timeout ?? ApiConstants.apiTimeout),
+      ).timeout(timeout ?? mediumTimeout), // Default to mediumTimeout
       url: url,
       method: 'DELETE',
       maxRetries: maxRetries ?? _maxRetries,
@@ -145,12 +153,14 @@ class OptimizedHttpService {
   }
   
   /// Envoi de fichiers avec MultipartRequest optimisée
+  /// Envoi de fichiers avec MultipartRequest optimisée et support de recréation
   Future<http.StreamedResponse> sendMultipart(
     String url,
     String method, {
     Map<String, String>? headers,
     Map<String, String>? fields,
-    List<http.MultipartFile>? files,
+    // Change List<http.MultipartFile>? files, to a function that returns files
+    FutureOr<List<http.MultipartFile>> Function()? fileProvider,
     Duration? timeout,
     int? maxRetries,
   }) async {
@@ -166,13 +176,14 @@ class OptimizedHttpService {
           request.fields.addAll(fields);
         }
         
-        // Ajouter les fichiers
-        if (files != null) {
+        // Ajouter les fichiers - appel via le provider pour recréer l'instance
+        if (fileProvider != null) {
+          final files = await Future.value(fileProvider()); // Résoudre le FutureOr
           request.files.addAll(files);
         }
         
         return _httpClient.send(request).timeout(
-          timeout ?? ApiConstants.apiTimeout,
+          timeout ?? longTimeout, // Default to longTimeout for file uploads
         );
       },
       url: url,
@@ -194,7 +205,7 @@ class OptimizedHttpService {
         request.headers.addAll(optimizedHeaders);
         
         return _httpClient.send(request).timeout(
-          timeout ?? ApiConstants.apiTimeout,
+          timeout ?? longTimeout, // Default to longTimeout for multi-part requests
         );
       },
       url: request.url.toString(),
