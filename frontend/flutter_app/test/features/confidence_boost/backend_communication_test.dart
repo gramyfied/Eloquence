@@ -137,6 +137,8 @@ class MockConfidenceLiveKitIntegration extends Mock implements ConfidenceLiveKit
     required String userContext,
     String? customInstructions,
     confidence_models.SupportType? preferredSupportType,
+    required String livekitUrl, // Ajout du paramètre
+    required String livekitToken, // Ajout du paramètre
   }) async {
     return true;
   }
@@ -247,6 +249,8 @@ void main() {
         userContext: 'Contexte utilisateur test',
         customInstructions: 'Instructions personnalisées',
         preferredSupportType: confidence_models.SupportType.guidedStructure,
+        livekitUrl: 'ws://mocklivekit.com', // Valeur mockée
+        livekitToken: 'mock_token', // Valeur mockée
       );
 
       // Assert
@@ -291,6 +295,8 @@ void main() {
       final sessionResult = await mockLiveKitIntegration.startSession(
         scenario: testScenario,
         userContext: 'Pipeline test',
+        livekitUrl: 'ws://mocklivekit.com', // Valeur mockée
+        livekitToken: 'mock_token', // Valeur mockée
       );
 
       // Assert - Complete pipeline validation

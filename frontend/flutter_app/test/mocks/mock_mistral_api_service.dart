@@ -5,8 +5,8 @@ class MockMistralApiService extends Mock implements MistralApiService {
   @override
   Future<String> generateText({
     required String prompt,
-    int maxTokens = 150,
-    double temperature = 0.7,
+    int? maxTokens,
+    double? temperature,
   }) async {
     // Retourner du contenu de test selon le type de prompt
     if (prompt.contains('TÂCHE: Génère un discours complet')) {

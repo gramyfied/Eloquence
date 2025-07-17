@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:logger/logger.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:eloquence_2_0/core/config/app_config.dart'; // Import AppConfig
 
 class CleanLiveKitService extends ChangeNotifier {
   Room? _room;
@@ -23,138 +24,126 @@ class CleanLiveKitService extends ChangeNotifier {
   final _audioStreamController = StreamController<Uint8List>.broadcast();
   Stream<Uint8List> get onAudioReceivedStream => _audioStreamController.stream;
 
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 2);
+
   Future<bool> connect(String url, String token) async {
     _logger.i('Attempting to connect to LiveKit...');
     _logger.i('[DIAGNOSTIC] LiveKit URL: $url');
     _logger.i('[DIAGNOSTIC] Token (first 30 chars): ${token.length > 30 ? token.substring(0, 30) : token}...');
     
-    try {
-      // ÉTAPE 1: Demander permissions microphone AVANT connexion
-      _logger.i('[DIAGNOSTIC] Requesting microphone permissions...');
-      
-      if (kIsWeb) {
-        // Pour le web, les permissions sont gérées automatiquement par le navigateur
-        _logger.i('[DIAGNOSTIC] Web platform - permissions handled by browser');
-      } else {
-        final micPermission = await Permission.microphone.request();
-        if (!micPermission.isGranted) {
-          _logger.e('[DIAGNOSTIC] Microphone permission denied!');
-          return false;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      _logger.i('[DIAGNOSTIC] LiveKit Connection Attempt $attempt of $maxRetries...');
+      try {
+        // ÉTAPE 1: Demander permissions microphone AVANT connexion
+        _logger.i('[DIAGNOSTIC] Requesting microphone permissions...');
+        
+        if (kIsWeb) {
+          // Pour le web, les permissions sont gérées automatiquement par le navigateur
+          _logger.i('[DIAGNOSTIC] Web platform - permissions handled by browser');
+        } else {
+          final micPermission = await Permission.microphone.request();
+          if (!micPermission.isGranted) {
+            _logger.e('[DIAGNOSTIC] Microphone permission denied!');
+            return false;
+          }
+          _logger.i('[DIAGNOSTIC] Microphone permission granted');
         }
-        _logger.i('[DIAGNOSTIC] Microphone permission granted');
+
+        // Configuration pour mobile (TEST: désactiver adaptiveStream et dynacast pour diagnostiquer les underruns)
+        const roomOptions = RoomOptions(
+          adaptiveStream: true, // Réactivé pour la performance
+          dynacast: true, // Réactivé pour la performance
+          // Configuration optimisée pour mobile
+          defaultAudioPublishOptions: AudioPublishOptions(),
+          defaultVideoPublishOptions: VideoPublishOptions(),
+        );
+        _logger.i('[DIAGNOSTIC] RoomOptions: adaptiveStream et dynacast activés.');
+
+        _room = Room(roomOptions: roomOptions);
+        _listener = _room!.createListener();
+        _setupRemoteTrackListener();
+
+        _listener!
+          ..on<RoomConnectedEvent>((event) async {
+            _logger.i('Successfully connected to LiveKit room: ${event.room.name}');
+            _isConnected = true;
+                        
+            // ÉTAPE 2: Attendre que localParticipant soit disponible
+            _logger.i('[DIAGNOSTIC] Waiting for local participant...');
+            await _waitForLocalParticipant();
+            
+            notifyListeners();
+          })
+          ..on<RoomDisconnectedEvent>((event) {
+            _logger.e('Disconnected from LiveKit room. Reason: ${event.reason}', error: event.reason);
+            _isConnected = false;
+            _room = null;
+            _listener?.dispose();
+            _listener = null; // Ensure listener is nulled
+            notifyListeners();
+          })
+          ..on<RoomReconnectedEvent>((event) {
+            _logger.i('RoomReconnectedEvent: Reconnected to LiveKit room.');
+          })
+          ..on<RoomReconnectingEvent>((event) {
+            _logger.w('RoomReconnectingEvent: Reconnecting to LiveKit room...');
+          });
+
+        final connectOptions = ConnectOptions(
+          autoSubscribe: true,
+          // Utilise les serveurs ICE définis dans AppConfig
+          rtcConfiguration: RTCConfiguration(
+            iceServers: AppConfig.iceServers.map((s) => RTCIceServer(
+              urls: List<String>.from(s['urls']),
+              username: s['username'],
+              credential: s['credential'],
+            )).toList(),
+            iceTransportPolicy: RTCIceTransportPolicy.all,
+          ),
+        );
+
+        _logger.i('Connecting with ICE servers configured in AppConfig.');
+        _logger.i('[DIAGNOSTIC] Starting connection attempt...');
+        
+        await _room!.connect(
+          AppConfig.livekitUrl, // Utilisation de AppConfig.livekitUrl
+          token,
+          connectOptions: connectOptions,
+        );
+        
+        _logger.i('[DIAGNOSTIC] Connection successful!');
+        return true; // Connexion réussie
+      } catch (e, stackTrace) {
+        _logger.e('LiveKit connection failed on attempt $attempt: $e', error: e, stackTrace: stackTrace);
+        _logger.e('[DIAGNOSTIC] Error type: ${e.runtimeType}');
+        _logger.e('[DIAGNOSTIC] Error details: ${e.toString()}');
+        
+        // Diagnostic spécifique pour les erreurs courantes
+        if (e.toString().contains('SocketException')) {
+          _logger.e('[DIAGNOSTIC] Network error - Check IP address and firewall');
+        } else if (e.toString().contains('401') || e.toString().contains('403')) {
+          _logger.e('[DIAGNOSTIC] Authentication error - Check token');
+        } else if (e.toString().contains('timeout')) {
+          _logger.e('[DIAGNOSTIC] Connection timeout - Service may be unreachable');
+        }
+
+        _isConnected = false;
+        _room = null;
+        _listener?.dispose();
+        _listener = null;
+        notifyListeners();
+
+        if (attempt < maxRetries) {
+          _logger.i('Retrying LiveKit connection in ${retryDelay.inSeconds} seconds...');
+          await Future.delayed(retryDelay);
+        } else {
+          _logger.e('All LiveKit connection retries failed.');
+          return false; // Tous les essais ont échoué
+        }
       }
-
-      // Configuration pour mobile (TEST: désactiver adaptiveStream et dynacast pour diagnostiquer les underruns)
-      const roomOptions = RoomOptions(
-        adaptiveStream: true, // Réactivé pour la performance
-        dynacast: true,       // Réactivé pour la performance
-        // Configuration optimisée pour mobile
-        defaultAudioPublishOptions: AudioPublishOptions(),
-        defaultVideoPublishOptions: VideoPublishOptions(),
-      );
-      _logger.i('[DIAGNOSTIC] RoomOptions: adaptiveStream et dynacast activés.');
-
-      _room = Room(roomOptions: roomOptions);
-      _listener = _room!.createListener();
-      _setupRemoteTrackListener();
-
-      _listener!
-        ..on<RoomConnectedEvent>((event) async {
-          _logger.i('Successfully connected to LiveKit room: ${event.room.name}');
-          _isConnected = true;
-          
-          // ÉTAPE 2: Attendre que localParticipant soit disponible
-          _logger.i('[DIAGNOSTIC] Waiting for local participant...');
-          await _waitForLocalParticipant();
-          
-          notifyListeners();
-        })
-        ..on<RoomDisconnectedEvent>((event) {
-          _logger.e('Disconnected from LiveKit room. Reason: ${event.reason}', error: event.reason);
-          _isConnected = false;
-          _room = null;
-          _listener?.dispose();
-          _listener = null; // Ensure listener is nulled
-          notifyListeners();
-        })
-        ..on<RoomReconnectedEvent>((event) {
-          _logger.i('RoomReconnectedEvent: Reconnected to LiveKit room.');
-        })
-        ..on<RoomReconnectingEvent>((event) {
-          _logger.w('RoomReconnectingEvent: Reconnecting to LiveKit room...');
-        });
-
-      const connectOptions = ConnectOptions(
-        autoSubscribe: true,
-        // Configuration ICE pour appareil physique ET Docker avec TURN servers
-        rtcConfiguration: RTCConfiguration(
-          iceServers: [
-            // Serveurs STUN publics gratuits
-            RTCIceServer(
-              urls: ['stun:stun.l.google.com:19302'],
-            ),
-            RTCIceServer(
-              urls: ['stun:stun1.l.google.com:19302'],
-            ),
-            // Serveur STUN de Cloudflare
-            RTCIceServer(
-              urls: ['stun:stun.cloudflare.com:3478'],
-            ),
-            // Serveurs TURN publics pour NAT traversal (Docker → Web)
-            RTCIceServer(
-              urls: [
-                'turn:openrelay.metered.ca:80',
-                'turn:openrelay.metered.ca:443',
-                'turn:openrelay.metered.ca:443?transport=tcp'
-              ],
-              username: 'openrelayproject',
-              credential: 'openrelayproject',
-            ),
-            // Serveur TURN alternatif
-            RTCIceServer(
-              urls: [
-                'turn:relay1.expressturn.com:3478',
-              ],
-              username: 'efJBIBF6DKC8QY93XK',
-              credential: 'Ghq6WzlkMur8W9bT',
-            ),
-          ],
-          // Configuration ICE agressive pour Docker
-          iceTransportPolicy: RTCIceTransportPolicy.all,
-        ),
-      );
-
-      _logger.i('Connecting with ICE servers configured for mobile');
-      _logger.i('[DIAGNOSTIC] Starting connection attempt...');
-      
-      await _room!.connect(
-        url,
-        token,
-        connectOptions: connectOptions,
-      );
-      
-      _logger.i('[DIAGNOSTIC] Connection successful!');
-      return true;
-    } catch (e, stackTrace) {
-      _logger.e('LiveKit connection failed: $e', error: e, stackTrace: stackTrace);
-      _logger.e('[DIAGNOSTIC] Error type: ${e.runtimeType}');
-      _logger.e('[DIAGNOSTIC] Error details: ${e.toString()}');
-      
-      // Diagnostic spécifique pour les erreurs courantes
-      if (e.toString().contains('SocketException')) {
-        _logger.e('[DIAGNOSTIC] Network error - Check IP address and firewall');
-      } else if (e.toString().contains('401') || e.toString().contains('403')) {
-        _logger.e('[DIAGNOSTIC] Authentication error - Check token');
-      } else if (e.toString().contains('timeout')) {
-        _logger.e('[DIAGNOSTIC] Connection timeout - Service may be unreachable');
-      }
-      _isConnected = false;
-      _room = null;
-      _listener?.dispose();
-      _listener = null;
-      notifyListeners();
-      return false;
     }
+    return false; // Devrait être atteint si la boucle se termine sans succès
   }
 
   Future<void> disconnect() async {

@@ -20,7 +20,6 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService(
     baseUrl: AppConfig.apiBaseUrl, // Utiliser l'URL configurée dans AppConfig
     authToken: null,
-    apiKey: AppConfig.apiKey, // Assuming AppConfig.apiKey is non-nullable or default is handled in AppConfig
   );
 });
 
