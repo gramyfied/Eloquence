@@ -108,7 +108,7 @@ async def realtime_evaluation_endpoint(websocket: WebSocket):
 ```
 
 **Solution Appliquée :**
-- Création d'un test WebSocket approprié : `test_whisper_websocket_simple.py`
+- Création d'un test WebSocket approprié : `tests/test_whisper_websocket_simple.py`
 - Validation complète avec connexion, ping/pong, et commandes
 
 **Résultat :** ✅ Endpoint WebSocket 100% fonctionnel (3/3 tests réussis)
@@ -128,7 +128,7 @@ async def realtime_evaluation_endpoint(websocket: WebSocket):
 
 ### Test WebSocket Whisper
 ```python
-# test_whisper_websocket_simple.py - Résultats
+# tests/test_whisper_websocket_simple.py - Résultats
 ✅ websocket_connection: true
 ✅ status_command: true  
 ✅ reset_command: true
@@ -152,9 +152,9 @@ async def realtime_evaluation_endpoint(websocket: WebSocket):
 - **`frontend/flutter_app/lib/core/utils/constants.dart`** - IP locale
 
 ### Scripts de Diagnostic Créés
-- **`diagnostic_backend_connectivity.py`** - Test connectivité générale
-- **`diagnostic_gunicorn_workers_verification.py`** - Validation workers Gunicorn
-- **`test_whisper_websocket_simple.py`** - Validation endpoint WebSocket
+- **[`diagnostics/diagnostic_backend_connectivity.py`](diagnostics/diagnostic_backend_connectivity.py)** - Test connectivité générale
+- **[`diagnostics/diagnostic_gunicorn_workers_verification.py`](diagnostics/diagnostic_gunicorn_workers_verification.py)** - Validation workers Gunicorn
+- **[`tests/test_whisper_websocket_simple.py`](tests/test_whisper_websocket_simple.py)** - Validation endpoint WebSocket
 
 ### Documentation
 - **`docs/RESOLUTION_MYSTERE_GUNICORN_WORKERS.md`** - Guide résolution cache Docker
@@ -179,13 +179,13 @@ docker-compose logs
 ### Tests de Validation
 ```bash
 # Test connectivité backend
-python diagnostic_backend_connectivity.py
+python diagnostics/diagnostic_backend_connectivity.py
 
 # Test WebSocket Whisper
-python test_whisper_websocket_simple.py
+python tests/test_whisper_websocket_simple.py
 
 # Test workers Gunicorn
-python diagnostic_gunicorn_workers_verification.py
+python diagnostics/diagnostic_gunicorn_workers_verification.py
 ```
 
 ---

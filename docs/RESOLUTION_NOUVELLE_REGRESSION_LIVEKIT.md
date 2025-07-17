@@ -43,7 +43,7 @@ LIVEKIT_WS_URL=ws://192.168.1.44:7880
 7. **Documentation** - Prévention de futures régressions
 
 ### **Scripts de Diagnostic Créés :**
-- [`diagnostic_nouvelle_regression_simple.py`](../diagnostic_nouvelle_regression_simple.py) - Diagnostic complet sans emojis
+- [`diagnostics/diagnostic_nouvelle_regression_simple.py`](diagnostics/diagnostic_nouvelle_regression_simple.py) - Diagnostic complet sans emojis
 - Tests automatisés de 6 composants critiques
 
 ## ✅ Résolution Appliquée
@@ -60,7 +60,7 @@ LIVEKIT_WS_URL=ws://192.168.1.44:7880
 
 ### **Validation de la Résolution :**
 ```bash
-$ python diagnostic_nouvelle_regression_simple.py
+$ python diagnostics/diagnostic_nouvelle_regression_simple.py
 
 ======================================================================
 [DIAGNOSTIC] NOUVELLE REGRESSION LIVEKIT
@@ -155,7 +155,7 @@ VARIABLE=valeur
 ## 🔗 Liens Connexes
 
 - [Résolution Initiale LiveKit](./RESOLUTION_REGRESSION_LIVEKIT_FINALE.md)
-- [Scripts de Diagnostic](../diagnostic_nouvelle_regression_simple.py)
+- [Scripts de Diagnostic](diagnostics/diagnostic_nouvelle_regression_simple.py)
 - [Guide de Maintenance](./GUIDE_MAINTENANCE_DEPLOIEMENT.md)
 
 ## 📈 Métriques de Succès
