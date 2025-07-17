@@ -1,564 +1,246 @@
-import 'dart:async';
+/*
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:logger/logger.dart';
+import 'dart:math' as math;
+
 import '../../data/services/prosody_analysis_interface.dart';
 
-/// Widget de monitoring avancé des métriques prosodiques
-/// 
-/// Affiche en temps réel :
-/// - Débit de parole avec indicateurs visuels
-/// - Analyse d'intonation avec graphique F0
-/// - Détection et analyse des pauses
-/// - Niveau d'énergie vocale
-/// - Analyse des disfluences
-class ProsodyMetricsMonitorWidget extends ConsumerStatefulWidget {
+class ProsodyMetricsMonitorWidget extends ConsumerWidget {
   final ProsodyAnalysisResult? analysisResult;
-  final bool showRealtimeMetrics;
-  final VoidCallback? onRefreshRequested;
 
   const ProsodyMetricsMonitorWidget({
     Key? key,
-    this.analysisResult,
-    this.showRealtimeMetrics = false,
-    this.onRefreshRequested,
+    required this.analysisResult,
   }) : super(key: key);
 
   @override
-  ConsumerState<ProsodyMetricsMonitorWidget> createState() => _ProsodyMetricsMonitorWidgetState();
-}
-
-class _ProsodyMetricsMonitorWidgetState extends ConsumerState<ProsodyMetricsMonitorWidget>
-    with TickerProviderStateMixin {
-  final Logger logger = Logger();
-  
-  // Contrôleurs d'animation
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late AnimationController _progressController;
-  
-  // Animations
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _progressAnimation;
-  
-  // État des métriques
-  bool _isExpanded = true;
-  bool _showDetailedView = false;
-  Timer? _refreshTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeAnimations();
-    if (widget.showRealtimeMetrics) {
-      _startRealtimeRefresh();
-    }
-  }
-
-  void _initializeAnimations() {
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    
-    _progressController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-    
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-    );
-    
-    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOutCubic),
-    );
-    
-    // Démarrer les animations
-    _fadeController.forward();
-    _slideController.forward();
-    if (widget.analysisResult != null) {
-      _progressController.forward();
-    }
-  }
-
-  void _startRealtimeRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted && widget.onRefreshRequested != null) {
-        widget.onRefreshRequested!();
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(ProsodyMetricsMonitorWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.analysisResult != null && oldWidget.analysisResult == null) {
-      _progressController.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    _progressController.dispose();
-    _refreshTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_fadeAnimation, _slideAnimation]),
-      builder: (context, child) {
-        return FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Card(
-              margin: const EdgeInsets.all(16.0),
-              elevation: 8.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  if (_isExpanded) ...[
-                    _buildMetricsOverview(),
-                    const Divider(),
-                    if (_showDetailedView) ...[
-                      _buildDetailedMetrics(),
-                    ] else ...[
-                      _buildSummaryMetrics(),
-                    ],
-                    _buildActionButtons(),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade600, Colors.blue.shade800],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16.0),
-          topRight: Radius.circular(16.0),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.analytics, color: Colors.white, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Monitoring Prosodique',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  widget.analysisResult != null
-                      ? 'Analyse complétée • ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}'
-                      : 'En attente d\'analyse',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricsOverview() {
-    if (widget.analysisResult == null) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
-        child: Center(
-          child: Column(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text(
-                'Analyse en cours...',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (analysisResult == null) {
+      return const Center(
+        child: Text(
+          "En attente de l'analyse de la prosodie...",
+          style: TextStyle(color: Colors.white70),
         ),
       );
     }
 
-    final result = widget.analysisResult!;
-    
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildOverallScoreIndicator(result.overallProsodyScore),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(child: _buildQuickMetric('Débit', '${result.speechRate.wordsPerMinute.toStringAsFixed(0)} mots/min', result.speechRate.fluencyScore)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildQuickMetric('Clarté', '${(result.intonation.clarityScore * 100).toStringAsFixed(0)}%', result.intonation.clarityScore)),
-            ],
+          Text(
+            'Analyse de la Prosodie en Temps Réel',
+            style: Theme.of(context).textTheme.headline6?.copyWith(color: Colors.white),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildQuickMetric('Énergie', '${(result.energy.normalizedEnergyScore * 100).toStringAsFixed(0)}%', result.energy.normalizedEnergyScore)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildQuickMetric('Pauses', '${result.pauses.totalPauses}', result.pauses.rhythmScore)),
-            ],
+          const SizedBox(height: 16),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.2,
+              children: [
+                _buildMetricCard(
+                  context,
+                  'Débit de Parole',
+                  '${analysisResult!.speechRate.wordsPerMinute.toStringAsFixed(0)} mots/min',
+                  _getSpeechRateCategoryText(analysisResult!.speechRate.category),
+                  _getCategoryColor(analysisResult!.speechRate.category),
+                  Icons.speed,
+                ),
+                _buildMetricCard(
+                  context,
+                  'Intonation',
+                  _getIntonationPatternText(analysisResult!.intonation.pattern),
+                  'Variété: ${(analysisResult!.intonation.pitchRange * 100).toStringAsFixed(1)}%',
+                  _getCategoryColor(analysisResult!.intonation.pattern),
+                  Icons.multiline_chart,
+                ),
+                _buildMetricCard(
+                  context,
+                  'Pauses',
+                  '${analysisResult!.pauses.totalPauses} pauses',
+                  'Durée moy: ${analysisResult!.pauses.averagePauseDuration.toStringAsFixed(2)}s',
+                  _getCategoryColor(analysisResult!.pauses.pauseDistribution),
+                  Icons.pause_circle_filled,
+                ),
+                _buildMetricCard(
+                  context,
+                  'Énergie Vocale',
+                  _getEnergyProfileText(analysisResult!.energy.profile),
+                  'Niveau: ${analysisResult!.energy.averageEnergy.toStringAsFixed(2)}',
+                  _getCategoryColor(analysis_result.energy.profile),
+                  Icons.flash_on,
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 16),
+          _buildDetailedAnalysis(context),
         ],
       ),
     );
   }
 
-  Widget _buildOverallScoreIndicator(double score) {
-    return AnimatedBuilder(
-      animation: _progressAnimation,
-      builder: (context, child) {
-        return Column(
-          children: [
-            const Text(
-              'Score Prosodique Global',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: 120,
-              height: 120,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: _progressAnimation.value * (score / 100),
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.shade300,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _getScoreColor(score),
-                    ),
-                  ),
-                  Text(
-                    (score * _progressAnimation.value).toStringAsFixed(0),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: _getScoreColor(score),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildQuickMetric(String title, String value, double score) {
+  Widget _buildMetricCard(
+    BuildContext context,
+    String title,
+    String value,
+    String subtitle,
+    Color indicatorColor,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _getScoreColor(score * 100).withAlpha((255 * 0.1).round()),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: _getScoreColor(score * 100).withAlpha((255 * 0.3).round()),
-        ),
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: indicatorColor.withOpacity(0.5), width: 1.5),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: _getScoreColor(score * 100),
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.subtitle1?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Icon(icon, color: indicatorColor, size: 28),
+            ],
           ),
-          const SizedBox(height: 4),
+          const Spacer(),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: _getScoreColor(score * 100),
-            ),
+            style: Theme.of(context).textTheme.headline5?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodyText2?.copyWith(color: indicatorColor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryMetrics() {
-    if (widget.analysisResult == null) return const SizedBox.shrink();
-    
-    final result = widget.analysisResult!;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+  Color _getCategoryColor(dynamic category) {
+    if (category is SpeechRateCategory) {
+      switch (category) {
+        case SpeechRateCategory.tooSlow:
+        case SpeechRateCategory.tooFast:
+          return Colors.orangeAccent;
+        case SpeechRateCategory.optimal:
+          return Colors.greenAccent;
+      }
+    }
+    if (category is IntonationPattern) {
+      switch (category) {
+        case IntonationPattern.monotone:
+          return Colors.redAccent;
+        case IntonationPattern.exaggerated:
+        case IntonationPattern.irregular:
+          return Colors.yellowAccent;
+        case IntonationPattern.natural:
+          return Colors.greenAccent;
+      }
+    }
+    if (category is PauseDistribution) {
+      switch (category) {
+        case PauseDistribution.tooManyPauses:
+        case PauseDistribution.tooFewPauses:
+          return Colors.orangeAccent;
+        case PauseDistribution.natural:
+          return Colors.greenAccent;
+      }
+    }
+    if (category is EnergyProfile) {
+      switch (category) {
+        case EnergyProfile.tooLow:
+        case EnergyProfile.tooHigh:
+          return Colors.redAccent;
+        case EnergyProfile.inconsistent:
+          return Colors.yellowAccent;
+        case EnergyProfile.balanced:
+          return Colors.greenAccent;
+      }
+    }
+    return Colors.grey;
+  }
+
+  Widget _buildDetailedAnalysis(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Résumé de l\'Analyse',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryItem('🎯 Débit de parole', result.speechRate.feedback),
-          _buildSummaryItem('🎵 Intonation', result.intonation.feedback),
-          _buildSummaryItem('⏸️ Pauses', result.pauses.feedback),
-          _buildSummaryItem('🔊 Énergie vocale', result.energy.feedback),
-          if (result.disfluency.events.isNotEmpty)
-            _buildSummaryItem('💫 Disfluences', result.disfluency.feedback),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String title, String content) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            'Détails et Suggestions',
+            style: Theme.of(context).textTheme.subtitle1?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              content,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailedMetrics() {
-    if (widget.analysisResult == null) return const SizedBox.shrink();
-    
-    final result = widget.analysisResult!;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: Column(
-        children: [
-          _buildDetailedSpeechRate(result.speechRate),
-          const SizedBox(height: 16),
-          _buildDetailedIntonation(result.intonation),
-          const SizedBox(height: 16),
-          _buildDetailedPauses(result.pauses),
-          const SizedBox(height: 16),
-          _buildDetailedEnergy(result.energy),
-          if (result.disfluency.events.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildDetailedDisfluencies(result.disfluency),
-          ],
+          const SizedBox(height: 8),
+          _buildDetailedSpeechRate(analysisResult!.speechRate),
+          const Divider(color: Colors.white24),
+          _buildDetailedIntonation(analysisResult!.intonation),
+          const Divider(color: Colors.white24),
+          _buildDetailedPauses(analysisResult!.pauses),
+          const Divider(color: Colors.white24),
+          _buildDetailedEnergy(analysisResult!.energy),
+          const Divider(color: Colors.white24),
+          _buildDetailedDisfluencies(analysisResult!.disfluencies),
         ],
       ),
     );
   }
 
   Widget _buildDetailedSpeechRate(SpeechRateAnalysis speechRate) {
-    return _buildDetailedSection(
-      title: '🎯 Analyse du Débit',
-      children: [
-        _buildDetailRow('Mots par minute', '${speechRate.wordsPerMinute.toStringAsFixed(1)} WPM'),
-        _buildDetailRow('Syllabes par seconde', '${speechRate.syllablesPerSecond.toStringAsFixed(2)} syll/s'),
-        _buildDetailRow('Score de fluidité', '${(speechRate.fluencyScore * 100).toStringAsFixed(0)}%'),
-        _buildDetailRow('Catégorie', _getSpeechRateCategoryText(speechRate.category)),
-      ],
+    return ListTile(
+      leading: Icon(Icons.speed, color: _getCategoryColor(speechRate.category)),
+      title: Text('Débit: ${speechRate.wordsPerMinute.toStringAsFixed(0)} mots/min', style: TextStyle(color: Colors.white)),
+      subtitle: Text(speechRate.suggestion, style: TextStyle(color: Colors.white70)),
     );
   }
 
   Widget _buildDetailedIntonation(IntonationAnalysis intonation) {
-    return _buildDetailedSection(
-      title: '🎵 Analyse d\'Intonation',
-      children: [
-        _buildDetailRow('F0 Moyenne', '${intonation.f0Mean.toStringAsFixed(1)} Hz'),
-        _buildDetailRow('Variation F0', '${intonation.f0Range.toStringAsFixed(1)} Hz'),
-        _buildDetailRow('Score de clarté', '${(intonation.clarityScore * 100).toStringAsFixed(0)}%'),
-        _buildDetailRow('Motif', _getIntonationPatternText(intonation.pattern)),
-      ],
+    return ListTile(
+      leading: Icon(Icons.multiline_chart, color: _getCategoryColor(intonation.pattern)),
+      title: Text('Intonation: ${_getIntonationPatternText(intonation.pattern)}', style: TextStyle(color: Colors.white)),
+      subtitle: Text(intonation.suggestion, style: TextStyle(color: Colors.white70)),
     );
   }
 
   Widget _buildDetailedPauses(PauseAnalysis pauses) {
-    return _buildDetailedSection(
-      title: '⏸️ Analyse des Pauses',
-      children: [
-        _buildDetailRow('Nombre total', '${pauses.totalPauses} pauses'),
-        _buildDetailRow('Durée moyenne', '${pauses.averagePauseDuration.toStringAsFixed(2)}s'),
-        _buildDetailRow('Taux de pause', '${(pauses.pauseRate * 100).toStringAsFixed(1)}%'),
-        _buildDetailRow('Score de rythme', '${(pauses.rhythmScore * 100).toStringAsFixed(0)}%'),
-      ],
+    return ListTile(
+      leading: Icon(Icons.pause_circle_filled, color: _getCategoryColor(pauses.pauseDistribution)),
+      title: Text('Pauses: ${pauses.totalPauses} (${(pauses.totalPauseDuration * 1000).toStringAsFixed(0)}ms)', style: TextStyle(color: Colors.white)),
+      subtitle: Text(pauses.suggestion, style: TextStyle(color: Colors.white70)),
     );
   }
 
   Widget _buildDetailedEnergy(EnergyAnalysis energy) {
-    return _buildDetailedSection(
-      title: '🔊 Analyse d\'Énergie',
-      children: [
-        _buildDetailRow('Énergie moyenne', '${energy.averageEnergy.toStringAsFixed(2)} dB'),
-        _buildDetailRow('Variance', energy.energyVariance.toStringAsFixed(2)),
-        _buildDetailRow('Score normalisé', '${(energy.normalizedEnergyScore * 100).toStringAsFixed(0)}%'),
-        _buildDetailRow('Profil', _getEnergyProfileText(energy.profile)),
-      ],
+    return ListTile(
+      leading: Icon(Icons.flash_on, color: _getCategoryColor(energy.profile)),
+      title: Text('Énergie: ${_getEnergyProfileText(energy.profile)}', style: TextStyle(color: Colors.white)),
+      subtitle: Text(energy.suggestion, style: TextStyle(color: Colors.white70)),
     );
   }
 
   Widget _buildDetailedDisfluencies(DisfluencyAnalysis disfluency) {
-    return _buildDetailedSection(
-      title: '💫 Analyse des Disfluences',
-      children: [
-        _buildDetailRow('Hésitations', '${disfluency.hesitationCount}'),
-        _buildDetailRow('Mots de remplissage', '${disfluency.fillerWordsCount}'),
-        _buildDetailRow('Répétitions', '${disfluency.repetitionCount}'),
-        _buildDetailRow('Score de sévérité', '${(disfluency.severityScore * 100).toStringAsFixed(0)}%'),
-      ],
+    return ListTile(
+      leading: Icon(Icons.record_voice_over, color: disfluency.count > 3 ? Colors.orangeAccent : Colors.greenAccent),
+      title: Text('Hésitations: ${disfluency.count} (ex: ${disfluency.examples.join(", ")})', style: TextStyle(color: Colors.white)),
+      subtitle: Text(disfluency.suggestion, style: TextStyle(color: Colors.white70)),
     );
-  }
-
-  Widget _buildDetailedSection({required String title, required List<Widget> children}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          TextButton.icon(
-            onPressed: () {
-              setState(() {
-                _showDetailedView = !_showDetailedView;
-              });
-            },
-            icon: Icon(_showDetailedView ? Icons.visibility_off : Icons.visibility),
-            label: Text(_showDetailedView ? 'Vue simple' : 'Vue détaillée'),
-          ),
-          if (widget.onRefreshRequested != null)
-            TextButton.icon(
-              onPressed: widget.onRefreshRequested,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Actualiser'),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Color _getScoreColor(double score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
   }
 
   String _getSpeechRateCategoryText(SpeechRateCategory category) {
@@ -587,3 +269,4 @@ class _ProsodyMetricsMonitorWidgetState extends ConsumerState<ProsodyMetricsMoni
     }
   }
 }
+*/

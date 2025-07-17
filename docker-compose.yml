@@ -24,43 +24,61 @@ services:
           memory: 256M
     tmpfs:
     - /tmp:noexec,nosuid,size=100m
+  vosk-stt-analysis:
+    build:
+      context: ./services/vosk-stt-analysis
+      dockerfile: Dockerfile
+    image: eloquence/vosk-stt-analysis:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8001"  # Remplace whisper-stt
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - VOSK_MODEL_PATH=/app/models
+      - MAX_WORKERS=8  # Scaleway power
+      - UVLOOP_ENABLED=true
+    networks:
+      - eloquence-network
+    volumes:
+      - vosk-models:/app/models
+      - vosk-cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Temps chargement modèles volumineux
+    deploy:
+      resources:
+        limits:
+          memory: 8G      # Modèles volumineux (1.5GB+)
+          cpus: '4.0'     # Performance maximale Scaleway
+        reservations:
+          memory: 4G
+          cpus: '2.0'
+    depends_on:
+      redis:
+        condition: service_healthy
+        
   api-backend:
     build:
       context: ./services/api-backend
       dockerfile: Dockerfile
     image: eloquence/api-backend:latest
-    restart: unless-stopped # Politique de redémarrage robuste
+    restart: unless-stopped
     ports:
-    - 8000:8000
-    env_file:
-    - .env
+      - "8000:8000"
     environment:
-    - LIVEKIT_URL=ws://livekit:7880
-    - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-    - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-    - WHISPER_STT_URL=${WHISPER_STT_URL}
-    - OPENAI_TTS_URL=${OPENAI_TTS_URL}
-    - PYTHONUNBUFFERED=1
-    - PYTHONDONTWRITEBYTECODE=1
-    - PYTHONHASHSEED=random
+      - VOSK_ANALYSIS_URL=http://vosk-stt-analysis:8001
+      - MISTRAL_API_URL=${MISTRAL_API_URL}
+      - REDIS_URL=redis://redis:6379
     networks:
-    - eloquence-network
-    healthcheck: # Ajout du healthcheck
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - eloquence-network
     depends_on:
-      livekit:
+      vosk-stt-analysis:  # ✅ Nouvelle dépendance
         condition: service_healthy
       redis:
-        condition: service_healthy
-      whisper-stt:
-        condition: service_healthy
-      openai-tts:
-        condition: service_healthy
-      whisper-realtime: # Ajout de la dépendance à whisper-realtime
         condition: service_healthy
     deploy:
       resources:
@@ -112,47 +130,10 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-  whisper-stt:
-    image: eloquence/whisper-stt:latest
-    restart: unless-stopped # Politique de redémarrage robuste
-    ports:
-    - 8001:8001
-    networks:
-    - eloquence-network
-    volumes:
-    - whisper-models-data:/root/.cache/faster_whisper
-    - whisper-tmp:/tmp/whisper
-    environment:
-    - PYTHONUNBUFFERED=1
-    - PYTHONDONTWRITEBYTECODE=1
-    - OMP_NUM_THREADS=4
-    - CUDA_VISIBLE_DEVICES=0
-    - WHISPER_CACHE_DIR=/root/.cache/faster_whisper
-    healthcheck:
-      test:
-      - CMD
-      - curl
-      - -f
-      - http://localhost:8001/health
-      interval: 15s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
-    deploy:
-      resources:
-        limits:
-          memory: 16G
-          cpus: '4.0'
-        reservations:
-          memory: 8G
-          cpus: '2.0'
-    tmpfs:
-    - /tmp:noexec,nosuid,size=2g
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
   openai-tts:
+    build:
+      context: ./services/api-backend/openai-tts
+      dockerfile: Dockerfile
     image: eloquence/openai-tts:latest
     restart: unless-stopped # Politique de redémarrage robuste
     ports:
@@ -188,71 +169,10 @@ services:
           cpus: '0.25'
     tmpfs:
     - /tmp:noexec,nosuid,size=100m
-  whisper-realtime:
-    build:
-      context: ./services/whisper-realtime
-      dockerfile: Dockerfile
-    image: eloquence/whisper-realtime:latest
-    restart: unless-stopped
-    ports:
-    - 8006:8006
-    env_file:
-    - .env
-    environment:
-    - PYTHONUNBUFFERED=1
-    - PYTHONDONTWRITEBYTECODE=1
-    - PYTHONHASHSEED=random
-    - TRANSFORMERS_CACHE=/app/.cache
-    - HF_HOME=/app/.cache/huggingface
-    - TORCH_HOME=/app/.cache/torch
-    - TOKENIZERS_PARALLELISM=false
-    - OMP_NUM_THREADS=1
-    - WHISPER_MODEL_ID=${WHISPER_MODEL_ID}
-    - WHISPER_DEVICE=${WHISPER_DEVICE}
-    - AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE}
-    - AUDIO_CHUNK_DURATION=${AUDIO_CHUNK_DURATION}
-    - MAX_AUDIO_BUFFER_SIZE=${MAX_AUDIO_BUFFER_SIZE}
-    - HOST=0.0.0.0
-    - PORT=8006
-    networks:
-    - eloquence-network
-    volumes:
-    - whisper-realtime-cache:/app/.cache
-    - whisper-realtime-logs:/app/logs
-    - whisper-realtime-temp:/app/temp
-    healthcheck:
-      test:
-      - CMD
-      - curl
-      - -f
-      - http://localhost:8006/health
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    depends_on:
-      whisper-stt:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '2.0'
-        reservations:
-          memory: 2G
-          cpus: '1.0'
-    tmpfs:
-    - /tmp:noexec,nosuid,size=500m
-    labels:
-      service.type: 'whisper-realtime'
-      service.version: '1.0.0'
-      replacement.for: 'hybrid-speech-evaluation'
   eloquence-agent-v1:
     build:
       context: ./services/api-backend
-      dockerfile: Dockerfile.agent.dev
+      dockerfile: Dockerfile.agent
     image: eloquence/agent-v1:latest
     command: python -u services/real_time_voice_agent_force_audio_fixed.py dev
     restart: unless-stopped # Changé de 'no' à unless-stopped
@@ -264,7 +184,6 @@ services:
     - LIVEKIT_URL=ws://livekit:7880
     - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
     - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-    - WHISPER_STT_URL=${WHISPER_STT_URL}
     - OPENAI_TTS_URL=${OPENAI_TTS_URL}
     - MISTRAL_API_KEY=${MISTRAL_API_KEY}
     - MISTRAL_BASE_URL=${MISTRAL_BASE_URL}
@@ -286,8 +205,6 @@ services:
         condition: service_healthy # Changé de service_started
       redis:
         condition: service_healthy # Changé de service_started
-      whisper-stt:
-        condition: service_healthy
       openai-tts:
         condition: service_healthy
     deploy:
@@ -311,6 +228,10 @@ volumes:
   livekit-data:
     driver: local
   redis-data:
+    driver: local
+  vosk-models:
+    driver: local
+  vosk-cache:
     driver: local
   whisper-models-data:
     driver: local

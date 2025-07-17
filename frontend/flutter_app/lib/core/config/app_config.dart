@@ -22,9 +22,9 @@ class AppConfig {
     return isProduction ? "wss://your-prod-server.com" : _replaceLocalhostWithDevIp(url);
   }
 
-  static String get whisperUrl {
-    final url = dotenv.env['WHISPER_STT_URL'] ?? 'http://localhost:8001';
-    return isProduction ? "https://your-prod-server.com/stt" : _replaceLocalhostWithDevIp(url);
+  static String get voskAnalysisUrl {
+    final url = dotenv.env['VOSK_ANALYSIS_URL'] ?? 'http://localhost:8001';
+    return isProduction ? "https://your-prod-server.com/vosk" : _replaceLocalhostWithDevIp(url);
   }
 
   static String get azureTtsUrl {

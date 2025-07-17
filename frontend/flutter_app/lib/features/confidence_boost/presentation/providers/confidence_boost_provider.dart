@@ -12,9 +12,9 @@ import '../../data/datasources/confidence_remote_datasource.dart';
 import '../../data/repositories/confidence_repository_impl.dart';
 import '../../data/services/confidence_livekit_integration.dart';
 import '../../data/services/text_support_generator.dart';
-import '../../data/services/confidence_analysis_backend_service.dart';
-import '../../data/services/prosody_analysis_interface.dart';
-import '../../data/services/unified_speech_analysis_service.dart';
+import '../../../../core/services/universal_speech_analysis_service.dart';
+import '../../../shared/analysis/domain/analysis_result.dart';
+import '../../../shared/analysis/domain/exercise_config.dart';
 import '../../data/services/mistral_api_service.dart';
 import '../../data/services/gamification_service.dart';
 import '../../data/services/xp_calculator_service.dart';
@@ -80,32 +80,6 @@ final confidenceLiveKitIntegrationProvider = Provider<ConfidenceLiveKitIntegrati
   );
 });
 
-// Provider pour le service d'analyse backend (Whisper + Mistral)
-final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBackendService>((ref) {
-  final networkConfig = ref.watch(networkConfigProvider);
-  // Configure dynamiquement l’URL du backend
-  ConfidenceAnalysisBackendService.configureBackendUrl(networkConfig.getBestLlmServiceUrl());
-  return ConfidenceAnalysisBackendService();
-});
-
-// Provider pour l'interface d'analyse prosodique (maintenant unifié)
-final unifiedSpeechAnalysisProvider = Provider<UnifiedSpeechAnalysisService>((ref) {
-  return UnifiedSpeechAnalysisService();
-});
-
-// L'ancien provider prosodyAnalysisInterfaceProvider est maintenant un alias
-// ou devrait être remplacé là où il est utilisé. Pour l'instant, on le fait pointer
-// vers un Fallback pour éviter de casser le code qui en dépendrait encore.
-final prosodyAnalysisInterfaceProvider = Provider<ProsodyAnalysisInterface>((ref) {
-  // On retourne un Fallback par défaut. Le code devrait être migré
-  // pour utiliser unifiedSpeechAnalysisProvider directement.
-  return FallbackProsodyAnalysis();
-});
-
-// Provider pour le fallback prosodique (utilisé en cas d'échec du service hybride)
-final fallbackProsodyAnalysisProvider = Provider<ProsodyAnalysisInterface>((ref) {
-  return FallbackProsodyAnalysis();
-});
 
 // Provider pour le repository de gamification
 final gamificationRepositoryProvider = Provider<GamificationRepository>((ref) {
@@ -152,38 +126,26 @@ final confidenceScenariosProvider = FutureProvider<List<confidence_scenarios.Con
 
 final confidenceBoostProvider = ChangeNotifierProvider((ref) {
   return ConfidenceBoostProvider(
-    livekitService: ref.watch(livekitServiceProvider),
-    livekitIntegration: ref.watch(confidenceLiveKitIntegrationProvider),
-    repository: ref.watch(confidenceRepositoryProvider),
-    backendAnalysisService: ref.watch(confidenceAnalysisBackendServiceProvider),
-    prosodyAnalysisInterface: ref.watch(prosodyAnalysisInterfaceProvider),
+    analysisService: ref.watch(universalSpeechAnalysisServiceProvider),
     gamificationService: ref.watch(gamificationServiceProvider),
-    mistralApiService: ref.watch(mistralApiServiceProvider), // Injecter le service Mistral
-    ref: ref, // Passer le ref pour TextSupportGenerator.create()
+    mistralApiService: ref.watch(mistralApiServiceProvider),
+    ref: ref,
   );
 });
 
 
 class ConfidenceBoostProvider with ChangeNotifier {
-  final CleanLiveKitService livekitService;
-  final ConfidenceLiveKitIntegration livekitIntegration;
-  final ConfidenceRepository repository;
-  final ConfidenceAnalysisBackendService backendAnalysisService;
-  final ProsodyAnalysisInterface prosodyAnalysisInterface;
+  final UniversalSpeechAnalysisService _analysisService;
   final GamificationService gamificationService;
-  final IMistralApiService mistralApiService; // Nouvelle dépendance
-  final Ref _ref; // Pour accéder aux providers
+  final IMistralApiService mistralApiService;
+  final Ref _ref;
 
   ConfidenceBoostProvider({
-    required this.livekitService,
-    required this.livekitIntegration,
-    required this.repository,
-    required this.backendAnalysisService,
-    required this.prosodyAnalysisInterface,
+    required UniversalSpeechAnalysisService analysisService,
     required this.gamificationService,
-    required this.mistralApiService, // Nouvelle dépendance
-    required Ref ref, // Initialiser le ref
-  }) : _ref = ref {
+    required this.mistralApiService,
+    required Ref ref,
+  }) : _analysisService = analysisService, _ref = ref {
     logger.i("ConfidenceBoostProvider created!");
   }
 
@@ -245,366 +207,33 @@ class ConfidenceBoostProvider with ChangeNotifier {
     }
   }
 
-  // MÉTHODE PHASE 4 : OPTIMISATION MOBILE CRITIQUE - Analyses parallèles au lieu de séquentielles
-  Future<void> analyzePerformance({
+  Future<void> analyzeRecording({
+    required Uint8List audioData,
     required confidence_scenarios.ConfidenceScenario scenario,
-    required confidence_models.TextSupport textSupport,
-    required Duration recordingDuration,
-    Uint8List? audioData, // Données audio de l'enregistrement
   }) async {
-    logger.i("🚀 MOBILE-OPTIMIZED: Parallel analysis system - Scenario: ${scenario.title}");
-    
-    // === INITIALISATION UX MOBILE ===
     _isAnalyzing = true;
-    _isUsingMobileOptimization = true;
-    _currentStage = 0;
-    _currentStageDescription = '🚀 Initialisation mobile...';
     notifyListeners();
     
     try {
-      // Petite pause pour l'animation d'initialisation
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      // === STAGE 1: VÉRIFICATIONS PARALLÈLES ===
-      _currentStage = 1;
-      _currentStageDescription = '🎯 Vérifications parallèles...';
-      notifyListeners();
-      // === VÉRIFICATIONS PARALLÈLES DE DISPONIBILITÉ ===
-      // Au lieu de séquenciel 3s + 3s + 3s = 9s, on fait tout en parallèle = 3s max !
-      
-      final availabilityChecks = await Future.wait([
-        // Check Whisper hybride
-        prosodyAnalysisInterface.isAvailable().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => false,
-        ),
-        // Check Backend classique
-        backendAnalysisService.isServiceAvailable().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => false,
-        ),
-        // Check LiveKit disponible (estimation rapide)
-        Future.value(true), // LiveKit toujours tenté
-      ]).timeout(
-        const Duration(seconds: 3), // Timeout global parallèle
-        onTimeout: () => [false, false, false],
+      final config = ExerciseConfig.confidence(
+        scenario: scenario,
+        keywords: scenario.keywords,
       );
       
-      final whisperAvailable = availabilityChecks[0];
-      final backendAvailable = availabilityChecks[1];
-      final livekitAvailable = availabilityChecks[2];
+      final result = await _analysisService.analyzeAudio(
+        audioData: audioData,
+        exerciseType: 'confidence',
+        config: config,
+      );
       
-      logger.i("📊 Availability check (3s): Whisper=$whisperAvailable, Backend=$backendAvailable, LiveKit=$livekitAvailable");
-      
-      // === STAGE 2: ANALYSES PARALLÈLES AVEC RACE CONDITION ===
-      _currentStage = 2;
-      _currentStageDescription = '🏁 Race condition: analyses simultanées...';
-      notifyListeners();
-      
-      // Le premier service qui répond avec succès gagne !
-      final List<Future<confidence_models.ConfidenceAnalysis?>> analysisAttempts = [];
-      
-      // 1. Tenter Whisper hybride si disponible et audio présent
-      if (whisperAvailable && audioData != null) {
-        logger.i("🎵 Starting PARALLEL Whisper hybrid analysis");
-        analysisAttempts.add(_attemptWhisperAnalysis(audioData, scenario, textSupport, recordingDuration));
-      }
-      
-      // 2. Tenter Backend classique si disponible et audio présent
-      if (backendAvailable && audioData != null) {
-        logger.i("🔧 Starting PARALLEL Backend analysis");
-        analysisAttempts.add(_attemptBackendAnalysis(audioData, scenario, textSupport, recordingDuration));
-      }
-      
-      // 3. Tenter LiveKit (toujours tenté comme fallback)
-      logger.i("📡 Starting PARALLEL LiveKit analysis");
-      analysisAttempts.add(_attemptLiveKitAnalysis(scenario, textSupport, recordingDuration));
-      
-      // === RACE CONDITION : PREMIER SUCCÈS GAGNE ===
-      // Timeout global mobile : 8 secondes au lieu de 35s+ !
-      
-      if (analysisAttempts.isNotEmpty) {
-        logger.i("🏁 Racing ${analysisAttempts.length} analysis methods (32s timeout)");
-        
-        confidence_models.ConfidenceAnalysis? winningAnalysis;
-        
-        // Surveiller chaque tentative en parallèle
-        final futures = analysisAttempts.map((attemptFuture) async {
-          try {
-            final result = await attemptFuture.timeout(const Duration(seconds: 32));
-            if (result != null && winningAnalysis == null) {
-              winningAnalysis = result;
-              logger.i("🏆 WINNER: Analysis completed successfully!");
-              return result;
-            }
-            return result;
-          } catch (e) {
-            logger.w("Analysis attempt failed: $e");
-            return null;
-          }
-        }).toList();
-        
-        // Attendre soit un succès, soit que toutes les tentatives échouent
-        await Future.wait(futures, eagerError: false).timeout(
-          const Duration(seconds: 35), // Augmenté pour correspondre aux timeouts backend
-          onTimeout: () {
-            logger.w("Global parallel analysis timeout reached (35s)");
-            return <confidence_models.ConfidenceAnalysis?>[];
-          },
-        );
-        
-        // Si on a un gagnant, l'utiliser
-        if (winningAnalysis != null) {
-          // === STAGE 3: TRAITEMENT DES RÉSULTATS ===
-          _currentStage = 3;
-          _currentStageDescription = '🎯 Traitement des résultats IA...';
-          notifyListeners();
-          
-          _lastAnalysis = winningAnalysis;
-          
-          // === STAGE 4: GAMIFICATION ===
-          _currentStage = 4;
-          _currentStageDescription = '🏆 Calcul XP et badges...';
-          notifyListeners();
-          
-          // Traiter la gamification après un succès
-          if (_currentTextSupport != null) {
-            await _processGamification(
-              scenario: scenario,
-              textSupport: _currentTextSupport!,
-              sessionDuration: recordingDuration,
-            );
-          }
-          
-          // === STAGE 5: FINALISATION ===
-          _currentStage = 5;
-          _currentStageDescription = '✅ Analyse complète mobile !';
-          notifyListeners();
-          
-          // Petite pause pour afficher le succès
-          await Future.delayed(const Duration(milliseconds: 1000));
-          
-          _isAnalyzing = false;
-          notifyListeners();
-          return;
-        }
-        
-        logger.w("All parallel analysis attempts failed, using emergency fallback");
-      }
-      
-      // === STAGE: FALLBACK D'URGENCE GARANTI ===
-      _currentStage = 4;
-      _currentStageDescription = '⚡ Fallback Mistral d\'urgence...';
-      notifyListeners();
-      
-      logger.w("Executing emergency fallback analysis");
-      logger.i("🎮 [CORRECTION APPLIQUÉE] Génération de données de gamification de démonstration...");
-      
-      // Créer des données de démonstration de gamification après correction structurelle
-      try {
-        await createDemoGamificationData();
-        logger.i("✅ [CORRECTION RÉUSSIE] Données de gamification créées avec succès !");
-      } catch (e) {
-        logger.e("❌ [CORRECTION PARTIELLE] Erreur lors de la génération des données: $e");
-      }
-      
-      await _createEmergencyAnalysis(scenario, recordingDuration);
-      
-      // === STAGE: FINALISATION FALLBACK ===
-      _currentStage = 5;
-      _currentStageDescription = '✅ Analyse fallback terminée !';
-      notifyListeners();
-      
-      // Petite pause pour afficher le succès du fallback
-      await Future.delayed(const Duration(milliseconds: 1000));
+      _lastAnalysis = result.toConfidenceAnalysis();
       
     } catch (e, stackTrace) {
-      logger.e('Critical error in performance analysis: $e', error: e, stackTrace: stackTrace);
-      
-      // === STAGE: ERREUR CRITIQUE GÉRÉE ===
-      _currentStage = 4;
-      _currentStageDescription = '🚨 Gestion d\'erreur critique...';
-      notifyListeners();
-      
-      // Fallback d'urgence garanti
-      await _createEmergencyAnalysis(scenario, recordingDuration);
-      
-      // === FINALISATION APRÈS ERREUR ===
-      _currentStage = 5;
-      _currentStageDescription = '✅ Récupération réussie !';
-      notifyListeners();
-      
-      await Future.delayed(const Duration(milliseconds: 1000));
+      logger.e('Erreur analyse: $e', error: e, stackTrace: stackTrace);
+      await _createEmergencyAnalysis(scenario, Duration.zero);
     } finally {
-      // === NETTOYAGE FINAL UX ===
       _isAnalyzing = false;
-      _isUsingMobileOptimization = false;
       notifyListeners();
-    }
-  }
-  
-  // === NOUVELLES MÉTHODES PARALLÈLES POUR MOBILE OPTIMIZATION ===
-  
-  /// Tentative d'analyse Whisper hybride avec timeout optimisé mobile
-  Future<confidence_models.ConfidenceAnalysis?> _attemptWhisperAnalysis(
-    Uint8List audioData,
-    confidence_scenarios.ConfidenceScenario scenario,
-    confidence_models.TextSupport textSupport,
-    Duration recordingDuration,
-  ) async {
-    try {
-      logger.i("🎵 Attempting Whisper hybrid analysis (mobile-optimized)");
-      
-      // Analyse prosodique complète via le service hybride avec timeout réduit
-      final prosodyResult = await prosodyAnalysisInterface.analyzeProsody(
-        audioData: audioData,
-        scenario: scenario,
-        language: 'fr',
-      ).timeout(
-        const Duration(seconds: 6), // Réduit de 15s à 6s pour mobile
-        onTimeout: () {
-          logger.w("Whisper hybrid analysis timed out (6s)");
-          return null;
-        },
-      );
-      
-      if (prosodyResult != null) {
-        logger.i("✅ Whisper hybrid analysis SUCCESS");
-        
-        // Convertir le résultat prosodique en analyse de confiance
-        final hybridAnalysis = prosodyResult.toConfidenceAnalysis();
-        
-        // Enrichir avec des détails spécifiques au scénario
-        final enrichedFeedback = "${hybridAnalysis.feedback}\n\n"
-            "🎯 **Contexte** : ${scenario.title} (${recordingDuration.inSeconds}s)\n"
-            "📊 **Support utilisé** : ${textSupport.type.name}\n"
-            "🎵 **Analyse VOSK + Whisper optimisée mobile** :\n"
-            "• Transcription: Whisper large-v3-turbo rapide\n"
-            "• Prosody: VOSK temps réel mobile\n"
-            "• Recommandations: IA ultra-rapides";
-        
-        return confidence_models.ConfidenceAnalysis(
-          overallScore: hybridAnalysis.overallScore,
-          confidenceScore: hybridAnalysis.confidenceScore,
-          fluencyScore: hybridAnalysis.fluencyScore,
-          clarityScore: hybridAnalysis.clarityScore,
-          energyScore: hybridAnalysis.energyScore,
-          feedback: enrichedFeedback,
-        );
-      }
-      
-      return null;
-    } catch (e) {
-      logger.w("Whisper hybrid analysis failed: $e");
-      return null;
-    }
-  }
-  
-  /// Tentative d'analyse Backend classique avec timeout optimisé mobile
-  Future<confidence_models.ConfidenceAnalysis?> _attemptBackendAnalysis(
-    Uint8List audioData,
-    confidence_scenarios.ConfidenceScenario scenario,
-    confidence_models.TextSupport textSupport,
-    Duration recordingDuration,
-  ) async {
-    try {
-      logger.i("🔧 Attempting Backend analysis (mobile-optimized)");
-      
-      // Analyser via le pipeline Whisper + Mistral avec timeout réduit
-      final analysis = await backendAnalysisService.analyzeAudioRecording(
-        audioData: audioData,
-        scenario: scenario,
-        userContext: 'Session mobile optimisée - Support: ${textSupport.type.name}',
-        recordingDurationSeconds: recordingDuration.inSeconds,
-      ).timeout(
-        const Duration(seconds: 30), // Augmenté pour correspondre au temps de traitement de Whisper Realtime (~25s)
-        onTimeout: () {
-          logger.w("Backend analysis timed out (30s)");
-          return null;
-        },
-      );
-      
-      if (analysis != null) {
-        logger.i("✅ Backend analysis SUCCESS");
-        return analysis;
-      }
-      
-      return null;
-    } catch (e) {
-      logger.w("Backend analysis failed: $e");
-      return null;
-    }
-  }
-
-  // MÉTHODE EXISTANTE LiveKit avec timeout interne
-  Future<confidence_models.ConfidenceAnalysis?> _attemptLiveKitAnalysis(
-    confidence_scenarios.ConfidenceScenario scenario,
-    confidence_models.TextSupport textSupport,
-    Duration recordingDuration,
-  ) async {
-    try {
-      // 1. Obtenir les informations de session (URL et Token LiveKit) du backend
-      logger.i("LiveKit: Tentative de démarrage de session via ApiService...");
-      final apiService = _ref.read(apiServiceProvider);
-      final session = await apiService.startSession(
-        scenario.id,
-        "livekit_user", // TODO: Remplacer par l'ID utilisateur réel si disponible
-      ).timeout(const Duration(seconds: 7)); // Timeout pour l'appel API
-
-      if (session.livekitUrl == null || session.token == null) {
-        logger.e("LiveKit: URL ou Token LiveKit manquants dans la réponse de session.");
-        return null;
-      }
-
-      logger.i("LiveKit: Session démarrée avec succès. URL: ${session.livekitUrl}, Token: (masqué)");
-
-      // 2. Démarrer la session LiveKit avec les URL et token obtenus
-      final success = await livekitIntegration.startSession(
-        scenario: scenario,
-        userContext: 'Session d\'analyse de performance (fallback)',
-        preferredSupportType: textSupport.type,
-        livekitUrl: session.livekitUrl!, // Passer l'URL obtenue
-        livekitToken: session.token!, // Passer le token obtenu
-      );
-
-      if (success) {
-        await livekitIntegration.startRecording();
-        await Future.delayed(recordingDuration);
-        await livekitIntegration.stopRecordingAndAnalyze();
-        
-        // Attendre l'analyse avec timeout
-        final completer = Completer<confidence_models.ConfidenceAnalysis?>();
-        late StreamSubscription subscription;
-        
-        subscription = livekitIntegration.analysisStream.listen((analysis) {
-          logger.i("LiveKit fallback analysis completed");
-          subscription.cancel();
-          completer.complete(analysis);
-        });
-        
-        // Timeout interne de 10 secondes
-        Timer(const Duration(seconds: 10), () {
-          if (!completer.isCompleted) {
-            subscription.cancel();
-            completer.complete(null);
-          }
-        });
-        
-        return await completer.future;
-      }
-      
-      // Fallback vers CleanLiveKitService si session échoue
-      // Ceci est un fallback vers une analyse statique de LiveKitService si l'intégration échoue.
-      // S'assurer que cela a du sens ou le supprimer si CleanLiveKitService est purement un service de connexion.
-      final analysis = await livekitService.requestConfidenceAnalysis(
-        scenario: scenario,
-        recordingDurationSeconds: recordingDuration.inSeconds,
-      ).timeout(const Duration(seconds: 10));
-      
-      return analysis;
-    } catch (e) {
-      logger.w("LiveKit analysis attempt failed: $e");
-      return null;
     }
   }
   

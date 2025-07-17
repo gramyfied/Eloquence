@@ -12,7 +12,7 @@ class RecordingScreen extends ConsumerStatefulWidget {
   final ConfidenceScenario scenario;
   final TextSupport textSupport;
   final String sessionId;
-  final Function(Duration) onRecordingComplete;
+  final Function(Duration, Uint8List) onRecordingComplete;
 
   const RecordingScreen({
     Key? key,
@@ -412,14 +412,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
     // Déclencher l'analyse avec le provider en utilisant les bons paramètres
     final provider = ref.read(confidenceBoostProvider.notifier);
-    provider.analyzePerformance(
+    provider.analyzeRecording(
+      audioData: _audioData!,
       scenario: widget.scenario,
-      textSupport: widget.textSupport,
-      recordingDuration: _recordingDuration,
-      audioData: _audioData,
     ).then((_) {
       // Analyse terminée, retourner à l'écran précédent
-      widget.onRecordingComplete(_recordingDuration);
+      widget.onRecordingComplete(_recordingDuration, _audioData!);
     }).catchError((error) {
       if (!mounted) return;
       // Gérer les erreurs d'analyse
@@ -429,7 +427,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           backgroundColor: Colors.red,
         ),
       );
-      widget.onRecordingComplete(_recordingDuration);
+      widget.onRecordingComplete(_recordingDuration, _audioData!);
     });
   }
 

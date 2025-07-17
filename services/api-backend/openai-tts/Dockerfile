@@ -50,7 +50,7 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Copie du service TTS OpenAI
-COPY services/api-backend/services/tts_service_openai.py .
+COPY tts_service_openai.py .
 
 # Définition de l'utilisateur non-root et changement des permissions
 RUN chown -R appuser:appuser /app

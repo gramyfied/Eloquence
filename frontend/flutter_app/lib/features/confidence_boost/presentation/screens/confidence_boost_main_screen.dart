@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -56,19 +57,18 @@ class ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainSc
     );
   }
 
-  void _onRecordingComplete(Duration duration) async {
+  void _onRecordingComplete(Duration duration, Uint8List audioData) async {
     if (!mounted) return;
     
     setState(() {
       _recordingDuration = duration;
     });
     
-    if (_selectedScenario != null && _selectedTextSupport != null) {
+    if (_selectedScenario != null) {
       
-      await ref.read(confidenceBoostProvider.notifier).analyzePerformance(
+      await ref.read(confidenceBoostProvider.notifier).analyzeRecording(
+            audioData: audioData,
             scenario: _selectedScenario!,
-            textSupport: _selectedTextSupport!,
-            recordingDuration: _recordingDuration,
           );
       
       if (!mounted) {
@@ -134,7 +134,7 @@ class ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainSc
               scenario: _selectedScenario!,
               textSupport: _selectedTextSupport!,
               sessionId: 'session-id-placeholder', // TODO: Remplacer par un vrai ID de session
-              onRecordingComplete: _onRecordingComplete,
+              onRecordingComplete: (duration, audioData) => _onRecordingComplete(duration, audioData),
             ),
           if (_analysisResult != null)
             ResultsScreen(
