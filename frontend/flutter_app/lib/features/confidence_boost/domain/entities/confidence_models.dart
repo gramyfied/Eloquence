@@ -114,6 +114,16 @@ class ConfidenceAnalysis extends HiveObject {
   final List<String> strengths;
   @HiveField(11)
   final List<String> improvements;
+  
+  // Métriques spécifiques à Vosk pour exercices de confiance
+  @HiveField(12)
+  final double hesitationControl;
+  @HiveField(13)
+  final double assertiveness;
+  @HiveField(14)
+  final double keywordRelevance;
+  @HiveField(15)
+  final double speechConfidence;
 
   ConfidenceAnalysis({
     required this.overallScore,
@@ -128,6 +138,11 @@ class ConfidenceAnalysis extends HiveObject {
     this.transcription = '',
     this.strengths = const [],
     this.improvements = const [],
+    // Métriques Vosk avec valeurs par défaut
+    this.hesitationControl = 0.0,
+    this.assertiveness = 0.0,
+    this.keywordRelevance = 0.0,
+    this.speechConfidence = 0.0,
   });
 }
 

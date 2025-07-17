@@ -255,11 +255,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen>
       builder: (context, child) {
         return Column(
           children: [
-            _buildAnimatedMetricBar('Confiance', widget.analysis.confidenceScore, EloquenceColors.cyan, 0),
+            _buildAnimatedMetricBar('Clarté Vocale', widget.analysis.speechConfidence, EloquenceColors.cyan, 0),
             const SizedBox(height: EloquenceSpacing.md),
-            _buildAnimatedMetricBar('Fluidité', widget.analysis.fluencyScore, EloquenceColors.violet, 200),
+            _buildAnimatedMetricBar('Contrôle des Hésitations', widget.analysis.hesitationControl, EloquenceColors.violet, 200),
             const SizedBox(height: EloquenceSpacing.md),
-            _buildAnimatedMetricBar('Clarté', widget.analysis.clarityScore, ConfidenceBoostColors.successGreen, 400),
+            _buildAnimatedMetricBar('Assertivité', widget.analysis.assertiveness, ConfidenceBoostColors.successGreen, 400),
             const SizedBox(height: EloquenceSpacing.md),
             _buildAnimatedMetricBar('Énergie', widget.analysis.energyScore, ConfidenceBoostColors.warningOrange, 600),
           ],
