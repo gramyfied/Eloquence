@@ -9,7 +9,6 @@ import 'package:path/path.dart' as path;
 import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/confidence_scenario.dart';
 import 'package:logger/logger.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/config/app_config.dart'; // Importer AppConfig
 import '../../../../core/services/optimized_http_service.dart';
 import '../../domain/entities/confidence_models.dart';

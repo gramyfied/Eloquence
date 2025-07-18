@@ -8,16 +8,11 @@ import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confiden
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/gamification_models.dart' as gamification;
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
 import 'package:eloquence_2_0/src/services/clean_livekit_service.dart';
-import 'package:eloquence_2_0/data/services/api_service.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence_livekit_integration.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/repositories/confidence_repository.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/confidence_analysis_backend_service.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/prosody_analysis_interface.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/gamification_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/repositories/gamification_repository.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/services/xp_calculator_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/services/badge_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/services/streak_service.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart' as confidence_scenarios;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart' as confidence_models;
@@ -116,15 +111,10 @@ class FakeConfidenceBoostProvider extends ChangeNotifier implements ConfidenceBo
 
 
 class FakeConfidenceRepository implements ConfidenceRepository {
-  @override
   Future<List<confidence_scenarios.ConfidenceScenario>> getScenarios() async => [];
-  @override
   Future<void> saveSession(confidence_models.ConfidenceAnalysis analysis, confidence_scenarios.ConfidenceScenario scenario) async {}
-  @override
   Future<confidence_models.ConfidenceAnalysis> analyzePerformance({required String audioFilePath, required Duration recordingDuration, required confidence_scenarios.ConfidenceScenario scenario}) async => confidence_models.ConfidenceAnalysis(overallScore: 0, confidenceScore: 0, fluencyScore: 0, clarityScore: 0, energyScore: 0, feedback: '', wordCount: 0, speakingRate: 0, keywordsUsed: [], transcription: '');
-  @override
   Future<confidence_scenarios.ConfidenceScenario> getRandomScenario() async => confidence_scenarios.ConfidenceScenario(id: '', title: '', description: '', prompt: '', type: confidence_models.ConfidenceScenarioType.presentation, durationSeconds: 0, tips: [], keywords: [], difficulty: '', icon: '');
-  @override
   Future<confidence_scenarios.ConfidenceScenario?> getScenarioById(String id) async => null;
 }
 

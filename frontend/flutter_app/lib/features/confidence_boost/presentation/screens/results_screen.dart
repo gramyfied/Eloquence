@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:logger/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../domain/entities/confidence_models.dart';
