@@ -7,15 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPre
 import 'package:hive_flutter/hive_flutter.dart'; // Import Hive
 import 'core/config/supabase_config.dart'; // Import Supabase Config
 import 'presentation/app.dart'; // Import App au lieu de AuthWrapper
-import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
-import 'package:hive_flutter/hive_flutter.dart'; // Import Hive
 // Imports des modèles Hive
 import 'features/confidence_boost/domain/entities/gamification_models.dart';
 import 'features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'features/confidence_boost/data/services/mistral_cache_service.dart'; // Import pour MistralCacheService
 
-import 'core/config/supabase_config.dart'; // Import Supabase Config
-import 'presentation/app.dart'; // Import App au lieu de AuthWrapper
 import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart'; // Import pour override
 
 void main() async {

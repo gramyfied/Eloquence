@@ -80,7 +80,7 @@ final confidenceLiveKitIntegrationProvider = Provider<ConfidenceLiveKitIntegrati
   );
 });
 
-// Provider pour le service d'analyse backend (Whisper + Mistral)
+// Provider pour le service d'analyse backend (Vosk + Mistral)
 final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBackendService>((ref) {
   final networkConfig = ref.watch(networkConfigProvider);
   // Configure dynamiquement l’URL du backend
@@ -273,7 +273,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
       // Au lieu de séquenciel 3s + 3s + 3s = 9s, on fait tout en parallèle = 3s max !
       
       final availabilityChecks = await Future.wait([
-        // Check Whisper hybride
+        // Check Vosk hybride
         prosodyAnalysisInterface.isAvailable().timeout(
           const Duration(seconds: 3),
           onTimeout: () => false,
@@ -290,11 +290,11 @@ class ConfidenceBoostProvider with ChangeNotifier {
         onTimeout: () => [false, false, false],
       );
       
-      final whisperAvailable = availabilityChecks[0];
+      final voskAvailable = availabilityChecks[0];
       final backendAvailable = availabilityChecks[1];
       final livekitAvailable = availabilityChecks[2];
       
-      logger.i("📊 Availability check (3s): Whisper=$whisperAvailable, Backend=$backendAvailable, LiveKit=$livekitAvailable");
+      logger.i("📊 Availability check (3s): Vosk=$voskAvailable, Backend=$backendAvailable, LiveKit=$livekitAvailable");
       
       // === STAGE 2: ANALYSES PARALLÈLES AVEC RACE CONDITION ===
       _currentStage = 2;
@@ -305,8 +305,8 @@ class ConfidenceBoostProvider with ChangeNotifier {
       final List<Future<confidence_models.ConfidenceAnalysis?>> analysisAttempts = [];
       
       // 1. Tenter Whisper hybride si disponible et audio présent
-      if (whisperAvailable && audioData != null) {
-        logger.i("🎵 Starting PARALLEL Whisper hybrid analysis");
+      if (voskAvailable && audioData != null) {
+        logger.i("🎵 Starting PARALLEL Vosk hybrid analysis");
         analysisAttempts.add(_attemptWhisperAnalysis(audioData, scenario, textSupport, recordingDuration));
       }
       
@@ -320,74 +320,74 @@ class ConfidenceBoostProvider with ChangeNotifier {
       logger.i("📡 Starting PARALLEL LiveKit analysis");
       analysisAttempts.add(_attemptLiveKitAnalysis(scenario, textSupport, recordingDuration));
       
-      // === RACE CONDITION : PREMIER SUCCÈS GAGNE ===
-      // Timeout global mobile : 8 secondes au lieu de 35s+ !
+      // === RACE CONDITION CORRIGÉE : FUTURE.ANY() - PREMIER SUCCÈS GAGNE ===
+      // ✅ OPTIMISATION MOBILE : Le premier service qui répond gagne !
       
       if (analysisAttempts.isNotEmpty) {
-        logger.i("🏁 Racing ${analysisAttempts.length} analysis methods (32s timeout)");
+        logger.i("🏁 Racing ${analysisAttempts.length} analysis methods with Future.any()");
         
         confidence_models.ConfidenceAnalysis? winningAnalysis;
         
-        // Surveiller chaque tentative en parallèle
-        final futures = analysisAttempts.map((attemptFuture) async {
-          try {
-            final result = await attemptFuture.timeout(const Duration(seconds: 32));
-            if (result != null && winningAnalysis == null) {
-              winningAnalysis = result;
-              logger.i("🏆 WINNER: Analysis completed successfully!");
-              return result;
-            }
-            return result;
-          } catch (e) {
-            logger.w("Analysis attempt failed: $e");
-            return null;
-          }
-        }).toList();
-        
-        // Attendre soit un succès, soit que toutes les tentatives échouent
-        await Future.wait(futures, eagerError: false).timeout(
-          const Duration(seconds: 35), // Augmenté pour correspondre aux timeouts backend
-          onTimeout: () {
-            logger.w("Global parallel analysis timeout reached (35s)");
-            return <confidence_models.ConfidenceAnalysis?>[];
-          },
-        );
+        try {
+          // ✅ CORRECTION CRITIQUE: Future.any() au lieu de Future.wait()
+          // Le premier service qui répond avec succès gagne immédiatement !
+          winningAnalysis = await Future.any(
+            analysisAttempts.map((attemptFuture) async {
+              final result = await attemptFuture;
+              if (result != null) {
+                logger.i("🏆 WINNER: Analysis completed successfully with Future.any()!");
+                return result;
+              }
+              throw Exception('Analysis returned null');
+            })
+          ).timeout(
+            const Duration(seconds: 8), // ✅ OPTIMISÉ: Global 8s mobile (était 35s)
+            onTimeout: () {
+              logger.w("Future.any() race condition timeout (8s mobile optimized)");
+              throw TimeoutException('Race condition timeout', const Duration(seconds: 8));
+            },
+          );
+        } on TimeoutException {
+          logger.w("All race condition attempts timed out after 8s");
+          winningAnalysis = null;
+        } catch (e) {
+          logger.w("Race condition failed: $e");
+          winningAnalysis = null;
+        }
         
         // Si on a un gagnant, l'utiliser
-        if (winningAnalysis != null) {
-          // === STAGE 3: TRAITEMENT DES RÉSULTATS ===
-          _currentStage = 3;
-          _currentStageDescription = '🎯 Traitement des résultats IA...';
-          notifyListeners();
-          
-          _lastAnalysis = winningAnalysis;
-          
-          // === STAGE 4: GAMIFICATION ===
-          _currentStage = 4;
-          _currentStageDescription = '🏆 Calcul XP et badges...';
-          notifyListeners();
-          
-          // Traiter la gamification après un succès
-          if (_currentTextSupport != null) {
-            await _processGamification(
-              scenario: scenario,
-              textSupport: _currentTextSupport!,
-              sessionDuration: recordingDuration,
-            );
-          }
-          
-          // === STAGE 5: FINALISATION ===
-          _currentStage = 5;
-          _currentStageDescription = '✅ Analyse complète mobile !';
-          notifyListeners();
-          
-          // Petite pause pour afficher le succès
-          await Future.delayed(const Duration(milliseconds: 1000));
-          
-          _isAnalyzing = false;
-          notifyListeners();
-          return;
+        // === STAGE 3: TRAITEMENT DES RÉSULTATS ===
+        _currentStage = 3;
+        _currentStageDescription = '🎯 Traitement des résultats IA...';
+        notifyListeners();
+        
+        _lastAnalysis = winningAnalysis;
+        
+        // === STAGE 4: GAMIFICATION ===
+        _currentStage = 4;
+        _currentStageDescription = '🏆 Calcul XP et badges...';
+        notifyListeners();
+        
+        // Traiter la gamification après un succès
+        if (_currentTextSupport != null) {
+          await _processGamification(
+            scenario: scenario,
+            textSupport: _currentTextSupport!,
+            sessionDuration: recordingDuration,
+          );
         }
+        
+        // === STAGE 5: FINALISATION ===
+        _currentStage = 5;
+        _currentStageDescription = '✅ Analyse complète mobile !';
+        notifyListeners();
+        
+        // Petite pause pour afficher le succès
+        await Future.delayed(const Duration(milliseconds: 1000));
+        
+        _isAnalyzing = false;
+        notifyListeners();
+        return;
         
         logger.w("All parallel analysis attempts failed, using emergency fallback");
       }
@@ -453,7 +453,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
     Duration recordingDuration,
   ) async {
     try {
-      logger.i("🎵 Attempting Whisper hybrid analysis (mobile-optimized)");
+      logger.i("🎵 Attempting Vosk hybrid analysis (mobile-optimized)");
       
       // Analyse prosodique complète via le service hybride avec timeout réduit
       final prosodyResult = await prosodyAnalysisInterface.analyzeProsody(
@@ -461,15 +461,15 @@ class ConfidenceBoostProvider with ChangeNotifier {
         scenario: scenario,
         language: 'fr',
       ).timeout(
-        const Duration(seconds: 6), // Réduit de 15s à 6s pour mobile
+        const Duration(seconds: 6), // ✅ OPTIMISÉ: Whisper 6s pour mobile
         onTimeout: () {
-          logger.w("Whisper hybrid analysis timed out (6s)");
+          logger.w("Vosk hybrid analysis timed out (6s)");
           return null;
         },
       );
       
       if (prosodyResult != null) {
-        logger.i("✅ Whisper hybrid analysis SUCCESS");
+        logger.i("✅ Vosk hybrid analysis SUCCESS");
         
         // Convertir le résultat prosodique en analyse de confiance
         final hybridAnalysis = prosodyResult.toConfidenceAnalysis();
@@ -495,7 +495,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
       
       return null;
     } catch (e) {
-      logger.w("Whisper hybrid analysis failed: $e");
+      logger.w("Vosk hybrid analysis failed: $e");
       return null;
     }
   }
@@ -517,7 +517,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
         userContext: 'Session mobile optimisée - Support: ${textSupport.type.name}',
         recordingDurationSeconds: recordingDuration.inSeconds,
       ).timeout(
-        const Duration(seconds: 30), // Augmenté pour correspondre au temps de traitement de Whisper Realtime (~25s)
+        const Duration(seconds: 8), // ✅ OPTIMISÉ: Backend 8s mobile optimal (était 30s)
         onTimeout: () {
           logger.w("Backend analysis timed out (30s)");
           return null;

@@ -9,7 +9,6 @@ import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
-import 'test_helpers.dart' hide setupTestEnvironment;
 import 'test_setup.dart';
 
 /// Tests de validation des performances après optimisations

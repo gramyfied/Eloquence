@@ -44,8 +44,13 @@ class AppConfig {
   }
 
   static String get redisUrl {
-    final url = dotenv.env['REDIS_HOST'] ?? 'localhost';
-    return isProduction ? "redis://your-prod-server.com:6379" : "redis://$_replaceLocalhostWithDevIp(url):6379";
+    final host = dotenv.env['REDIS_HOST'] ?? 'localhost';
+    if (isProduction) {
+      return "redis://your-prod-server.com:6379";
+    } else {
+      final devHost = _replaceLocalhostWithDevIp(host);
+      return "redis://$devHost:6379";
+    }
   }
 
   // Configuration ICE pour LiveKit (nécessaire pour les appareils physiques)
