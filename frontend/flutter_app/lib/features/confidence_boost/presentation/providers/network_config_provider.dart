@@ -8,8 +8,8 @@ class NetworkConfig {
   final String fallbackLlmServiceUrl;
   final String livekitUrl;
   final String fallbackLivekitUrl;
-  final String whisperUrl;
-  final String fallbackWhisperUrl;
+  final String voskUrl;
+  final String fallbackVoskUrl;
   final int requestTimeout;
 
   NetworkConfig({
@@ -17,12 +17,12 @@ class NetworkConfig {
     required this.fallbackLlmServiceUrl,
     required this.livekitUrl,
     required this.fallbackLivekitUrl,
-    required this.whisperUrl,
-    required this.fallbackWhisperUrl,
+    required this.voskUrl,
+    required this.fallbackVoskUrl,
     required this.requestTimeout,
   });
 
-  // Méthode pour choisir dynamiquement l’URL (LAN, fallback, etc.)
+  // Méthode pour choisir dynamiquement l'URL (LAN, fallback, etc.)
   String getBestLlmServiceUrl({bool preferFallback = false}) {
     if (preferFallback) return fallbackLlmServiceUrl;
     return llmServiceUrl;
@@ -33,9 +33,9 @@ class NetworkConfig {
     return livekitUrl;
   }
 
-  String getBestWhisperUrl({bool preferFallback = false}) {
-    if (preferFallback) return fallbackWhisperUrl;
-    return whisperUrl;
+  String getBestVoskUrl({bool preferFallback = false}) {
+    if (preferFallback) return fallbackVoskUrl;
+    return voskUrl;
   }
 }
 
@@ -48,8 +48,8 @@ final networkConfigProvider = Provider<NetworkConfig>((ref) {
     fallbackLlmServiceUrl: env['FALLBACK_LLM_SERVICE_URL'] ?? 'http://localhost:8000',
     livekitUrl: env['LIVEKIT_URL'] ?? 'ws://localhost:7880',
     fallbackLivekitUrl: env['FALLBACK_LIVEKIT_URL'] ?? 'ws://localhost:7880',
-    whisperUrl: env['WHISPER_URL'] ?? 'http://localhost:8001',
-    fallbackWhisperUrl: env['FALLBACK_WHISPER_REALTIME_URL'] ?? 'http://localhost:8006',
+    voskUrl: env['VOSK_URL'] ?? 'http://localhost:8003',
+    fallbackVoskUrl: env['FALLBACK_VOSK_URL'] ?? 'http://localhost:8003',
     requestTimeout: int.tryParse(env['MOBILE_REQUEST_TIMEOUT'] ?? '8') ?? 8,
   );
 });

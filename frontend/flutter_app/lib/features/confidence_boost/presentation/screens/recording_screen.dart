@@ -3,10 +3,16 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
+import '../../domain/entities/ai_character_models.dart';
+import '../../data/services/conversation_manager.dart';
+import '../../data/services/conversation_engine.dart';
+import '../../data/services/livekit_token_manager.dart';
 import '../providers/confidence_boost_provider.dart';
+import '../widgets/conversation_chat_widget.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
   final ConfidenceScenario scenario;
@@ -28,8 +34,25 @@ class RecordingScreen extends ConsumerStatefulWidget {
 
 class _RecordingScreenState extends ConsumerState<RecordingScreen>
     with TickerProviderStateMixin {
+  static const String _tag = 'RecordingScreen';
+  final Logger _logger = Logger();
+  
   late AnimationController _pulseController;
   late AnimationController _waveController;
+  
+  // Conversation
+  final ConversationManager _conversationManager = ConversationManager();
+  final LiveKitTokenManager _tokenManager = LiveKitTokenManager();
+  final List<ConversationMessage> _messages = [];
+  final ScrollController _chatScrollController = ScrollController();
+  bool _isConversationActive = false;
+  bool _isAISpeaking = false;
+  bool _isUserSpeaking = false;
+  StreamSubscription<ConversationEvent>? _eventSubscription;
+  StreamSubscription<TranscriptionSegment>? _transcriptionSubscription;
+  StreamSubscription<ConversationMetrics>? _metricsSubscription;
+  
+  // Recording legacy
   bool _isRecording = false;
   Duration _recordingDuration = Duration.zero;
   Timer? _timer;
@@ -39,6 +62,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   void initState() {
     super.initState();
     _initializeAnimations();
+    _initializeConversation();
   }
 
   void _initializeAnimations() {
@@ -58,6 +82,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     _pulseController.dispose();
     _waveController.dispose();
     _timer?.cancel();
+    _chatScrollController.dispose();
+    _eventSubscription?.cancel();
+    _transcriptionSubscription?.cancel();
+    _metricsSubscription?.cancel();
+    _conversationManager.dispose();
     super.dispose();
   }
 
@@ -75,13 +104,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       ),
       body: Column(
         children: [
-          // Section fixe du texte en haut
+          // Section de conversation ou texte en haut
           Expanded(
             flex: 3,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(EloquenceSpacing.lg),
-              child: _buildTextSupportDisplay(),
-            ),
+            child: _isConversationActive
+                ? ConversationChatWidget(
+                    messages: _messages,
+                    scrollController: _chatScrollController,
+                    isAISpeaking: _isAISpeaking,
+                    isUserSpeaking: _isUserSpeaking,
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(EloquenceSpacing.lg),
+                    child: _buildTextSupportDisplay(),
+                  ),
           ),
           
           // Section des contrôles en bas (fixe)
@@ -377,14 +413,27 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   void _toggleRecording() {
-    setState(() {
-      _isRecording = !_isRecording;
-    });
-
-    if (_isRecording) {
-      _startRecording();
+    if (_isConversationActive) {
+      // Mode conversation
+      if (_conversationManager.state == ConversationState.ready) {
+        _startConversation();
+      } else if (_conversationManager.state == ConversationState.userSpeaking ||
+                 _conversationManager.state == ConversationState.aiSpeaking) {
+        _pauseConversation();
+      } else if (_conversationManager.state == ConversationState.paused) {
+        _resumeConversation();
+      }
     } else {
-      _stopRecording();
+      // Mode enregistrement classique
+      setState(() {
+        _isRecording = !_isRecording;
+      });
+
+      if (_isRecording) {
+        _startRecording();
+      } else {
+        _stopRecording();
+      }
     }
   }
 
@@ -451,5 +500,372 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       case SupportType.freeImprovisation:
         return 'Improvisation libre';
     }
+  }
+
+  // ========== MÉTHODES DE CONVERSATION ==========
+
+  /// Initialise la conversation si le scénario le permet
+  Future<void> _initializeConversation() async {
+    // Déterminer si on doit activer le mode conversation
+    // Pour l'instant, activer pour tous les scénarios sauf le texte complet
+    if (widget.textSupport.type != SupportType.fullText) {
+      _isConversationActive = true;
+      
+      // S'abonner aux événements
+      _subscribeToConversationEvents();
+      
+      // Initialiser la conversation
+      await _setupConversation();
+    }
+  }
+
+  /// Configure la conversation avec LiveKit et Mistral
+  Future<void> _setupConversation() async {
+    try {
+      _logger.i('[$_tag] Configuration de la conversation pour ${widget.scenario.title}');
+      
+      // Initialiser le gestionnaire de tokens
+      final tokenInitialized = await _tokenManager.initialize();
+      if (!tokenInitialized) {
+        _logger.e('[$_tag] Échec initialisation TokenManager');
+        setState(() {
+          _isConversationActive = false;
+        });
+        return;
+      }
+      
+      // Obtenir l'URL LiveKit
+      final livekitUrl = _tokenManager.livekitUrl;
+      
+      // Générer un token pour la session
+      final roomName = 'confidence_boost_${widget.scenario.id}';
+      final participantName = 'user_${widget.sessionId}';
+      
+      final livekitToken = await _tokenManager.getToken(
+        roomName: roomName,
+        participantName: participantName,
+        grants: TokenGrants.defaultGrants(),
+        metadata: {
+          'scenario': widget.scenario.title,
+          'sessionId': widget.sessionId,
+        },
+      );
+      
+      if (livekitToken == null) {
+        _logger.e('[$_tag] Échec génération token LiveKit');
+        setState(() {
+          _isConversationActive = false;
+        });
+        return;
+      }
+      
+      // Créer un profil utilisateur adaptatif de base
+      final userProfile = UserAdaptiveProfile(
+        userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
+        confidenceLevel: 5, // Sur 10
+        experienceLevel: 5, // Sur 10
+        strengths: ['Clarté', 'Structure'],
+        weaknesses: ['Fluence', 'Gestion du stress'],
+        preferredTopics: [widget.scenario.title],
+        preferredCharacter: AICharacterType.thomas,
+        lastSessionDate: DateTime.now(),
+        totalSessions: 1,
+        averageScore: 0.7,
+      );
+      
+      final initialized = await _conversationManager.initializeConversation(
+        scenario: widget.scenario,
+        userProfile: userProfile,
+        livekitUrl: livekitUrl,
+        livekitToken: livekitToken,
+      );
+      
+      if (initialized) {
+        _logger.i('[$_tag] Conversation initialisée avec succès');
+        
+        // Ajouter un message système
+        setState(() {
+          _messages.add(ConversationMessage(
+            text: '🎯 Prêt pour votre ${widget.scenario.title}',
+            role: ConversationRole.system,
+          ));
+        });
+      } else {
+        _logger.e('[$_tag] Échec initialisation conversation');
+        // Fallback sur le mode enregistrement classique
+        setState(() {
+          _isConversationActive = false;
+        });
+      }
+    } catch (e) {
+      _logger.e('[$_tag] Erreur configuration conversation: $e');
+      setState(() {
+        _isConversationActive = false;
+      });
+    }
+  }
+
+  /// S'abonne aux événements de conversation
+  void _subscribeToConversationEvents() {
+    // Événements principaux
+    _eventSubscription = _conversationManager.events.listen((event) {
+      _handleConversationEvent(event);
+    });
+    
+    // Transcriptions en temps réel
+    _transcriptionSubscription = _conversationManager.transcriptions.listen((segment) {
+      _handleTranscription(segment);
+    });
+    
+    // Métriques
+    _metricsSubscription = _conversationManager.metrics.listen((metrics) {
+      _updateConversationMetrics(metrics);
+    });
+  }
+
+  /// Gère les événements de conversation
+  void _handleConversationEvent(ConversationEvent event) {
+    _logger.d('[$_tag] Événement conversation: ${event.type}');
+    
+    switch (event.type) {
+      case ConversationEventType.conversationStarted:
+        setState(() {
+          _isRecording = true;
+          _startTimer();
+        });
+        break;
+        
+      case ConversationEventType.aiMessage:
+        final data = event.data as Map<String, dynamic>;
+        setState(() {
+          _messages.add(ConversationMessage(
+            text: data['message'],
+            role: ConversationRole.assistant,
+            metadata: {
+              'character': data['character'],
+              'emotion': data['emotion'],
+              'suggestions': data['suggestions'],
+            },
+          ));
+          _isAISpeaking = true;
+          _isUserSpeaking = false;
+        });
+        _scrollToBottom();
+        break;
+        
+      case ConversationEventType.listeningStarted:
+        setState(() {
+          _isAISpeaking = false;
+          _isUserSpeaking = true;
+        });
+        break;
+        
+      case ConversationEventType.stateChanged:
+        final state = ConversationState.values.firstWhere(
+          (s) => s.name == event.data,
+        );
+        _updateUIForState(state);
+        break;
+        
+      case ConversationEventType.error:
+        _showError(event.data.toString());
+        break;
+        
+      default:
+        break;
+    }
+  }
+
+  /// Gère les transcriptions en temps réel
+  void _handleTranscription(TranscriptionSegment segment) {
+    if (!segment.isFinal) {
+      // Transcription partielle - mettre à jour le dernier message utilisateur
+      final lastUserIndex = _messages.lastIndexWhere(
+        (msg) => msg.role == ConversationRole.user,
+      );
+      
+      if (lastUserIndex >= 0) {
+        setState(() {
+          _messages[lastUserIndex] = ConversationMessage(
+            text: segment.text,
+            role: ConversationRole.user,
+            timestamp: _messages[lastUserIndex].timestamp,
+          );
+        });
+      } else {
+        // Créer un nouveau message utilisateur
+        setState(() {
+          _messages.add(ConversationMessage(
+            text: segment.text,
+            role: ConversationRole.user,
+          ));
+        });
+      }
+    } else {
+      // Transcription finale
+      final lastUserIndex = _messages.lastIndexWhere(
+        (msg) => msg.role == ConversationRole.user,
+      );
+      
+      if (lastUserIndex >= 0) {
+        setState(() {
+          _messages[lastUserIndex] = ConversationMessage(
+            text: segment.text,
+            role: ConversationRole.user,
+            timestamp: _messages[lastUserIndex].timestamp,
+            metadata: {'confidence': segment.confidence},
+          );
+        });
+      }
+    }
+    
+    _scrollToBottom();
+  }
+
+  /// Met à jour les métriques de conversation
+  void _updateConversationMetrics(ConversationMetrics metrics) {
+    setState(() {
+      _recordingDuration = metrics.totalDuration;
+    });
+  }
+
+  /// Met à jour l'UI selon l'état de conversation
+  void _updateUIForState(ConversationState state) {
+    switch (state) {
+      case ConversationState.aiSpeaking:
+        setState(() {
+          _isAISpeaking = true;
+          _isUserSpeaking = false;
+        });
+        _pulseController.repeat(reverse: true);
+        break;
+        
+      case ConversationState.userSpeaking:
+        setState(() {
+          _isAISpeaking = false;
+          _isUserSpeaking = true;
+        });
+        _waveController.repeat(reverse: true);
+        break;
+        
+      case ConversationState.processing:
+      case ConversationState.aiThinking:
+        setState(() {
+          _isAISpeaking = false;
+          _isUserSpeaking = false;
+        });
+        break;
+        
+      case ConversationState.paused:
+      case ConversationState.ended:
+        setState(() {
+          _isAISpeaking = false;
+          _isUserSpeaking = false;
+        });
+        _pulseController.stop();
+        _waveController.stop();
+        break;
+        
+      default:
+        break;
+    }
+  }
+
+  /// Démarre la conversation
+  Future<void> _startConversation() async {
+    _logger.i('[$_tag] Démarrage de la conversation');
+    
+    setState(() {
+      _messages.clear();
+      _messages.add(ConversationMessage(
+        text: '🎬 Début de la conversation...',
+        role: ConversationRole.system,
+      ));
+    });
+    
+    await _conversationManager.startConversation();
+  }
+
+  /// Met en pause la conversation
+  void _pauseConversation() {
+    _logger.i('[$_tag] Pause de la conversation');
+    _conversationManager.pauseConversation();
+    _timer?.cancel();
+  }
+
+  /// Reprend la conversation
+  void _resumeConversation() {
+    _logger.i('[$_tag] Reprise de la conversation');
+    _conversationManager.resumeConversation();
+    _startTimer();
+  }
+
+  /// Termine la conversation et analyse les résultats
+  Future<void> _endConversation() async {
+    try {
+      _logger.i('[$_tag] Fin de la conversation');
+      
+      _timer?.cancel();
+      
+      final summary = await _conversationManager.endConversation();
+      
+      // Créer des données audio fictives pour la compatibilité
+      _audioData = Uint8List.fromList(List.generate(1024, (index) => index % 256));
+      
+      // Analyser avec le provider
+      final provider = ref.read(confidenceBoostProvider.notifier);
+      await provider.analyzePerformance(
+        scenario: widget.scenario,
+        textSupport: widget.textSupport,
+        recordingDuration: summary.totalDuration,
+        audioData: _audioData,
+        // Les données de conversation sont déjà dans l'analyse
+      );
+      
+      widget.onRecordingComplete(summary.totalDuration);
+      
+    } catch (e) {
+      _logger.e('[$_tag] Erreur fin conversation: $e');
+      _showError('Erreur lors de la fin de conversation');
+      widget.onRecordingComplete(_recordingDuration);
+    }
+  }
+
+  /// Démarre le timer
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isConversationActive) {
+        // Le temps est géré par ConversationManager
+        return;
+      }
+      setState(() {
+        _recordingDuration = Duration(seconds: timer.tick);
+      });
+    });
+  }
+
+  /// Scroll automatique vers le bas du chat
+  void _scrollToBottom() {
+    if (_chatScrollController.hasClients) {
+      _chatScrollController.animateTo(
+        _chatScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  /// Affiche une erreur
+  void _showError(String message) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_cache_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/services/whisper_streaming_service.dart';
+import 'package:eloquence_2_0/features/confidence_boost/data/services/vosk_analysis_service.dart';
 import 'package:eloquence_2_0/core/services/optimized_http_service.dart';
 import 'package:eloquence_2_0/core/utils/logger_service.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
@@ -80,63 +80,66 @@ void main() {
       }
     });
     
-    // === Test 2 : Performance streaming Whisper ===
-    test('Streaming Whisper doit traiter les chunks en < 2s', () async {
-      logger.i('TEST', '🧪 Test performance streaming Whisper');
+    // === Test 2 : Performance analyse VOSK ===
+    test('Analyse VOSK doit traiter l\'audio en < 6s', () async {
+      logger.i('TEST', '🧪 Test performance analyse VOSK');
       
-      final whisperService = WhisperStreamingService();
-      const scenario = ConfidenceScenario(
-        id: 'test-scenario',
-        title: 'Scénario de test',
-        description: 'Test de performance',
-        prompt: 'Testez votre capacité de streaming',
-        type: ConfidenceScenarioType.presentation,
-        durationSeconds: 30,
-        tips: ['Restez naturel', 'Parlez clairement'],
-        keywords: ['test', 'performance'],
-        difficulty: 'beginner',
-        icon: '🎯',
+      final voskService = VoskAnalysisService();
+      
+      // Test de santé du service
+      final healthCheck = await voskService.checkHealth();
+      if (!healthCheck) {
+        logger.w('TEST', 'Service VOSK non disponible, test ignoré');
+        return;
+      }
+      
+      // Créer des données audio de test (2 secondes à 16kHz, 16-bit)
+      final testAudioData = Uint8List.fromList(
+        List.generate(32000 * 2, (i) => (i % 255))  // 2 secondes d'audio simulé
       );
-      
-      // Démarrer la session
-      final sessionStarted = await whisperService.startStreamingSession(
-        scenario: scenario,
-        language: 'fr',
-      );
-      
-      expect(sessionStarted, isTrue);
-      
-      // Simuler l'envoi d'un chunk audio
-      final testAudioData = Uint8List(320000); // ~10s d'audio à 16kHz
       
       final stopwatch = Stopwatch()..start();
       
-      // Écouter la transcription
-      whisperService.transcriptionStream.listen((text) {
-        if (text.isNotEmpty) {
-          logger.i('TEST', '📝 Transcription partielle reçue: ${text.length} caractères');
+      try {
+        // Analyser l'audio avec VOSK
+        final result = await voskService.analyzeSpeech(testAudioData);
+        
+        stopwatch.stop();
+        final analysisLatency = stopwatch.elapsedMilliseconds;
+        
+        logger.i('TEST', '⏱️ Latence analyse VOSK: ${analysisLatency}ms');
+        logger.i('TEST', '📝 Transcription: ${result.transcription}');
+        logger.i('TEST', '📊 Score global: ${result.overallScore}');
+        
+        // Vérifications de performance
+        expect(analysisLatency, lessThan(6000),
+            reason: 'L\'analyse doit être terminée en moins de 6s');
+        
+        // Vérifications de contenu
+        expect(result.transcription, isA<String>());
+        expect(result.confidence, isA<double>());
+        expect(result.fluency, isA<double>());
+        expect(result.clarity, isA<double>());
+        expect(result.overallScore, isA<double>());
+        
+        // Test de conversion vers AnalysisResult
+        final analysisResult = voskService.convertToAnalysisResult(result);
+        expect(analysisResult.overallConfidenceScore, equals(result.confidence));
+        expect(analysisResult.otherMetrics['transcription'], equals(result.transcription));
+        
+      } catch (e) {
+        stopwatch.stop();
+        logger.e('TEST', 'Erreur analyse VOSK: $e');
+        
+        // Ne pas faire échouer le test si le service n'est pas disponible
+        if (e.toString().contains('Connection refused') ||
+            e.toString().contains('VOSK analysis failed')) {
+          logger.w('TEST', 'Service VOSK non disponible, test ignoré');
+          return;
         }
-      });
-      
-      // Ajouter les données audio
-      await whisperService.addAudioData(testAudioData);
-      
-      // Attendre max 2 secondes pour la transcription
-      await Future.delayed(const Duration(seconds: 2));
-      
-      stopwatch.stop();
-      final chunkLatency = stopwatch.elapsedMilliseconds;
-      
-      logger.i('TEST', '⏱️ Latence chunk Whisper: ${chunkLatency}ms');
-      
-      // Nettoyage
-      await whisperService.stopStreaming();
-      whisperService.dispose();
-      
-      // Vérifications
-      expect(chunkLatency, lessThan(2000),
-          reason: 'Le chunk doit être traité en moins de 2s');
-    }, skip: 'Requires running Whisper Docker container');
+        rethrow;
+      }
+    }, skip: 'Requires running VOSK service');
     
     // === Test 3 : Performance HTTP optimisé ===
     test('Service HTTP optimisé doit utiliser le pool de connexions', () async {

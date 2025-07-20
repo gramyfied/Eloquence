@@ -22,6 +22,21 @@ class AppConfig {
     return isProduction ? "wss://your-prod-server.com" : _replaceLocalhostWithDevIp(url);
   }
 
+  // Clés API LiveKit
+  static String? get livekitApiKey {
+    return dotenv.env['LIVEKIT_API_KEY'] ?? (kDebugMode ? 'devkey' : null);
+  }
+
+  static String? get livekitApiSecret {
+    return dotenv.env['LIVEKIT_API_SECRET'] ?? (kDebugMode ? 'secret' : null);
+  }
+
+  // URL du serveur de tokens LiveKit
+  static String get livekitTokenUrl {
+    final url = dotenv.env['LIVEKIT_TOKEN_URL'] ?? 'http://localhost:8004';
+    return isProduction ? "https://your-prod-server.com/livekit-tokens" : _replaceLocalhostWithDevIp(url);
+  }
+
   static String get whisperUrl {
     final url = dotenv.env['WHISPER_STT_URL'] ?? 'http://localhost:8001';
     return isProduction ? "https://your-prod-server.com/stt" : _replaceLocalhostWithDevIp(url);
