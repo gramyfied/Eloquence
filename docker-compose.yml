@@ -249,6 +249,92 @@ services:
       service.type: 'whisper-realtime'
       service.version: '1.0.0'
       replacement.for: 'hybrid-speech-evaluation'
+  vosk-stt:
+    build:
+      context: ./services/vosk-stt-analysis
+      dockerfile: Dockerfile
+    image: eloquence/vosk-stt:latest
+    restart: unless-stopped
+    ports:
+    - 8003:8003
+    networks:
+    - eloquence-network
+    volumes:
+    - vosk-models:/app/models
+    environment:
+    - PYTHONUNBUFFERED=1
+    - PYTHONDONTWRITEBYTECODE=1
+    - VOSK_MODEL_PATH=/app/models/vosk-model-fr-0.22
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8003/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    tmpfs:
+    - /tmp:noexec,nosuid,size=200m
+    labels:
+      service.type: 'vosk-stt-analysis'
+      service.version: '1.0.0'
+      audio.processing: 'true'
+  livekit-server:
+    build:
+      context: ./services/livekit-server
+      dockerfile: Dockerfile
+    image: eloquence/livekit-server:latest
+    restart: unless-stopped
+    ports:
+    - 8004:8004
+    networks:
+    - eloquence-network
+    environment:
+    - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+    - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+    - LIVEKIT_URL=ws://livekit:7880
+    - PYTHONUNBUFFERED=1
+    - PYTHONDONTWRITEBYTECODE=1
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8004/health
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      livekit:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    tmpfs:
+    - /tmp:noexec,nosuid,size=50m
+    labels:
+      service.type: 'livekit-token-server'
+      service.version: '1.0.0'
+      auth.provider: 'livekit'
   eloquence-agent-v1:
     build:
       context: ./services/api-backend
@@ -329,4 +415,6 @@ volumes:
   whisper-realtime-logs:
     driver: local
   whisper-realtime-temp:
+    driver: local
+  vosk-models:
     driver: local

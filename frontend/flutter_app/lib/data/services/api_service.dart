@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 // import 'package:web_socket_channel/io.dart'; // Supprimé car non utilisé
 import '../../core/config/app_config.dart';
+import '../../core/config/mobile_timeout_constants.dart'; // ✅ Import timeouts mobiles
 import '../../core/utils/logger_service.dart';
 import '../models/scenario_model.dart';
 import '../models/session_model.dart';
@@ -67,7 +68,7 @@ class ApiService {
 
     // Ajouter les en-têtes d'authentification
     final response = await http.get(uri, headers: headers)
-        .timeout(const Duration(seconds: 10));
+        .timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimal mobile
 
     if (response.statusCode == 200) {
       logger.i(_tag, 'Scénarios récupérés avec succès');
@@ -198,7 +199,7 @@ class ApiService {
         Uri.parse(newUrl),
         headers: requestHeaders,
         body: newFormatBody,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimal mobile
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         logger.i(_tag, 'Session LiveKit démarrée avec succès (Code: ${response.statusCode})');
@@ -277,7 +278,7 @@ class ApiService {
         Uri.parse(oldUrl),
         headers: headers,
         body: oldFormatBody,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimal mobile
 
       if (response.statusCode == 200) {
         logger.i(_tag, 'Session démarrée avec succès via l\'ancien endpoint (Code: ${response.statusCode})');
@@ -358,7 +359,7 @@ class ApiService {
       final response = await http.delete(
         Uri.parse(newUrl),
         headers: requestHeaders,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimal mobile
 
       if (response.statusCode == 200) {
         logger.i(_tag, 'Session terminée avec succès via le nouvel endpoint');
@@ -392,7 +393,7 @@ class ApiService {
       final response = await http.post(
         Uri.parse(oldUrl),
         headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimal mobile
 
       final success = response.statusCode == 200;
       if (success) {
@@ -475,7 +476,7 @@ class ApiService {
           'temperature': 0.7,
           'max_tokens': 500,
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(MobileTimeoutConstants.mistralAnalysisTimeout); // ✅ 8s optimal pour IA Mistral mobile
 
       if (response.statusCode == 200) {
         logger.i(_tag, 'Réponse générée avec succès');
@@ -510,7 +511,7 @@ class ApiService {
           'text': text,
           'voice': 'eloquence-voice', // Voix personnalisée
         }),
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(MobileTimeoutConstants.heavyRequestTimeout); // ✅ 8s optimal pour synthèse audio mobile
 
       if (response.statusCode == 200) {
         logger.i(_tag, 'Synthèse audio réussie');

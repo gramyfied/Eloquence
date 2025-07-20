@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import '../../core/config/app_config.dart';
+import '../../core/config/mobile_timeout_constants.dart'; // ✅ Import timeouts mobiles
 
 class NetworkDiagnostics {
   static final Logger _logger = Logger();
@@ -115,7 +116,7 @@ class NetworkDiagnostics {
       result['details']['test_url'] = httpUri.toString();
       
       final response = await http.get(httpUri)
-          .timeout(const Duration(seconds: 10));
+          .timeout(MobileTimeoutConstants.lightRequestTimeout); // ✅ 3s optimisé pour diagnostics mobiles
       
       result['details']['status_code'] = response.statusCode;
       result['details']['headers'] = response.headers;
@@ -152,7 +153,7 @@ class NetworkDiagnostics {
         headers: {
           'User-Agent': 'Eloquence-Flutter-Diagnostic/1.0',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(MobileTimeoutConstants.lightRequestTimeout); // ✅ 3s optimisé pour diagnostics WebSocket mobiles
       
       result['success'] = true;
       result['details']['connection_established'] = true;

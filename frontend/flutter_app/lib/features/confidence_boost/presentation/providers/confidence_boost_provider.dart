@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/config/supabase_config.dart';
+import '../../../../core/config/mobile_timeout_constants.dart'; // ✅ Import timeouts mobiles
 import 'package:logger/logger.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../src/services/clean_livekit_service.dart';
@@ -15,6 +16,8 @@ import '../../data/services/text_support_generator.dart';
 import '../../data/services/confidence_analysis_backend_service.dart';
 import '../../data/services/prosody_analysis_interface.dart';
 import '../../data/services/unified_speech_analysis_service.dart';
+import '../../data/services/vosk_prosody_analysis.dart';
+import '../../data/services/vosk_analysis_service.dart';
 import '../../data/services/mistral_api_service.dart';
 import '../../data/services/gamification_service.dart';
 import '../../data/services/xp_calculator_service.dart';
@@ -93,13 +96,18 @@ final unifiedSpeechAnalysisProvider = Provider<UnifiedSpeechAnalysisService>((re
   return UnifiedSpeechAnalysisService();
 });
 
-// L'ancien provider prosodyAnalysisInterfaceProvider est maintenant un alias
-// ou devrait être remplacé là où il est utilisé. Pour l'instant, on le fait pointer
-// vers un Fallback pour éviter de casser le code qui en dépendrait encore.
+// Provider pour le service VOSK
+final voskAnalysisServiceProvider = Provider<VoskAnalysisService>((ref) {
+  final networkConfig = ref.watch(networkConfigProvider);
+  // Configure le service VOSK avec l'URL du réseau
+  return VoskAnalysisService(baseUrl: networkConfig.getBestVoskUrl());
+});
+
+// Provider pour l'analyse prosodique VOSK
 final prosodyAnalysisInterfaceProvider = Provider<ProsodyAnalysisInterface>((ref) {
-  // On retourne un Fallback par défaut. Le code devrait être migré
-  // pour utiliser unifiedSpeechAnalysisProvider directement.
-  return FallbackProsodyAnalysis();
+  // Utiliser l'implémentation VOSK pour l'analyse prosodique
+  final voskService = ref.watch(voskAnalysisServiceProvider);
+  return VoskProsodyAnalysis(voskService: voskService);
 });
 
 // Provider pour le fallback prosodique (utilisé en cas d'échec du service hybride)
@@ -304,10 +312,10 @@ class ConfidenceBoostProvider with ChangeNotifier {
       // Le premier service qui répond avec succès gagne !
       final List<Future<confidence_models.ConfidenceAnalysis?>> analysisAttempts = [];
       
-      // 1. Tenter Whisper hybride si disponible et audio présent
+      // 1. Tenter analyse VOSK hybride si disponible et audio présent
       if (voskAvailable && audioData != null) {
         logger.i("🎵 Starting PARALLEL Vosk hybrid analysis");
-        analysisAttempts.add(_attemptWhisperAnalysis(audioData, scenario, textSupport, recordingDuration));
+        analysisAttempts.add(_attemptVoskAnalysis(audioData, scenario, textSupport, recordingDuration));
       }
       
       // 2. Tenter Backend classique si disponible et audio présent
@@ -341,7 +349,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
               throw Exception('Analysis returned null');
             })
           ).timeout(
-            const Duration(seconds: 8), // ✅ OPTIMISÉ: Global 8s mobile (était 35s)
+            MobileTimeoutConstants.fullPipelineTimeout, // ✅ OPTIMISÉ: Global 8s mobile (était 35s)
             onTimeout: () {
               logger.w("Future.any() race condition timeout (8s mobile optimized)");
               throw TimeoutException('Race condition timeout', const Duration(seconds: 8));
@@ -445,31 +453,31 @@ class ConfidenceBoostProvider with ChangeNotifier {
   
   // === NOUVELLES MÉTHODES PARALLÈLES POUR MOBILE OPTIMIZATION ===
   
-  /// Tentative d'analyse Whisper hybride avec timeout optimisé mobile
-  Future<confidence_models.ConfidenceAnalysis?> _attemptWhisperAnalysis(
+  /// Tentative d'analyse VOSK hybride avec timeout optimisé mobile
+  Future<confidence_models.ConfidenceAnalysis?> _attemptVoskAnalysis(
     Uint8List audioData,
     confidence_scenarios.ConfidenceScenario scenario,
     confidence_models.TextSupport textSupport,
     Duration recordingDuration,
   ) async {
     try {
-      logger.i("🎵 Attempting Vosk hybrid analysis (mobile-optimized)");
+      logger.i("🎵 Attempting VOSK analysis (mobile-optimized)");
       
-      // Analyse prosodique complète via le service hybride avec timeout réduit
+      // Analyse prosodique complète via VOSK avec timeout réduit
       final prosodyResult = await prosodyAnalysisInterface.analyzeProsody(
         audioData: audioData,
         scenario: scenario,
         language: 'fr',
       ).timeout(
-        const Duration(seconds: 6), // ✅ OPTIMISÉ: Whisper 6s pour mobile
+        const Duration(seconds: 6), // ✅ OPTIMISÉ: VOSK 6s pour mobile
         onTimeout: () {
-          logger.w("Vosk hybrid analysis timed out (6s)");
+          logger.w("VOSK analysis timed out (6s)");
           return null;
         },
       );
       
       if (prosodyResult != null) {
-        logger.i("✅ Vosk hybrid analysis SUCCESS");
+        logger.i("✅ VOSK analysis SUCCESS");
         
         // Convertir le résultat prosodique en analyse de confiance
         final hybridAnalysis = prosodyResult.toConfidenceAnalysis();
@@ -478,9 +486,9 @@ class ConfidenceBoostProvider with ChangeNotifier {
         final enrichedFeedback = "${hybridAnalysis.feedback}\n\n"
             "🎯 **Contexte** : ${scenario.title} (${recordingDuration.inSeconds}s)\n"
             "📊 **Support utilisé** : ${textSupport.type.name}\n"
-            "🎵 **Analyse VOSK + Whisper optimisée mobile** :\n"
-            "• Transcription: Whisper large-v3-turbo rapide\n"
-            "• Prosody: VOSK temps réel mobile\n"
+            "🎵 **Analyse VOSK optimisée mobile** :\n"
+            "• Transcription: VOSK temps réel\n"
+            "• Prosody: VOSK analyse prosodique complète\n"
             "• Recommandations: IA ultra-rapides";
         
         return confidence_models.ConfidenceAnalysis(
@@ -495,7 +503,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
       
       return null;
     } catch (e) {
-      logger.w("Vosk hybrid analysis failed: $e");
+      logger.w("VOSK analysis failed: $e");
       return null;
     }
   }
@@ -549,7 +557,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
       final session = await apiService.startSession(
         scenario.id,
         "livekit_user", // TODO: Remplacer par l'ID utilisateur réel si disponible
-      ).timeout(const Duration(seconds: 7)); // Timeout pour l'appel API
+      ).timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimisé pour API calls mobiles
 
       if (session.livekitUrl == null || session.token == null) {
         logger.e("LiveKit: URL ou Token LiveKit manquants dans la réponse de session.");
@@ -582,8 +590,8 @@ class ConfidenceBoostProvider with ChangeNotifier {
           completer.complete(analysis);
         });
         
-        // Timeout interne de 10 secondes
-        Timer(const Duration(seconds: 10), () {
+        // Timeout interne mobile optimisé
+        Timer(MobileTimeoutConstants.heavyRequestTimeout, () {
           if (!completer.isCompleted) {
             subscription.cancel();
             completer.complete(null);
@@ -599,7 +607,7 @@ class ConfidenceBoostProvider with ChangeNotifier {
       final analysis = await livekitService.requestConfidenceAnalysis(
         scenario: scenario,
         recordingDurationSeconds: recordingDuration.inSeconds,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(MobileTimeoutConstants.heavyRequestTimeout); // ✅ 8s optimisé pour analyses lourdes mobiles
       
       return analysis;
     } catch (e) {

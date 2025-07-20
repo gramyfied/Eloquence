@@ -6,7 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ApiConstants {
   // Configuration de base
   static const String defaultPort = '8000';
-  static const String defaultWhisperPort = '8001';
+  static const String defaultVoskPort = '8003';
   static const String defaultLiveKitPort = '7880';
   static const String defaultMistralPort = '8000';
   
@@ -37,21 +37,14 @@ class ApiConstants {
     return '$protocol://$host:$port';
   }
   
-  /// URL pour Whisper STT
-  static String get whisperUrl {
+  /// URL pour VOSK STT
+  static String get voskUrl {
     const protocol = kIsWeb ? 'http' : 'http';
     final host = hostIP;
-    final port = dotenv.env['WHISPER_PORT'] ?? defaultWhisperPort;
+    final port = dotenv.env['VOSK_PORT'] ?? defaultVoskPort;
     return '$protocol://$host:$port';
   }
   
-  /// URL de base pour Whisper (pour le streaming)
-  static String get whisperBaseUrl {
-    const protocol = kIsWeb ? 'http' : 'http';
-    final host = hostIP;
-    const port = '8006'; // Port du service whisper-realtime
-    return '$protocol://$host:$port';
-  }
   
   /// URL pour LiveKit
   static String get liveKitUrl {
@@ -86,7 +79,7 @@ class ApiConstants {
   
   /// Timeouts optimisés pour mobile
   static const Duration apiTimeout = Duration(seconds: 4); // Réduit de 15s
-  static const Duration whisperTimeout = Duration(seconds: 6); // Réduit de 15s
+  static const Duration voskTimeout = Duration(seconds: 6); // Timeout VOSK optimisé mobile
   static const Duration mistralTimeout = Duration(seconds: 4); // Optimisé
   static const Duration liveKitConnectTimeout = Duration(seconds: 3);
   
@@ -105,7 +98,7 @@ class ApiConstants {
       print('=== Configuration API ===');
       print('Host IP: $hostIP');
       print('Base URL: $baseUrl');
-      print('Whisper URL: $whisperUrl');
+      print('VOSK URL: $voskUrl');
       print('LiveKit URL: $liveKitUrl');
       print('LLM Service URL: $llmServiceUrl');
       print('Platform: ${Platform.operatingSystem}');
