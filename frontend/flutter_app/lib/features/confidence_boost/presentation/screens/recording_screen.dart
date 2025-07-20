@@ -9,8 +9,6 @@ import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/ai_character_models.dart';
 import '../../data/services/conversation_manager.dart';
-import '../../data/services/conversation_engine.dart';
-import '../../data/services/livekit_token_manager.dart';
 import '../providers/confidence_boost_provider.dart';
 import '../widgets/conversation_chat_widget.dart';
 
@@ -42,7 +40,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   
   // Conversation
   final ConversationManager _conversationManager = ConversationManager();
-  final LiveKitTokenManager _tokenManager = LiveKitTokenManager();
   final List<ConversationMessage> _messages = [];
   final ScrollController _chatScrollController = ScrollController();
   bool _isConversationActive = false;
@@ -524,40 +521,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     try {
       _logger.i('[$_tag] Configuration de la conversation pour ${widget.scenario.title}');
       
-      // Initialiser le gestionnaire de tokens
-      final tokenInitialized = await _tokenManager.initialize();
-      if (!tokenInitialized) {
-        _logger.e('[$_tag] Échec initialisation TokenManager');
-        setState(() {
-          _isConversationActive = false;
-        });
-        return;
-      }
-      
-      // Obtenir l'URL LiveKit
-      final livekitUrl = _tokenManager.livekitUrl;
-      
-      // Générer un token pour la session
-      final roomName = 'confidence_boost_${widget.scenario.id}';
-      final participantName = 'user_${widget.sessionId}';
-      
-      final livekitToken = await _tokenManager.getToken(
-        roomName: roomName,
-        participantName: participantName,
-        grants: TokenGrants.defaultGrants(),
-        metadata: {
-          'scenario': widget.scenario.title,
-          'sessionId': widget.sessionId,
-        },
-      );
-      
-      if (livekitToken == null) {
-        _logger.e('[$_tag] Échec génération token LiveKit');
-        setState(() {
-          _isConversationActive = false;
-        });
-        return;
-      }
+      // Configuration LiveKit simplifiée (sans TokenManager)
+      final livekitUrl = 'ws://localhost:7880'; // URL par défaut
+      final livekitToken = 'demo_token'; // Token de démonstration
       
       // Créer un profil utilisateur adaptatif de base
       final userProfile = UserAdaptiveProfile(

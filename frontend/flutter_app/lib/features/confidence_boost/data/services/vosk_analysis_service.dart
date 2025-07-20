@@ -1,10 +1,8 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/services/optimized_http_service.dart';
-import '../../../../core/config/app_config.dart';
 
 /// Service pour l'analyse vocale en temps réel avec VOSK
 /// Remplace complètement Whisper pour la transcription et l'analyse prosodique
@@ -14,7 +12,6 @@ class VoskAnalysisService {
   
   // Configuration des timeouts optimisés pour mobile
   static const Duration _analysisTimeout = Duration(seconds: 6);
-  static const Duration _globalTimeout = Duration(seconds: 8);
   
   VoskAnalysisService({String? baseUrl})
       : _baseUrl = baseUrl ?? 'http://localhost:8003';
