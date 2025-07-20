@@ -1,10 +1,7 @@
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../domain/entities/exercise.dart';
-import '../../domain/entities/confidence_scenario.dart';
-import '../../domain/entities/confidence_models.dart';
 import '../../../neuroscience/progression/adaptive_progression_system.dart';
 
 // ========== TYPES POUR DIFFICULTÉ CONVERSATION ==========

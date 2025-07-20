@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:logger/logger.dart';
-import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import 'prosody_analysis_interface.dart';
 import 'vosk_analysis_service.dart';
