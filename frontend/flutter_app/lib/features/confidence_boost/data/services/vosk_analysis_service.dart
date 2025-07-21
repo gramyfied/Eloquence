@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/config/mobile_timeout_constants.dart';
 import '../../../../core/services/optimized_http_service.dart';
 
 /// Service pour l'analyse vocale en temps réel avec VOSK
@@ -15,7 +16,7 @@ class VoskAnalysisService {
   final String _baseUrl;
 
   // Configuration des timeouts optimisés pour mobile
-  static const Duration _analysisTimeout = Duration(seconds: 15);
+  static const Duration _analysisTimeout = MobileTimeoutConstants.voskAnalysisTimeout;
 
   VoskAnalysisService({String? baseUrl})
       : _baseUrl = baseUrl ?? AppConfig.voskServiceUrl;
@@ -62,11 +63,11 @@ class VoskAnalysisService {
   Future<VoskAnalysisResult> _sendToVoskWithDiagnostic(Uint8List audioData) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$_baseUrl/analyze_speech'),
+      Uri.parse('$_baseUrl/analyze'),
     );
     request.files.add(
       http.MultipartFile.fromBytes(
-        'audio_file',
+        'audio',
         audioData,
         filename: 'audio.wav',
       ),
@@ -91,7 +92,7 @@ class VoskAnalysisService {
     try {
       final response = await _httpService.get(
         '$_baseUrl/health',
-        timeout: const Duration(seconds: 5),
+        timeout: MobileTimeoutConstants.healthCheckTimeout,
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -157,7 +158,7 @@ class VoskAnalysisService {
     try {
       final response = await _httpService.get(
         '$_baseUrl/health',
-        timeout: const Duration(seconds: 2),
+        timeout: MobileTimeoutConstants.healthCheckTimeout,
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -204,21 +205,23 @@ class VoskAnalysisResult {
   });
 
   factory VoskAnalysisResult.fromJson(Map<String, dynamic> json) {
+    // Structure correcte selon le service Vosk Python
+    final transcriptionData = json['transcription'] ?? {};
     final prosody = json['prosody'] ?? {};
     
     return VoskAnalysisResult(
-      transcription: json['transcription'] ?? '',
-      confidence: (json['confidence'] ?? 0.0).toDouble(),
-      fluency: (json['fluency'] ?? 0.0).toDouble(),
-      clarity: (json['clarity'] ?? 0.0).toDouble(),
+      transcription: transcriptionData['text'] ?? '',
+      confidence: (json['confidence_score'] ?? 0.0).toDouble(),
+      fluency: (json['fluency_score'] ?? 0.0).toDouble(),
+      clarity: (json['clarity_score'] ?? 0.0).toDouble(),
       overallScore: (json['overall_score'] ?? 0.0).toDouble(),
       pitchMean: (prosody['pitch_mean'] ?? 0.0).toDouble(),
-      pitchVariation: (prosody['pitch_variation'] ?? 0.0).toDouble(),
+      pitchVariation: (prosody['pitch_std'] ?? 0.0).toDouble(),
       energyMean: (prosody['energy_mean'] ?? 0.0).toDouble(),
-      energyVariation: (prosody['energy_variation'] ?? 0.0).toDouble(),
+      energyVariation: (prosody['energy_std'] ?? 0.0).toDouble(),
       speakingRate: (prosody['speaking_rate'] ?? 0.0).toDouble(),
-      pauseDuration: (prosody['pause_duration'] ?? 0.0).toDouble(),
-      wordTimings: (json['word_timings'] as List<dynamic>?)
+      pauseDuration: (prosody['pause_ratio'] ?? 0.0).toDouble(),
+      wordTimings: (transcriptionData['words'] as List<dynamic>?)
           ?.map((w) => WordTiming.fromJson(w))
           .toList() ?? [],
       processingTime: (json['processing_time'] ?? 0.0).toDouble(),

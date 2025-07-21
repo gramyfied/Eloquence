@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/services/optimized_http_service.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/config/mobile_timeout_constants.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/ai_character_models.dart';
@@ -33,10 +34,10 @@ class ConversationEngine {
   }) : _httpService = httpService ?? OptimizedHttpService(),
         _aiCharacterService = aiCharacterService ?? AdaptiveAICharacterService();
   
-  // Configuration Mistral
+  // Configuration Mistral Scaleway
   static String get _mistralBaseUrl => AppConfig.mistralBaseUrl;
-  static String get _mistralApiKey => dotenv.env['MISTRAL_API_KEY'] ?? '';
-  static const String _mistralModel = 'mistral-medium-latest'; // Modèle optimisé pour la conversation
+  static String get _mistralApiKey => dotenv.env['SCW_SECRET_KEY'] ?? '';
+  static const String _mistralModel = 'mistral-nemo-instruct-2407'; // Modèle Scaleway correct
   
   // État de la conversation
   final List<ConversationTurn> _conversationHistory = [];
@@ -254,13 +255,16 @@ Réponse:''';
       body: jsonEncode({
         'model': _mistralModel,
         'messages': [
+          {'role': 'system', 'content': 'You are a helpful assistant'},
           {'role': 'user', 'content': prompt}
         ],
-        'max_tokens': 150,
-        'temperature': 0.7,
-        'top_p': 0.9,
+        'max_tokens': 512,
+        'temperature': 0.3,
+        'top_p': 1,
+        'presence_penalty': 0,
+        'stream': false,
       }),
-      timeout: const Duration(seconds: 10),
+      timeout: MobileTimeoutConstants.mistralAnalysisTimeout, // Timeout mobile optimisé
     );
     
     if (response.statusCode == 200) {

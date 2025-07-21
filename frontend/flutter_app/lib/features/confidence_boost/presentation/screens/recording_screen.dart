@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
@@ -521,13 +524,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     try {
       _logger.i('[$_tag] Configuration de la conversation pour ${widget.scenario.title}');
       
-      // Configuration LiveKit simplifiée (sans TokenManager)
-      const livekitUrl = 'ws://localhost:7880'; // URL par défaut
-      const livekitToken = 'demo_token'; // Token de démonstration
+      // CORRECTION: Appel à l'API backend pour obtenir des tokens valides
+      final sessionData = await _createSessionWithBackend();
+      
+      if (sessionData == null) {
+        _logger.e('[$_tag] Échec création session backend');
+        setState(() {
+          _isConversationActive = false;
+        });
+        return;
+      }
       
       // Créer un profil utilisateur adaptatif de base
       final userProfile = UserAdaptiveProfile(
-        userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
+        userId: sessionData['user_id'] ?? 'user_${DateTime.now().millisecondsSinceEpoch}',
         confidenceLevel: 5, // Sur 10
         experienceLevel: 5, // Sur 10
         strengths: ['Clarté', 'Structure'],
@@ -542,8 +552,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       final initialized = await _conversationManager.initializeConversation(
         scenario: widget.scenario,
         userProfile: userProfile,
-        livekitUrl: livekitUrl,
-        livekitToken: livekitToken,
+        livekitUrl: sessionData['livekit_url'],
+        livekitToken: sessionData['livekit_token'],
       );
       
       if (initialized) {
@@ -802,5 +812,51 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  /// Crée une session avec l'API backend
+  Future<Map<String, dynamic>?> _createSessionWithBackend() async {
+    try {
+      _logger.i('[$_tag] Création session avec API backend');
+      
+      final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
+      final scenarioId = widget.scenario.id ?? 'confidence_boost';
+      
+      final requestBody = {
+        'user_id': userId,
+        'scenario_id': scenarioId,
+        'language': 'fr',
+      };
+      
+      _logger.d('[$_tag] Requête: ${AppConfig.apiBaseUrl}/api/sessions');
+      
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/sessions'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(requestBody),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Timeout création session', const Duration(seconds: 10));
+        },
+      );
+      
+      _logger.d('[$_tag] Réponse status: ${response.statusCode}');
+      
+      if (response.statusCode == 201) {
+        final sessionData = json.decode(response.body) as Map<String, dynamic>;
+        _logger.i('[$_tag] ✅ Session créée: ${sessionData['session_id']}');
+        return sessionData;
+      } else {
+        _logger.e('[$_tag] ❌ Erreur HTTP ${response.statusCode}: ${response.body}');
+        return null;
+      }
+      
+    } catch (e) {
+      _logger.e('[$_tag] ❌ Erreur création session: $e');
+      return null;
+    }
   }
 }

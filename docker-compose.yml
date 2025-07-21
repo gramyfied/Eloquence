@@ -80,6 +80,43 @@ services:
       retries: 3
       start_period: 30s
 
+  api-backend:
+    build:
+      context: ./services/api-backend
+      dockerfile: Dockerfile
+    image: eloquence/api-backend:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    networks:
+      - eloquence-network
+    env_file:
+      - .env
+    environment:
+      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_URL_EXTERNAL=ws://192.168.1.44:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - VOSK_STT_URL=http://vosk-stt:2700
+      - OPENAI_TTS_URL=http://openai-tts:5002/v1/audio/speech
+      - REDIS_URL=redis://redis:6379/0
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+    depends_on:
+      livekit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vosk-stt:
+        condition: service_healthy
+      openai-tts:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   eloquence-agent-v1:
     build:
       context: ./services/api-backend

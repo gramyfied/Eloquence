@@ -8,6 +8,7 @@ import 'conversation_engine.dart';
 import 'ai_character_factory.dart';
 import 'robust_livekit_service.dart';
 import 'adaptive_ai_character_service.dart';
+import 'vosk_analysis_service.dart';
 
 /// Gestionnaire de conversation temps réel avec LiveKit
 /// 
@@ -26,6 +27,7 @@ class ConversationManager {
   final AICharacterFactory _characterFactory;
   final RobustLiveKitService _liveKitService;
   final AdaptiveAICharacterService _aiCharacterService;
+  final VoskAnalysisService _voskAnalysisService;
   
   // État de la conversation
   ConversationState _state = ConversationState.idle;
@@ -35,10 +37,12 @@ class ConversationManager {
     AICharacterFactory? characterFactory,
     RobustLiveKitService? liveKitService,
     AdaptiveAICharacterService? aiCharacterService,
+    VoskAnalysisService? voskAnalysisService,
   })  : _conversationEngine = conversationEngine ?? ConversationEngine(),
         _characterFactory = characterFactory ?? AICharacterFactory(),
         _liveKitService = liveKitService ?? RobustLiveKitService(),
-        _aiCharacterService = aiCharacterService ?? AdaptiveAICharacterService();
+        _aiCharacterService = aiCharacterService ?? AdaptiveAICharacterService(),
+        _voskAnalysisService = voskAnalysisService ?? VoskAnalysisService();
   ConfidenceScenario? _currentScenario;
   UserAdaptiveProfile? _userProfile;
   AICharacterInstance? _aiCharacter;
@@ -228,23 +232,15 @@ class ConversationManager {
       // Combiner les buffers audio
       final combinedAudio = _combineAudioBuffers(_audioBuffer);
       
-      // Analyser avec VOSK via LiveKit
+      // Analyser avec VOSK direct
       final startTime = DateTime.now();
-      final analysis = await _liveKitService.analyzePerformanceRobust(
-        scenario: _currentScenario!,
-        textSupport: TextSupport(
-          type: SupportType.freeImprovisation,
-          content: '',
-        ),
-        recordingDuration: Duration(seconds: _audioBuffer.length ~/ 10), // Estimation
-        audioData: combinedAudio,
-      );
+      final voskResult = await _voskAnalysisService.analyzeAudio(combinedAudio);
       
       final processingTime = DateTime.now().difference(startTime);
       _updateMetrics(processingTime);
       
-      if (analysis == null) {
-        _logger.w('[$_tag] Analyse VOSK échouée');
+      if (voskResult.errorMessage != null) {
+        _logger.w('[$_tag] Analyse VOSK échouée: ${voskResult.errorMessage}');
         _emitTranscription(
           text: '[Erreur transcription]',
           isFinal: true,
@@ -253,17 +249,17 @@ class ConversationManager {
         return;
       }
       
-      // Émettre la transcription finale
+      // Émettre la transcription finale avec scores réalistes
       _emitTranscription(
-        text: analysis.transcription,
+        text: voskResult.transcription,
         isFinal: true,
-        confidence: analysis.confidenceScore,
+        confidence: voskResult.confidence,
       );
       
       // Générer la réponse IA
       _setState(ConversationState.aiThinking);
       final aiResponse = await _conversationEngine.generateResponse(
-        userInput: analysis.transcription,
+        userInput: voskResult.transcription,
         conversationHistory: _conversationEngine.getConversationHistory(),
         scenario: _currentScenario!,
         character: _aiCharacter!.type,
