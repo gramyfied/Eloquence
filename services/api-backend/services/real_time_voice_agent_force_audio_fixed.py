@@ -209,7 +209,8 @@ class MistralLLM(llm.LLM):
         super().__init__()
         self._api_key = os.environ.get("MISTRAL_API_KEY")
         self._model = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
-        self._base_url = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1/chat/completions")
+        # Priorité à l'URL du service local si définie, sinon API externe
+        self._base_url = os.getenv("MISTRAL_CONVERSATION_URL", os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1/chat/completions"))
 
     def chat(
         self,
@@ -331,7 +332,8 @@ class LocalOpenAITTS(tts.TTS):
             sample_rate=16000,
             num_channels=1
         )
-        self._endpoint = "https://api.openai.com/v1/audio/speech"  # Utilisation de l'API OpenAI externe, URL directe
+        # Priorité à l'URL du service local si définie, sinon API externe
+        self._endpoint = os.getenv("OPENAI_TTS_URL", "https://api.openai.com/v1/audio/speech")
         self._api_key = os.getenv("OPENAI_API_KEY")  # Récupération de la clé API
 
     def synthesize(

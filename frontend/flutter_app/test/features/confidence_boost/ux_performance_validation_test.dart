@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:eloquence_2_0/main.dart' as app;
 import 'package:eloquence_2_0/features/confidence_boost/presentation/screens/confidence_boost_adaptive_screen.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/animated_microphone_button.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/scenario_generation_animation.dart';
@@ -14,7 +13,6 @@ import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confiden
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/ai_character_models.dart' as ai_models;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/gamification_models.dart' as gamification;
-import 'package:eloquence_2_0/core/animation/eloquence_animation_service.dart';
 import 'package:eloquence_2_0/core/theme/eloquence_unified_theme.dart';
 
 /// 🎯 VALIDATION FINALE UX & PERFORMANCE MOBILE
@@ -189,7 +187,7 @@ void main() {
       expect(droppedFramePercentage, lessThan(5),
           reason: '💥 ÉCHEC CRITIQUE : ${droppedFramePercentage.toStringAsFixed(1)}% frames droppées > 5%');
 
-      print('✅ PERFORMANCE : Chargement ${performanceTimer.elapsedMilliseconds}ms, Frame ${avgFrameTime.toStringAsFixed(2)}ms, Dropped ${droppedFramePercentage.toStringAsFixed(1)}%');
+      debugPrint('✅ PERFORMANCE : Chargement ${performanceTimer.elapsedMilliseconds}ms, Frame ${avgFrameTime.toStringAsFixed(2)}ms, Dropped ${droppedFramePercentage.toStringAsFixed(1)}%');
     });
 
     testWidgets('⚡ Doit valider les timeouts optimisés en conditions réelles', (tester) async {
@@ -238,7 +236,7 @@ void main() {
       expect(globalTimer.elapsedMilliseconds, lessThan(8000),
           reason: '💥 ÉCHEC CRITIQUE : Timeout global ${globalTimer.elapsedMilliseconds}ms > 8000ms');
 
-      print('✅ TIMEOUTS : Vosk ${voskTimer.elapsedMilliseconds}ms, Global ${globalTimer.elapsedMilliseconds}ms');
+      debugPrint('✅ TIMEOUTS : Vosk ${voskTimer.elapsedMilliseconds}ms, Global ${globalTimer.elapsedMilliseconds}ms');
     });
 
     testWidgets('🎨 Doit valider la cohérence Design System Eloquence à 100%', (tester) async {
@@ -269,7 +267,7 @@ void main() {
       expect(textTheme.bodyLarge?.color, equals(EloquenceTheme.white),
           reason: '💥 ÉCHEC CRITIQUE : TextColor non conforme Design System');
 
-      print('✅ DESIGN SYSTEM : Palette conforme, Typographie validée');
+      debugPrint('✅ DESIGN SYSTEM : Palette conforme, Typographie validée');
     });
 
     testWidgets('🎛️ Doit valider les animations sous charge avec service centralisé', (tester) async {
@@ -282,12 +280,12 @@ void main() {
                 children: [
                   // 5 widgets animés simultanément
                   const AnimatedMicrophoneButton(isRecording: true, size: 100),
-                  ScenarioGenerationAnimation(
+                  const ScenarioGenerationAnimation(
                     currentStage: 'Test Performance',
                     stageDescription: 'Validation charge animations',
                     progress: 0.8,
                   ),
-                  SkillsConstellation(
+                  const SkillsConstellation(
                     skills: [],
                     isAnimated: true,
                     progress: 0.9,
@@ -330,7 +328,7 @@ void main() {
       expect(maxFrameTime, lessThan(50),
           reason: '💥 ÉCHEC CRITIQUE : Frame time max sous charge ${maxFrameTime}ms > 50ms');
 
-      print('✅ ANIMATIONS CHARGE : Avg ${avgFrameTime.toStringAsFixed(2)}ms, Max ${maxFrameTime}ms sur ${loadTimer.elapsedMilliseconds}ms');
+      debugPrint('✅ ANIMATIONS CHARGE : Avg ${avgFrameTime.toStringAsFixed(2)}ms, Max ${maxFrameTime}ms sur ${loadTimer.elapsedMilliseconds}ms');
     });
 
     testWidgets('♿ Doit valider l\'accessibilité mobile (WCAG 2.1 AA)', (tester) async {
@@ -362,7 +360,7 @@ void main() {
       expect(theme.scaffoldBackgroundColor, equals(EloquenceTheme.navy));
       expect(theme.textTheme.bodyLarge?.color, equals(EloquenceTheme.white));
 
-      print('✅ ACCESSIBILITÉ : Zones tap conformes, Contraste AAA validé');
+      debugPrint('✅ ACCESSIBILITÉ : Zones tap conformes, Contraste AAA validé');
     });
 
     testWidgets('🎮 Doit valider la gamification sous stress', (tester) async {
@@ -400,7 +398,7 @@ void main() {
       expect(gamificationTimer.elapsedMilliseconds, lessThan(5000),
           reason: '💥 ÉCHEC CRITIQUE : Gamification stress ${gamificationTimer.elapsedMilliseconds}ms > 5000ms');
 
-      print('✅ GAMIFICATION STRESS : 5 cycles en ${gamificationTimer.elapsedMilliseconds}ms');
+      debugPrint('✅ GAMIFICATION STRESS : 5 cycles en ${gamificationTimer.elapsedMilliseconds}ms');
     });
 
     testWidgets('🗣️ Doit valider l\'intégration Vosk finale sans régression', (tester) async {
@@ -447,7 +445,7 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: '💥 ÉCHEC CRITIQUE : Exception durant intégration Vosk');
 
-      print('✅ INTÉGRATION VOSK : Workflow complet ${voskIntegrationTimer.elapsedMilliseconds}ms sans erreur');
+      debugPrint('✅ INTÉGRATION VOSK : Workflow complet ${voskIntegrationTimer.elapsedMilliseconds}ms sans erreur');
     });
 
     testWidgets('🎪 Doit valider l\'UX complète du flow adaptatif sans interruption', (tester) async {
@@ -499,15 +497,15 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: '💥 ÉCHEC CRITIQUE : Exception durant UX flow');
 
-      print('✅ UX FLOW COMPLET : 6 phases en ${uxTimer.elapsedMilliseconds}ms sans interruption');
+      debugPrint('✅ UX FLOW COMPLET : 6 phases en ${uxTimer.elapsedMilliseconds}ms sans interruption');
     });
   });
 
   group('📊 MÉTRIQUES FINALES & RAPPORT PERFORMANCE', () {
     testWidgets('📈 Doit générer le rapport final de validation', (tester) async {
-      print('\n' + '='*60);
-      print('🎯 RAPPORT FINAL - VALIDATION UX & PERFORMANCE MOBILE');
-      print('='*60);
+      debugPrint('\n============================================================');
+      debugPrint('🎯 RAPPORT FINAL - VALIDATION UX & PERFORMANCE MOBILE');
+      debugPrint('='*60);
       
       await tester.pumpWidget(
         ProviderScope(
@@ -534,22 +532,22 @@ void main() {
         'UX Flow': 'Complet sans interruption ✅',
       };
 
-      print('\n📊 MÉTRIQUES VALIDÉES :');
-      metrics.forEach((key, value) => print('  $key: $value'));
+      debugPrint('\n📊 MÉTRIQUES VALIDÉES :');
+      metrics.forEach((key, value) => debugPrint('  $key: $value'));
       
-      print('\n🚀 OPTIMISATIONS APPLIQUÉES :');
-      print('  • Timeouts: 30s→6s Vosk (-80%), 35s→8s Global (-77%)');
-      print('  • Race conditions: Future.wait()→Future.any()');
-      print('  • Interface: PageView fragmenté→AdaptiveScreen unifié');
-      print('  • Animations: Service centralisé (150ms/300ms/500ms/800ms)');
-      print('  • Design System: Migration complète EloquenceTheme');
-      print('  • Gamification: XP adaptatif + badges contextuels');
-      print('  • IA: Personnages adaptatifs Thomas & Marie');
-      print('  • Audio: Migration Whisper→Vosk complète');
+      debugPrint('\n🚀 OPTIMISATIONS APPLIQUÉES :');
+      debugPrint('  • Timeouts: 30s→6s Vosk (-80%), 35s→8s Global (-77%)');
+      debugPrint('  • Race conditions: Future.wait()→Future.any()');
+      debugPrint('  • Interface: PageView fragmenté→AdaptiveScreen unifié');
+      debugPrint('  • Animations: Service centralisé (150ms/300ms/500ms/800ms)');
+      debugPrint('  • Design System: Migration complète EloquenceTheme');
+      debugPrint('  • Gamification: XP adaptatif + badges contextuels');
+      debugPrint('  • IA: Personnages adaptatifs Thomas & Marie');
+      debugPrint('  • Audio: Migration Whisper→Vosk complète');
       
-      print('\n✅ STATUT FINAL : TOUTES LES VALIDATIONS RÉUSSIES');
-      print('✅ EXERCICE BOOST CONFIDENCE : 100% OPÉRATIONNEL');
-      print('='*60 + '\n');
+      debugPrint('\n✅ STATUT FINAL : TOUTES LES VALIDATIONS RÉUSSIES');
+      debugPrint('✅ EXERCICE BOOST CONFIDENCE : 100% OPÉRATIONNEL');
+      debugPrint('='*60 + '\n');
 
       // VALIDATION FINALE : Tous les tests ont réussi
       expect(true, isTrue, reason: 'Validation finale réussie');

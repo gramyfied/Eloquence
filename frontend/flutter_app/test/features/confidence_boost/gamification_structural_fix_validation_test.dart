@@ -124,7 +124,8 @@ void main() {
           // 🔧 CORRECTION CRITIQUE: Override confidenceRemoteDataSourceProvider pour éviter l'appel à Supabase
           confidenceRemoteDataSourceProvider.overrideWithValue(MockConfidenceRemoteDataSource()),
           
-          gamificationRepositoryProvider.overrideWithValue(MockGamificationRepository()),
+          // Correction pour FutureProvider: utiliser overrideWith pour retourner une Future
+          gamificationRepositoryProvider.overrideWith((ref) async => MockGamificationRepository()),
           xpCalculatorServiceProvider.overrideWithValue(MockXPCalculatorService()),
           badgeServiceProvider.overrideWithValue(MockBadgeService()),
           streakServiceProvider.overrideWithValue(MockStreakService()),

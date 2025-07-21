@@ -143,8 +143,7 @@ class _AnimatedMicrophoneButtonState extends State<AnimatedMicrophoneButton>
                     gradient: _getMicrophoneGradient(),
                     boxShadow: [
                       BoxShadow(
-                        color: (widget.isRecording ? EloquenceTheme.cyan : EloquenceTheme.violet)
-                            .withOpacity(0.4),
+                        color: EloquenceTheme.withOpacity((widget.isRecording ? EloquenceTheme.cyan : EloquenceTheme.violet), 0.4),
                         blurRadius: widget.isRecording ? 30 : 20,
                         spreadRadius: widget.isRecording ? 10 : 5,
                       ),
@@ -183,9 +182,8 @@ class _AnimatedMicrophoneButtonState extends State<AnimatedMicrophoneButton>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: EloquenceTheme.cyan.withOpacity(
-                    (1.0 - progress) * 0.6,
-                  ),
+                  color: EloquenceTheme.withOpacity(EloquenceTheme.cyan,
+                    (1.0 - progress) * 0.6),
                   width: 2,
                 ),
               ),
@@ -200,8 +198,8 @@ class _AnimatedMicrophoneButtonState extends State<AnimatedMicrophoneButton>
     if (!widget.isEnabled) {
       return LinearGradient(
         colors: [
-          Colors.grey.withOpacity(0.5),
-          Colors.grey.withOpacity(0.3),
+          EloquenceTheme.withOpacity(Colors.grey, 0.5),
+          EloquenceTheme.withOpacity(Colors.grey, 0.3),
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -209,7 +207,7 @@ class _AnimatedMicrophoneButtonState extends State<AnimatedMicrophoneButton>
     }
     
     if (widget.isRecording) {
-      return LinearGradient(
+      return const LinearGradient(
         colors: [
           EloquenceTheme.cyan,
           EloquenceTheme.violet,
@@ -221,8 +219,8 @@ class _AnimatedMicrophoneButtonState extends State<AnimatedMicrophoneButton>
     
     return LinearGradient(
       colors: [
-        EloquenceTheme.violet.withOpacity(0.8),
-        EloquenceTheme.navy.withOpacity(0.9),
+        EloquenceTheme.withOpacity(EloquenceTheme.violet, 0.8),
+        EloquenceTheme.withOpacity(EloquenceTheme.navy, 0.9),
       ],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,

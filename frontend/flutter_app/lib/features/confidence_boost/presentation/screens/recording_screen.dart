@@ -522,8 +522,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       _logger.i('[$_tag] Configuration de la conversation pour ${widget.scenario.title}');
       
       // Configuration LiveKit simplifiée (sans TokenManager)
-      final livekitUrl = 'ws://localhost:7880'; // URL par défaut
-      final livekitToken = 'demo_token'; // Token de démonstration
+      const livekitUrl = 'ws://localhost:7880'; // URL par défaut
+      const livekitToken = 'demo_token'; // Token de démonstration
       
       // Créer un profil utilisateur adaptatif de base
       final userProfile = UserAdaptiveProfile(
@@ -764,37 +764,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     _logger.i('[$_tag] Reprise de la conversation');
     _conversationManager.resumeConversation();
     _startTimer();
-  }
-
-  /// Termine la conversation et analyse les résultats
-  Future<void> _endConversation() async {
-    try {
-      _logger.i('[$_tag] Fin de la conversation');
-      
-      _timer?.cancel();
-      
-      final summary = await _conversationManager.endConversation();
-      
-      // Créer des données audio fictives pour la compatibilité
-      _audioData = Uint8List.fromList(List.generate(1024, (index) => index % 256));
-      
-      // Analyser avec le provider
-      final provider = ref.read(confidenceBoostProvider.notifier);
-      await provider.analyzePerformance(
-        scenario: widget.scenario,
-        textSupport: widget.textSupport,
-        recordingDuration: summary.totalDuration,
-        audioData: _audioData,
-        // Les données de conversation sont déjà dans l'analyse
-      );
-      
-      widget.onRecordingComplete(summary.totalDuration);
-      
-    } catch (e) {
-      _logger.e('[$_tag] Erreur fin conversation: $e');
-      _showError('Erreur lors de la fin de conversation');
-      widget.onRecordingComplete(_recordingDuration);
-    }
   }
 
   /// Démarre le timer

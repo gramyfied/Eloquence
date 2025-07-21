@@ -3,8 +3,6 @@ import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_ca
 import 'package:eloquence_2_0/features/confidence_boost/data/services/vosk_analysis_service.dart';
 import 'package:eloquence_2_0/core/services/optimized_http_service.dart';
 import 'package:eloquence_2_0/core/utils/logger_service.dart';
-import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
-import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
 import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,7 +100,7 @@ void main() {
       
       try {
         // Analyser l'audio avec VOSK
-        final result = await voskService.analyzeSpeech(testAudioData);
+        final result = await voskService.analyzeAudio(testAudioData);
         
         stopwatch.stop();
         final analysisLatency = stopwatch.elapsedMilliseconds;
