@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:logger/logger.dart';
+import '../../../../core/config/mobile_timeout_constants.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/ai_character_models.dart';
@@ -18,10 +19,10 @@ class FallbackService {
   static const String _tag = 'FallbackService';
   final Logger _logger = Logger();
   
-  // Configuration des niveaux de fallback
+  // Configuration des niveaux de fallback (alignée avec MobileTimeoutConstants)
   static const int _maxRetries = 3;
-  static const Duration _baseRetryDelay = Duration(seconds: 1);
-  static const Duration _maxRetryDelay = Duration(seconds: 8);
+  static const Duration _baseRetryDelay = MobileTimeoutConstants.initialRetryDelay;
+  static const Duration _maxRetryDelay = MobileTimeoutConstants.maxRetryDelay;
   
   // État du service
   FallbackLevel _currentLevel = FallbackLevel.normal;
@@ -190,8 +191,8 @@ class FallbackService {
     Uint8List audioData, 
     ConfidenceScenario scenario,
   ) async {
-    // Simuler un délai d'analyse
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Simuler un délai d'analyse optimisé mobile
+    await Future.delayed(Duration(milliseconds: MobileTimeoutConstants.initialRetryDelay.inMilliseconds));
     
     // Créer une analyse basique mais fonctionnelle
     return AnalysisResult(

@@ -53,14 +53,14 @@ class AppConfig {
   }
 
   static String get voskServiceUrl {
-    final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:8003';
+    final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:2700';
     return isProduction ? "https://your-prod-server.com/vosk" : _replaceLocalhostWithDevIp(url);
   }
   
   static String get mistralBaseUrl {
-    // Utiliser MISTRAL_BASE_URL s'il est spécifié, sinon fallback
-    final url = dotenv.env['MISTRAL_BASE_URL'] ?? 'http://localhost:8000/mistral';
-    return isProduction ? "https://api.mistral.ai/v1/chat/completions" : _replaceLocalhostWithDevIp(url);
+    // URL Scaleway Mistral avec ID unique
+    final url = dotenv.env['MISTRAL_BASE_URL'] ?? 'https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1';
+    return isProduction ? "https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1" : url;
   }
 
   static String get redisUrl {

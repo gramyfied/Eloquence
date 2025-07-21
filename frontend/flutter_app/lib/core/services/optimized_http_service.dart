@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import '../config/mobile_timeout_constants.dart';
 import '../utils/logger_service.dart';
 
 /// Service HTTP optimisé pour mobile avec pool de connexions et compression
@@ -25,13 +26,13 @@ class OptimizedHttpService {
   
   // Configuration du pool de connexions
   static const int _maxConnectionsPerHost = 6; // Limite recommandée HTTP/1.1
-  static const Duration _connectionTimeout = Duration(seconds: 3); // Temps pour établir la connexion
+  static const Duration _connectionTimeout = MobileTimeoutConstants.connectionTimeout; // Optimisé mobile
   static const Duration _idleTimeout = Duration(seconds: 120); // Temps avant de fermer une connexion inactive
   
-  // Nouveaux timeouts adaptatifs
-  static const Duration shortTimeout = Duration(seconds: 5);   // Pour Whisper (plus rapide)
-  static const Duration mediumTimeout = Duration(seconds: 8);  // Pour Mistral API (analyse)
-  static const Duration longTimeout = Duration(seconds: 12);   // Pour Upload de fichiers volumineux
+  // Timeouts adaptatifs synchronisés avec MobileTimeoutConstants
+  static const Duration shortTimeout = MobileTimeoutConstants.lightRequestTimeout;   // Pour requêtes légères
+  static const Duration mediumTimeout = MobileTimeoutConstants.mediumRequestTimeout;  // Pour analyses moyennes
+  static const Duration longTimeout = MobileTimeoutConstants.fileUploadTimeout;   // Pour uploads volumineux
 
   // Configuration retry
   static const int _maxRetries = 3;

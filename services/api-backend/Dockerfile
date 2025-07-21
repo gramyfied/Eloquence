@@ -18,11 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copie des fichiers de requirements et installation des dépendances Python
-# L'installation de livekit-agents[silero] garantit que toutes les dépendances VAD sont incluses.
 WORKDIR /tmp
-COPY services/api-backend/requirements.agent.v1.txt .
-RUN pip install --no-cache-dir -r requirements.agent.v1.txt && \
-    pip install --no-cache-dir --upgrade 'livekit-agents[silero]'
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install LiveKit CLI (utilisé dans le binaire final)
 ARG TARGETARCH
@@ -51,15 +49,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin/lk /usr/local/bin/lk
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 
 # Copie du code de l'application
-COPY services/api-backend/app.py .
-COPY services/api-backend/api ./api
-COPY services/api-backend/services ./services
-COPY services/api-backend/tests ./tests
-COPY services/api-backend/wsgi.py .
+COPY app.py .
+COPY api ./api
+COPY services ./services
+COPY data ./data
+COPY wsgi.py .
 
 # Définition de l'utilisateur non-root et changement des permissions
 RUN chown -R appuser:appuser /app
