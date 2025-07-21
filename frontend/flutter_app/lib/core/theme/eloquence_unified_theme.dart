@@ -262,7 +262,7 @@ class EloquenceTheme {
   
   /// Obtient une couleur avec opacité
   static Color withOpacity(Color color, double opacity) {
-    return color.withOpacity(opacity);
+    return color.withAlpha((255 * opacity).round());
   }
   
   /// Obtient une couleur avec canal alpha
@@ -292,7 +292,7 @@ class EloquenceTheme {
   }) {
     return [
       BoxShadow(
-        color: color.withOpacity(opacity),
+        color: withOpacity(color, opacity),
         blurRadius: blurRadius,
         offset: offset,
       ),
@@ -346,18 +346,18 @@ class EloquenceTheme {
           backgroundColor: cyan,
           foregroundColor: white,
           padding: const EdgeInsets.symmetric(horizontal: spacingLg, vertical: spacingMd),
-          shape: RoundedRectangleBorder(borderRadius: borderRadiusMedium),
+          shape: const RoundedRectangleBorder(borderRadius: borderRadiusMedium),
           textStyle: buttonLarge,
         ),
       ),
       
       // Configuration des cartes
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: glassBackground,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: borderRadiusLarge,
-          side: const BorderSide(color: glassBorder, width: 1),
+          side: BorderSide(color: glassBorder, width: 1),
         ),
       ),
       
@@ -454,7 +454,7 @@ class EloquenceComponents {
         vertical: EloquenceTheme.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: EloquenceTheme.withOpacity(color, 0.2),
         borderRadius: EloquenceTheme.borderRadiusSmall,
         border: Border.all(color: color, width: 1),
       ),

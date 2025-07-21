@@ -115,14 +115,17 @@ final fallbackProsodyAnalysisProvider = Provider<ProsodyAnalysisInterface>((ref)
   return FallbackProsodyAnalysis();
 });
 
-// Provider pour le repository de gamification
-final gamificationRepositoryProvider = Provider<GamificationRepository>((ref) {
+// Provider pour le repository de gamification (maintenant asynchrone pour garantir l'initialisation)
+final gamificationRepositoryProvider = FutureProvider<GamificationRepository>((ref) async {
   final repository = HiveGamificationRepository();
-  // Initialize asynchronously - this will be handled by the consumer
-  repository.initialize().catchError((error) {
-    Logger().e('❌ [HIVE_INIT_ERROR] Failed to initialize Hive: $error');
-  });
-  return repository;
+  try {
+    await repository.initialize();
+    Logger().i('✅ [HIVE_INIT_SUCCESS] Hive GamificationRepository a été initialisé avec succès.');
+    return repository;
+  } catch (error) {
+    Logger().e('❌ [HIVE_INIT_ERROR] Échec de l\'initialisation de Hive: $error');
+    rethrow; // Important: propage l'erreur pour que le FutureProvider soit en état d'erreur
+  }
 });
 
 // Provider pour XP Calculator Service
@@ -130,25 +133,57 @@ final xpCalculatorServiceProvider = Provider<XPCalculatorService>((ref) {
   return XPCalculatorService();
 });
 
-// Provider pour Badge Service
+// Provider pour Badge Service (gère l'attente du repository)
 final badgeServiceProvider = Provider<BadgeService>((ref) {
-  final repository = ref.watch(gamificationRepositoryProvider);
-  return BadgeService(repository);
+  final repositoryAsync = ref.watch(gamificationRepositoryProvider);
+  return repositoryAsync.when(
+    data: (repository) => BadgeService(repository),
+    loading: () => BadgeService(HiveGamificationRepository()), // Service factice en chargement
+    error: (err, stack) => BadgeService(HiveGamificationRepository()), // Service factice en erreur
+  );
 });
 
-// Provider pour Streak Service
+// Provider pour Streak Service (gère l'attente du repository)
 final streakServiceProvider = Provider<StreakService>((ref) {
-  final repository = ref.watch(gamificationRepositoryProvider);
-  return StreakService(repository);
+  final repositoryAsync = ref.watch(gamificationRepositoryProvider);
+  return repositoryAsync.when(
+    data: (repository) => StreakService(repository),
+    loading: () => StreakService(HiveGamificationRepository()), // Service factice
+    error: (err, stack) => StreakService(HiveGamificationRepository()), // Service factice
+  );
 });
 
-// Provider pour Gamification Service
+// Provider pour Gamification Service (gère l'attente du repository)
 final gamificationServiceProvider = Provider<GamificationService>((ref) {
-  final repository = ref.watch(gamificationRepositoryProvider);
-  final badgeService = ref.watch(badgeServiceProvider);
-  final xpCalculator = ref.watch(xpCalculatorServiceProvider);
-  final streakService = ref.watch(streakServiceProvider);
-  return GamificationService(repository, badgeService, xpCalculator, streakService);
+  final repositoryAsync = ref.watch(gamificationRepositoryProvider);
+  return repositoryAsync.when(
+    data: (repository) {
+      final badgeService = ref.watch(badgeServiceProvider);
+      final xpCalculator = ref.watch(xpCalculatorServiceProvider);
+      final streakService = ref.watch(streakServiceProvider);
+      return GamificationService(repository, badgeService, xpCalculator, streakService);
+    },
+    loading: () {
+      // Retourne un service factice ou non fonctionnel pendant le chargement
+      final dummyRepo = HiveGamificationRepository();
+      return GamificationService(
+        dummyRepo,
+        BadgeService(dummyRepo),
+        XPCalculatorService(),
+        StreakService(dummyRepo)
+      );
+    },
+    error: (err, stack) {
+      // Gère l'état d'erreur de la même manière
+      final dummyRepo = HiveGamificationRepository();
+      return GamificationService(
+        dummyRepo,
+        BadgeService(dummyRepo),
+        XPCalculatorService(),
+        StreakService(dummyRepo)
+      );
+    },
+  );
 });
 
 // Provider pour récupérer les scénarios
@@ -396,9 +431,10 @@ class ConfidenceBoostProvider with ChangeNotifier {
         _isAnalyzing = false;
         notifyListeners();
         return;
-        
-        logger.w("All parallel analysis attempts failed, using emergency fallback");
       }
+      
+      // This part is now unreachable due to the return statement above.
+      // logger.w("All parallel analysis attempts failed, using emergency fallback");
       
       // === STAGE: FALLBACK D'URGENCE GARANTI ===
       _currentStage = 4;
@@ -559,10 +595,6 @@ class ConfidenceBoostProvider with ChangeNotifier {
         "livekit_user", // TODO: Remplacer par l'ID utilisateur réel si disponible
       ).timeout(MobileTimeoutConstants.mediumRequestTimeout); // ✅ 6s optimisé pour API calls mobiles
 
-      if (session.livekitUrl == null || session.token == null) {
-        logger.e("LiveKit: URL ou Token LiveKit manquants dans la réponse de session.");
-        return null;
-      }
 
       logger.i("LiveKit: Session démarrée avec succès. URL: ${session.livekitUrl}, Token: (masqué)");
 
@@ -571,8 +603,8 @@ class ConfidenceBoostProvider with ChangeNotifier {
         scenario: scenario,
         userContext: 'Session d\'analyse de performance (fallback)',
         preferredSupportType: textSupport.type,
-        livekitUrl: session.livekitUrl!, // Passer l'URL obtenue
-        livekitToken: session.token!, // Passer le token obtenu
+        livekitUrl: session.livekitUrl, // Passer l'URL obtenue
+        livekitToken: session.token, // Passer le token obtenu
       );
 
       if (success) {

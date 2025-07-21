@@ -39,7 +39,7 @@ void main() {
         logger.w('🚨 TEST: Test timeout backend service 30s vs 6s souhaité');
         
         final backendService = ConfidenceAnalysisBackendService();
-        final scenario = const ConfidenceScenario.professional();
+        const scenario = ConfidenceScenario.professional();
         final audioData = Uint8List.fromList(List.generate(1024, (index) => index % 256));
         
         final stopwatch = Stopwatch()..start();
@@ -238,7 +238,7 @@ void main() {
         final speechService = UnifiedSpeechAnalysisService();
         final mistralService = container.read(mistralApiServiceProvider);
         
-        final scenario = const ConfidenceScenario.publicSpeaking();
+        const scenario = ConfidenceScenario.publicSpeaking();
         final audioData = Uint8List.fromList(List.generate(512, (index) => index % 256));
         
         // Lancer 3 services en parallèle (sans Future.any)

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
 
 import 'package:eloquence_2_0/features/confidence_boost/data/services/ai_character_factory.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
@@ -15,7 +14,7 @@ void main() {
     setUp(() {
       characterFactory = AICharacterFactory();
       
-      testScenario = ConfidenceScenario(
+      testScenario = const ConfidenceScenario(
         id: 'test-interview',
         title: 'Entretien d\'embauche',
         description: 'Test d\'entretien',
@@ -87,19 +86,6 @@ void main() {
     group('Sélection automatique de personnage', () {
       test('devrait sélectionner Marie pour utilisateur peu confiant', () {
         // Arrange
-        final lowConfidenceProfile = UserAdaptiveProfile(
-          userId: 'low-confidence',
-          confidenceLevel: 2, // Niveau faible
-          experienceLevel: 3,
-          strengths: [],
-          weaknesses: ['confiance'],
-          preferredTopics: [],
-          preferredCharacter: AICharacterType.thomas, // On surcharge pour tester la logique
-          lastSessionDate: DateTime.now(),
-          totalSessions: 1,
-          averageScore: 5.0,
-        );
-        
         // Créer un profil sans préférence pour tester la sélection automatique
         final profileWithoutPreference = UserAdaptiveProfile(
           userId: 'low-confidence',
@@ -139,7 +125,7 @@ void main() {
           averageScore: 8.5,
         );
         
-        final advancedScenario = ConfidenceScenario(
+        const advancedScenario = ConfidenceScenario(
           id: 'advanced-presentation',
           title: 'Présentation avancée',
           description: 'Présentation complexe',
@@ -177,7 +163,7 @@ void main() {
           averageScore: 7.0,
         );
         
-        final networkingScenario = ConfidenceScenario(
+        const networkingScenario = ConfidenceScenario(
           id: 'networking',
           title: 'Réseautage',
           description: 'Événement networking',
@@ -337,7 +323,7 @@ void main() {
 
       test('devrait décrire correctement les styles de conversation', () {
         // Arrange
-        final networkingScenario = ConfidenceScenario(
+        const networkingScenario = ConfidenceScenario(
           id: 'networking-test',
           title: 'Networking',
           description: 'Test networking',
@@ -366,7 +352,7 @@ void main() {
     group('Modèles de données', () {
       test('devrait créer AICharacterConfig correctement', () {
         // Act
-        final config = AICharacterConfig(
+        const config = AICharacterConfig(
           character: AICharacterType.marie,
           scenarioType: ConfidenceScenarioType.pitch,
           personalityTraits: ['Trait 1', 'Trait 2'],
@@ -386,7 +372,7 @@ void main() {
 
       test('devrait créer AICharacterInstance correctement', () {
         // Arrange
-        final config = AICharacterConfig(
+        const config = AICharacterConfig(
           character: AICharacterType.thomas,
           scenarioType: ConfidenceScenarioType.interview,
           personalityTraits: ['Professional'],
@@ -429,7 +415,7 @@ void main() {
         expect(interviewCharacter.config.scenarioType, equals(ConfidenceScenarioType.interview));
 
         // Act & Assert pour networking avec Marie
-        final networkingScenario = ConfidenceScenario(
+        const networkingScenario = ConfidenceScenario(
           id: 'networking',
           title: 'Networking',
           description: 'Networking event',

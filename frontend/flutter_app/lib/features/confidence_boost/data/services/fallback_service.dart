@@ -191,7 +191,7 @@ class FallbackService {
     ConfidenceScenario scenario,
   ) async {
     // Simuler un délai d'analyse
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
     
     // Créer une analyse basique mais fonctionnelle
     return AnalysisResult(
@@ -382,7 +382,7 @@ class FallbackService {
     if (_lastFailureTime == null) return true;
     
     final timeSinceFailure = DateTime.now().difference(_lastFailureTime!);
-    return timeSinceFailure > Duration(minutes: 1);
+    return timeSinceFailure > const Duration(minutes: 1);
   }
 
   /// Temps estimé de récupération
@@ -391,11 +391,11 @@ class FallbackService {
       case FallbackLevel.normal:
         return Duration.zero;
       case FallbackLevel.limited:
-        return Duration(minutes: 2);
+        return const Duration(minutes: 2);
       case FallbackLevel.degraded:
-        return Duration(minutes: 5);
+        return const Duration(minutes: 5);
       case FallbackLevel.critical:
-        return Duration(minutes: 10);
+        return const Duration(minutes: 10);
     }
   }
 
@@ -443,24 +443,6 @@ class FallbackService {
         'isFromFallback': true,
       },
     );
-  }
-
-  /// Nettoie les caches anciens
-  void _cleanupCaches() {
-    final cutoff = DateTime.now().subtract(Duration(hours: 1));
-    
-    _analysisCache.removeWhere((key, value) {
-      final timestamp = value.otherMetrics['timestamp'] as DateTime?;
-      return timestamp != null && timestamp.isBefore(cutoff);
-    });
-    
-    // Le cache de conversation n'a pas de timestamp, nettoyer par taille
-    if (_conversationCache.length > 100) {
-      final keys = _conversationCache.keys.toList();
-      for (int i = 0; i < keys.length - 50; i++) {
-        _conversationCache.remove(keys[i]);
-      }
-    }
   }
 }
 

@@ -38,7 +38,7 @@ void main() {
         logger.i('✅ TEST: Validation timeout backend 8s optimisé');
         
         final backendService = ConfidenceAnalysisBackendService();
-        final scenario = const ConfidenceScenario.professional();
+        const scenario = ConfidenceScenario.professional();
         final audioData = Uint8List.fromList(List.generate(1024, (index) => index % 256));
         
         final stopwatch = Stopwatch()..start();
@@ -229,8 +229,8 @@ void main() {
         const originalWhisperMs = 30000;
         const originalMobileMs = 35000;
         
-        final whisperImprovement = ((originalWhisperMs - whisperOptimalMs) / originalWhisperMs * 100);
-        final mobileImprovement = ((originalMobileMs - mobileOptimalMs) / originalMobileMs * 100);
+        const whisperImprovement = ((originalWhisperMs - whisperOptimalMs) / originalWhisperMs * 100);
+        const mobileImprovement = ((originalMobileMs - mobileOptimalMs) / originalMobileMs * 100);
         
         logger.i('🚀 TEST: AMÉLIORATIONS:');
         logger.i('   🎵 Whisper: ${whisperImprovement.toStringAsFixed(1)}% plus rapide');

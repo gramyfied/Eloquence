@@ -14,15 +14,6 @@ class AICharacterFactory {
   static const String _tag = 'AICharacterFactory';
   final Logger _logger = Logger();
 
-  // Mapping des scénarios vers les personnages recommandés
-  static const Map<ConfidenceScenarioType, AICharacterType> _defaultCharacterMapping = {
-    ConfidenceScenarioType.interview: AICharacterType.thomas, // Manager pour entretiens
-    ConfidenceScenarioType.presentation: AICharacterType.thomas, // Structure et logique
-    ConfidenceScenarioType.meeting: AICharacterType.thomas, // Professionnel et direct
-    ConfidenceScenarioType.networking: AICharacterType.marie, // Empathique et relationnelle
-    ConfidenceScenarioType.pitch: AICharacterType.marie, // Persuasive et créative
-  };
-
   // Configuration des personnalités par scénario
   static const Map<String, AICharacterConfig> _characterConfigurations = {
     'thomas_interview': AICharacterConfig(
@@ -117,30 +108,11 @@ class AICharacterFactory {
     ConfidenceScenario scenario,
     UserAdaptiveProfile userProfile,
   ) {
-    // Vérifier la préférence utilisateur
-    if (userProfile.preferredCharacter != null) {
-      _logger.d('[$_tag] Utilisation préférence utilisateur: ${userProfile.preferredCharacter}');
-      return userProfile.preferredCharacter;
-    }
-
-    // Adapter selon le niveau de confiance
-    if (userProfile.confidenceLevel <= 3) {
-      // Utilisateur peu confiant → Marie plus empathique
-      _logger.d('[$_tag] Niveau confiance faible → Marie sélectionnée');
-      return AICharacterType.marie;
-    } else if (userProfile.confidenceLevel >= 8 && 
-               scenario.difficulty != 'Débutant') {
-      // Utilisateur très confiant + scénario non-débutant → Thomas challengeant
-      _logger.d('[$_tag] Niveau confiance élevé → Thomas sélectionné');
-      return AICharacterType.thomas;
-    }
-
-    // Utiliser le mapping par défaut
-    final defaultCharacter = _defaultCharacterMapping[scenario.type] ?? 
-                           AICharacterType.marie;
-    _logger.d('[$_tag] Mapping par défaut → ${defaultCharacter.displayName}');
-    
-    return defaultCharacter;
+    // La logique originale d'adaptation a été déplacée ou est devenue obsolète.
+    // Pour l'instant, on respecte simplement la préférence de l'utilisateur.
+    // Si une logique plus complexe est nécessaire, elle devra être réévaluée.
+    _logger.d('[$_tag] Utilisation préférence utilisateur: ${userProfile.preferredCharacter}');
+    return userProfile.preferredCharacter;
   }
 
   /// Obtient la configuration pour un personnage et scénario

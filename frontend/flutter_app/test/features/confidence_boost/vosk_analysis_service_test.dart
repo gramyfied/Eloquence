@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,10 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
   group('VoskAnalysisService Tests', () {
-    late Uint8List testAudioData;
-    
     setUp(() {
-      testAudioData = Uint8List.fromList([1, 2, 3, 4, 5]); // Audio simulé
     });
 
     group('VoskAnalysisResult Model', () {

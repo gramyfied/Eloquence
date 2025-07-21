@@ -55,7 +55,7 @@ class ConversationChatWidget extends StatelessWidget {
           // En-tête
           Container(
             padding: const EdgeInsets.all(EloquenceSpacing.md),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
                   color: EloquenceColors.glassBackground,
@@ -65,7 +65,7 @@ class ConversationChatWidget extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.chat_bubble_outline,
                   color: EloquenceColors.cyan,
                   size: 20,
@@ -110,7 +110,7 @@ class ConversationChatWidget extends StatelessWidget {
     if (isAISpeaking) {
       return Row(
         children: [
-          SizedBox(
+          const SizedBox(
             width: 12,
             height: 12,
             child: CircularProgressIndicator(
@@ -133,7 +133,7 @@ class ConversationChatWidget extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: EloquenceColors.cyan,
               shape: BoxShape.circle,
             ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:math' as math;
 
 import '../../domain/entities/gamification_models.dart';
 import '../../data/services/adaptive_gamification_service.dart';
@@ -165,7 +164,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
   Widget _buildHeader() {
     return Column(
       children: [
-        Icon(
+        const Icon(
           Icons.emoji_events,
           size: 48,
           color: EloquenceTheme.celebrationGold,
@@ -191,7 +190,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
             opacity: _xpOpacityAnimation.value,
             child: Container(
               padding: const EdgeInsets.all(EloquenceTheme.spacingLg),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: EloquenceTheme.primaryGradient,
                 borderRadius: EloquenceTheme.borderRadiusLarge,
                 boxShadow: EloquenceTheme.shadowGlow,
@@ -206,7 +205,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
                   Text(
                     'Points d\'expérience',
                     style: EloquenceTheme.bodyLarge.copyWith(
-                      color: EloquenceTheme.white.withOpacity(0.9),
+                      color: EloquenceTheme.withOpacity(EloquenceTheme.white, 0.9),
                     ),
                   ),
                   const SizedBox(height: EloquenceTheme.spacingMd),
@@ -234,7 +233,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
         Text(
           'Multiplicateurs de bonus',
           style: EloquenceTheme.caption.copyWith(
-            color: EloquenceTheme.white.withOpacity(0.8),
+            color: EloquenceTheme.withOpacity(EloquenceTheme.white, 0.8),
           ),
         ),
         const SizedBox(height: EloquenceTheme.spacingSm),
@@ -264,8 +263,8 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 colors: [
-                  EloquenceTheme.celebrationGold.withOpacity(0.3),
-                  EloquenceTheme.violet.withOpacity(0.1),
+                  EloquenceTheme.withOpacity(EloquenceTheme.celebrationGold, 0.3),
+                  EloquenceTheme.withOpacity(EloquenceTheme.violet, 0.1),
                 ],
               ),
               borderRadius: EloquenceTheme.borderRadiusXLarge,
@@ -275,7 +274,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: EloquenceTheme.celebrationGold.withOpacity(0.5),
+                  color: EloquenceTheme.withOpacity(EloquenceTheme.celebrationGold, 0.5),
                   blurRadius: 30,
                   spreadRadius: 5,
                 ),
@@ -350,13 +349,13 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  rarityColor.withOpacity(0.8),
+                  EloquenceTheme.withOpacity(rarityColor, 0.8),
                   rarityColor,
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: rarityColor.withOpacity(0.5),
+                  color: EloquenceTheme.withOpacity(rarityColor, 0.5),
                   blurRadius: 15,
                   spreadRadius: 2,
                 ),
@@ -415,7 +414,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
         const SizedBox(height: EloquenceTheme.spacingSm),
         Container(
           height: 12,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: EloquenceTheme.glassBackground,
             borderRadius: EloquenceTheme.borderRadiusMedium,
             border: EloquenceTheme.borderThin,
@@ -442,13 +441,13 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                EloquenceTheme.warningOrange.withOpacity(0.2),
-                EloquenceTheme.errorRed.withOpacity(0.1),
+                EloquenceTheme.withOpacity(EloquenceTheme.warningOrange, 0.2),
+                EloquenceTheme.withOpacity(EloquenceTheme.errorRed, 0.1),
               ],
             ),
             borderRadius: EloquenceTheme.borderRadiusMedium,
             border: Border.all(
-              color: EloquenceTheme.warningOrange.withOpacity(0.5),
+              color: EloquenceTheme.withOpacity(EloquenceTheme.warningOrange, 0.5),
             ),
           ),
           child: Row(
@@ -512,7 +511,7 @@ class _GamifiedResultsWidgetState extends ConsumerState<GamifiedResultsWidget>
                 child: Text(
                   encouragement,
                   style: EloquenceTheme.bodyMedium.copyWith(
-                    color: EloquenceTheme.white.withOpacity(0.9),
+                    color: EloquenceTheme.withOpacity(EloquenceTheme.white, 0.9),
                   ),
                 ),
               ),

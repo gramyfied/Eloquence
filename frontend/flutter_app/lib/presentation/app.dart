@@ -97,7 +97,7 @@ class App extends StatelessWidget {
                   'expression',
                 ],
               );
-              return ConfidenceBoostAdaptiveScreen(scenario: defaultScenario);
+              return const ConfidenceBoostAdaptiveScreen(scenario: defaultScenario);
             },
           );
         }
