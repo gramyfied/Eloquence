@@ -99,7 +99,9 @@ void main() async {
       when(mockLiveKitService.initialize(
         livekitUrl: anyNamed('livekitUrl'),
         livekitToken: anyNamed('livekitToken'),
-        isMobileOptimized: anyNamed('isMobileOptimized'),
+        roomName: anyNamed('roomName'),
+        participantName: anyNamed('participantName'),
+        isMobileOptimized: true,
       )).thenAnswer((_) async => true);
 
       when(mockConversationEngine.initialize(
@@ -153,7 +155,9 @@ void main() async {
         verify(mockLiveKitService.initialize(
           livekitUrl: anyNamed('livekitUrl'),
           livekitToken: anyNamed('livekitToken'),
-          isMobileOptimized: anyNamed('isMobileOptimized'),
+          roomName: anyNamed('roomName'),
+          participantName: anyNamed('participantName'),
+          isMobileOptimized: true,
         )).called(1);
         verify(mockConversationEngine.initialize(
           scenario: anyNamed('scenario'),
@@ -167,7 +171,9 @@ void main() async {
         when(mockLiveKitService.initialize(
           livekitUrl: anyNamed('livekitUrl'),
           livekitToken: anyNamed('livekitToken'),
-          isMobileOptimized: anyNamed('isMobileOptimized'),
+          roomName: anyNamed('roomName'),
+          participantName: anyNamed('participantName'),
+          isMobileOptimized: true,
         )).thenAnswer((_) async => false);
 
         List<ConversationEvent> events = [];

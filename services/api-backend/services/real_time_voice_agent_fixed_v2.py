@@ -208,7 +208,7 @@ class MistralLLM(llm.LLM):
     def __init__(self):
         super().__init__()
         self._api_key = os.environ.get("MISTRAL_API_KEY")
-        self._model = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
+        self._model = os.getenv("MISTRAL_MODEL", "mistral-nemo-instruct-2407")
         self._base_url = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1/chat/completions")
 
     def chat(

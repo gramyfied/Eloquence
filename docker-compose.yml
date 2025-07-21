@@ -80,6 +80,29 @@ services:
       retries: 3
       start_period: 30s
 
+  mistral-conversation:
+    build:
+      context: ./services/mistral-conversation
+      dockerfile: Dockerfile
+    image: eloquence/mistral-conversation:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    networks:
+      - eloquence-network
+    env_file:
+      - .env
+    environment:
+      - SCALEWAY_MISTRAL_URL=${SCALEWAY_MISTRAL_URL}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_MODEL=${MISTRAL_MODEL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   api-backend:
     build:
       context: ./services/api-backend
@@ -98,9 +121,11 @@ services:
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
       - VOSK_STT_URL=http://vosk-stt:2700
-      - OPENAI_TTS_URL=http://openai-tts:5002/v1/audio/speech
+      - OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
       - REDIS_URL=redis://redis:6379/0
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - SCALEWAY_MISTRAL_URL=${SCALEWAY_MISTRAL_URL}
+      - MISTRAL_MODEL=${MISTRAL_MODEL}
     depends_on:
       livekit:
         condition: service_healthy
@@ -110,8 +135,36 @@ services:
         condition: service_healthy
       openai-tts:
         condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  livekit-token-service:
+    build:
+      context: ./services/livekit-server
+      dockerfile: Dockerfile
+    image: eloquence/livekit-token-service:latest
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    networks:
+      - eloquence-network
+    env_file:
+      - .env
+    environment:
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_URL=ws://livekit:7880
+    depends_on:
+      livekit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -133,13 +186,17 @@ services:
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
       - VOSK_STT_URL=http://vosk-stt:2700
-      # L'agent contacte l'API Mistral directement, pas de service local.
-      # MISTRAL_CONVERSATION_URL est géré par le code de l'agent.
-      - OPENAI_TTS_URL=http://openai-tts:5002/v1/audio/speech
+      - OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
+      # Variables Mistral manquantes ajoutées pour corriger 401 Unauthorized
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - SCALEWAY_MISTRAL_URL=${SCALEWAY_MISTRAL_URL}
+      - MISTRAL_MODEL=${MISTRAL_MODEL}
     networks:
       - eloquence-network
     depends_on:
       livekit:
+        condition: service_healthy
+      livekit-token-service:
         condition: service_healthy
       redis:
         condition: service_healthy
