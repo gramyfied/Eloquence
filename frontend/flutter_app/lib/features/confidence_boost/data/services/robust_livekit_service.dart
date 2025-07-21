@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../../../src/services/clean_livekit_service.dart';
+import 'livekit_token_manager.dart';
 
 /// Service LiveKit robuste avec optimisations mobiles critiques
 /// 
@@ -18,14 +19,19 @@ class RobustLiveKitService {
   static const String _tag = 'RobustLiveKitService';
   final Logger _logger = Logger();
   
-  // ✅ TIMEOUTS OPTIMISÉS MOBILE
-  static const Duration _connectionTimeoutMobile = Duration(seconds: 3);
-  static const Duration _voskTimeoutMobile = Duration(seconds: 6);
-  static const Duration _globalTimeoutMobile = Duration(seconds: 8);
+  // ✅ TIMEOUTS OPTIMISÉS MOBILE (Augmentés pour stabilité)
+  static const Duration _connectionTimeoutMobile = Duration(seconds: 10);
+  static const Duration _voskTimeoutMobile = Duration(seconds: 15);
+  static const Duration _globalTimeoutMobile = Duration(seconds: 20);
   
   // Circuit breaker pour éviter les appels répétés vers des services défaillants
   final Map<String, DateTime> _serviceFailures = {};
-  static const Duration _circuitBreakerCooldown = Duration(minutes: 2);
+  static const Duration _circuitBreakerCooldown = Duration(minutes: 5);
+  
+  // Compteurs de santé pour éviter des cooldowns trop agressifs
+  final Map<String, int> _serviceSuccesses = {};
+  final Map<String, int> _serviceFailureCounts = {};
+  static const int _failureThreshold = 3; // Seuil avant activation du circuit breaker
   
   // Cache pour les résultats récents
   final Map<String, _CachedResult> _resultCache = {};
@@ -37,13 +43,15 @@ class RobustLiveKitService {
   RobustLiveKitService({CleanLiveKitService? cleanLiveKitService})
       : _cleanLiveKitService = cleanLiveKitService ?? CleanLiveKitService();
   
-  /// Initialisation robuste avec détection mobile
+  /// Initialisation robuste avec nouveau token manager
   Future<bool> initialize({
-    required String livekitUrl,
-    required String livekitToken,
+    String? livekitUrl,
+    String? livekitToken,
+    String? roomName,
+    String? participantName,
     bool isMobileOptimized = true,
   }) async {
-    _logger.i('🚀 [$_tag] Initializing with mobile optimization: $isMobileOptimized');
+    _logger.i('[START] [$_tag] Initializing with mobile optimization: $isMobileOptimized');
     
     if (_isInitialized) {
       _logger.w('[$_tag] Already initialized, skipping');
@@ -51,10 +59,42 @@ class RobustLiveKitService {
     }
     
     try {
+      // ✅ NOUVEAU: Génération automatique de token via LiveKitTokenManager
+      String finalUrl = livekitUrl ?? '';
+      String finalToken = livekitToken ?? '';
+      
+      if (finalToken.isEmpty || finalUrl.isEmpty) {
+        _logger.i('[TOKEN] [$_tag] Generating new LiveKit token via TokenManager');
+        
+        // Vérifier la santé du service d'abord
+        final isHealthy = await LiveKitTokenManager.checkLiveKitHealth();
+        if (!isHealthy) {
+          _logger.w('[WARNING] [$_tag] LiveKit token service unavailable');
+          _markServiceFailure('livekit_token_service');
+          return false;
+        }
+        
+        final tokenData = await LiveKitTokenManager.generateToken(
+          roomName: roomName ?? 'eloquence-room-${DateTime.now().millisecondsSinceEpoch}',
+          participantName: participantName ?? 'user-${DateTime.now().millisecondsSinceEpoch}',
+          metadata: {'source': 'flutter_robust_service', 'mobile_optimized': isMobileOptimized},
+        ).timeout(
+          _connectionTimeoutMobile,
+          onTimeout: () {
+            _logger.w('[TOKEN] [$_tag] Token generation timeout');
+            throw TimeoutException('Token generation timeout', _connectionTimeoutMobile);
+          },
+        );
+        
+        finalUrl = tokenData['url']!;
+        finalToken = tokenData['token']!;
+        _logger.i('[SUCCESS] [$_tag] Token generated successfully');
+      }
+      
       // ✅ TIMEOUT MOBILE OPTIMISÉ
       final success = await _cleanLiveKitService.connect(
-        livekitUrl,
-        livekitToken,
+        finalUrl,
+        finalToken,
       ).timeout(
         _connectionTimeoutMobile,
         onTimeout: () {
@@ -65,14 +105,16 @@ class RobustLiveKitService {
       
       if (success) {
         _isInitialized = true;
-        _logger.i('✅ [$_tag] LiveKit initialized successfully');
+        _markServiceSuccess('livekit_connection'); // Marquer le succès
+        _logger.i('[SUCCESS] [$_tag] LiveKit initialized successfully with new token');
         return true;
       } else {
-        _logger.w('⚠️ [$_tag] LiveKit connection failed');
+        _logger.w('[WARNING] [$_tag] LiveKit connection failed');
+        _markServiceFailure('livekit_connection');
         return false;
       }
     } catch (e) {
-      _logger.e('❌ [$_tag] Initialization error: $e');
+      _logger.e('[ERROR] [$_tag] Initialization error: $e');
       _markServiceFailure('livekit_connection');
       return false;
     }
@@ -86,19 +128,19 @@ class RobustLiveKitService {
     Uint8List? audioData,
     String userContext = '',
   }) async {
-    _logger.i('🎯 [$_tag] Starting robust performance analysis');
+    _logger.i('[TARGET] [$_tag] Starting robust performance analysis');
     
     // Vérifier le cache en premier
     final cacheKey = _generateCacheKey(scenario, textSupport, recordingDuration);
     final cachedResult = _getCachedResult(cacheKey);
     if (cachedResult != null) {
-      _logger.i('🚀 [$_tag] Cache hit! Returning cached result');
+      _logger.i('[CACHE] [$_tag] Cache hit! Returning cached result');
       return cachedResult;
     }
     
     // Vérifier le circuit breaker
     if (_isServiceInCooldown('livekit_analysis')) {
-      _logger.w('⚠️ [$_tag] Service in cooldown, using fallback immediately');
+      _logger.w('[WARNING] [$_tag] Service in cooldown, using fallback immediately');
       return await _createFallbackAnalysis(scenario, textSupport, recordingDuration);
     }
     
@@ -132,13 +174,13 @@ class RobustLiveKitService {
     
     try {
       // ✅ CORRECTION CRITIQUE: Future.any() pour race condition
-      _logger.i('🏁 [$_tag] Racing ${analysisAttempts.length} analysis methods');
+      _logger.i('[FINISH] [$_tag] Racing ${analysisAttempts.length} analysis methods');
       
       final winningAnalysis = await Future.any(
         analysisAttempts.map((attempt) async {
           final result = await attempt;
           if (result != null) {
-            _logger.i('🏆 [$_tag] Analysis method succeeded!');
+            _logger.i('[SUCCESS] [$_tag] Analysis method succeeded!');
             return result;
           }
           throw Exception('Analysis attempt returned null');
@@ -156,11 +198,11 @@ class RobustLiveKitService {
       return winningAnalysis;
       
     } on TimeoutException {
-      _logger.w('⏰ [$_tag] All analysis methods timed out, using emergency fallback');
+      _logger.w('[TIMEOUT] [$_tag] All analysis methods timed out, using emergency fallback');
       _markServiceFailure('livekit_analysis');
       return await _createFallbackAnalysis(scenario, textSupport, recordingDuration);
     } catch (e) {
-      _logger.e('❌ [$_tag] All analysis methods failed: $e');
+      _logger.e('[ERROR] [$_tag] All analysis methods failed: $e');
       _markServiceFailure('livekit_analysis');
       return await _createFallbackAnalysis(scenario, textSupport, recordingDuration);
     }
@@ -188,6 +230,7 @@ class RobustLiveKitService {
       );
       
       _logger.i('✅ [$_tag] Primary LiveKit analysis SUCCESS');
+      _markServiceSuccess('livekit_analysis'); // Marquer le succès
       return analysis;
     } catch (e) {
       _logger.w('[$_tag] Primary LiveKit analysis failed: $e');
@@ -241,7 +284,7 @@ class RobustLiveKitService {
     required Duration recordingDuration,
   }) async {
     try {
-      _logger.i('🛡️ [$_tag] Attempting local fallback analysis');
+      _logger.i('[SHIELD] [$_tag] Attempting local fallback analysis');
       
       // Simulation de traitement rapide local
       await Future.delayed(const Duration(milliseconds: 500));
@@ -286,10 +329,10 @@ class RobustLiveKitService {
       fluencyScore: 0.65,
       clarityScore: 0.70,
       energyScore: 0.67,
-      feedback: "🛡️ **Analyse de Secours Robuste**\n\n"
+      feedback: "[SHIELD] **Analyse de Secours Robuste**\n\n"
           "Le service d'analyse principal était temporairement indisponible, "
           "mais votre session a été évaluée par notre système de secours.\n\n"
-          "🎯 **Scénario** : ${scenario.title}\n"
+          "[TARGET] **Scénario** : ${scenario.title}\n"
           "⏱️ **Durée** : ${recordingDuration.inSeconds}s\n"
           "📝 **Support** : ${textSupport.type.name}\n\n"
           "💡 **Conseils généraux** :\n"
@@ -343,8 +386,29 @@ class RobustLiveKitService {
   // === MÉTHODES UTILITAIRES ===
   
   void _markServiceFailure(String serviceId) {
-    _serviceFailures[serviceId] = DateTime.now();
-    _logger.w('[$_tag] Marked service failure: $serviceId');
+    // Incrémenter le compteur d'échecs
+    _serviceFailureCounts[serviceId] = (_serviceFailureCounts[serviceId] ?? 0) + 1;
+    _serviceSuccesses[serviceId] = 0; // Reset succès
+    
+    // Activer le circuit breaker seulement après plusieurs échecs
+    if (_serviceFailureCounts[serviceId]! >= _failureThreshold) {
+      _serviceFailures[serviceId] = DateTime.now();
+      _logger.w('[$_tag] Circuit breaker ACTIVATED for $serviceId after ${_serviceFailureCounts[serviceId]} failures');
+    } else {
+      _logger.w('[$_tag] Service failure $serviceId (${_serviceFailureCounts[serviceId]}/$_failureThreshold)');
+    }
+  }
+  
+  void _markServiceSuccess(String serviceId) {
+    // Incrémenter le compteur de succès
+    _serviceSuccesses[serviceId] = (_serviceSuccesses[serviceId] ?? 0) + 1;
+    
+    // Réinitialiser après plusieurs succès
+    if (_serviceSuccesses[serviceId]! >= 2) {
+      _serviceFailureCounts[serviceId] = 0;
+      _serviceFailures.remove(serviceId);
+      _logger.i('[$_tag] Service $serviceId fully recovered after successes');
+    }
   }
   
   bool _isServiceInCooldown(String serviceId) {
@@ -354,7 +418,8 @@ class RobustLiveKitService {
     final cooldownExpired = DateTime.now().difference(failureTime) > _circuitBreakerCooldown;
     if (cooldownExpired) {
       _serviceFailures.remove(serviceId);
-      _logger.i('[$_tag] Service cooldown expired: $serviceId');
+      _serviceFailureCounts[serviceId] = 0; // Reset compteur
+      _logger.i('[$_tag] Circuit breaker RESET for $serviceId after cooldown');
     }
     
     return !cooldownExpired;
@@ -422,9 +487,9 @@ class RobustLiveKitService {
   ) {
     final scoreLevel = score >= 80 ? 'excellent' : score >= 70 ? 'bien' : score >= 60 ? 'correct' : 'à améliorer';
     
-    return "🛡️ **Analyse Locale Robuste** ($scoreLevel)\n\n"
+    return "[SHIELD] **Analyse Locale Robuste** ($scoreLevel)\n\n"
         "Votre performance a été évaluée par notre système d'analyse locale avancé.\n\n"
-        "🎯 **Contexte** :\n"
+        "[TARGET] **Contexte** :\n"
         "• Scénario : ${scenario.title}\n"
         "• Durée : ${recordingDuration.inSeconds}s\n"
         "• Support : ${textSupport.type.name}\n"

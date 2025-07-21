@@ -18,9 +18,14 @@ logger = logging.getLogger("BACKEND_DIAGNOSTIC")
 
 # Import du service agent
 from services.livekit_agent_service import agent_service
+# Import du blueprint LiveKit Token
+from livekit_token_endpoint import livekit_bp
 
 app = Flask(__name__)
 CORS(app) # Active CORS pour toutes les routes
+
+# Enregistrer le blueprint LiveKit
+app.register_blueprint(livekit_bp)
 
 # Configuration Celery
 app.config['CELERY_BROKER_URL'] = os.getenv('REDIS_URL', 'redis://redis:6379/0')

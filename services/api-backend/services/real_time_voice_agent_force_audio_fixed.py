@@ -208,9 +208,20 @@ class MistralLLM(llm.LLM):
     def __init__(self):
         super().__init__()
         self._api_key = os.environ.get("MISTRAL_API_KEY")
-        self._model = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
-        # Priorité à l'URL du service local si définie, sinon API externe
-        self._base_url = os.getenv("MISTRAL_CONVERSATION_URL", os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1/chat/completions"))
+        self._model = os.getenv("MISTRAL_MODEL", "mistral-nemo-instruct-2407")
+        
+        # CORRECTION: Utilisation directe API Scaleway (service local a bug streaming)
+        scaleway_url = os.getenv("SCALEWAY_MISTRAL_URL")
+        
+        if scaleway_url:
+            self._base_url = f"{scaleway_url}/chat/completions"
+            logger.info(f"🔧 [MISTRAL] Utilisation DIRECTE API Scaleway: {self._base_url}")
+        else:
+            # Fallback vers API standard Mistral
+            self._base_url = "https://api.mistral.ai/v1/chat/completions"
+            logger.info(f"🔧 [MISTRAL] Utilisation API Mistral standard: {self._base_url}")
+            
+        logger.info(f"🔧 [MISTRAL] Bypass service local (bug streaming) -> API directe")
 
     def chat(
         self,
@@ -332,8 +343,8 @@ class LocalOpenAITTS(tts.TTS):
             sample_rate=16000,
             num_channels=1
         )
-        # Priorité à l'URL du service local si définie, sinon API externe
-        self._endpoint = os.getenv("OPENAI_TTS_URL", "https://api.openai.com/v1/audio/speech")
+        # Utilisation directe de l'API OpenAI TTS (pas de service local)
+        self._endpoint = "https://api.openai.com/v1/audio/speech"
         self._api_key = os.getenv("OPENAI_API_KEY")  # Récupération de la clé API
 
     def synthesize(
@@ -375,78 +386,50 @@ class EloquenceCoach(Agent):
 
 async def entrypoint(ctx: agents.JobContext):
     """
-    Point d'entrée principal pour le worker de l'agent, utilisant le framework moderne v1.0.
+    Point d'entrée principal pour le worker de l'agent, utilisant l'architecture moderne LiveKit agents.
     """
-    logger.info("🚀 [ENTRYPOINT] Démarrage du job de l'agent (v1.0)")
+    logger.info("🚀 [ENTRYPOINT] Démarrage du job de l'agent (Architecture moderne)")
 
-    # Utilisation de nos plugins personnalisés
+    # ARCHITECTURE MODERNE : Connexion d'abord
+    await ctx.connect()
+    logger.info(f"✅ [ROOM] Agent connecté à la room: {ctx.room.name}")
+
+    # L'agent personnalisé qui définit le comportement
+    agent = EloquenceCoach()
+
+    # ARCHITECTURE MODERNE : AgentSession gère automatiquement les événements
     session = AgentSession(
         llm=MistralLLM(),
         tts=LocalOpenAITTS(),
         vad=silero.VAD.load(),
     )
 
-    # L'agent personnalisé qui définit le comportement
-    agent = EloquenceCoach()
-
-    # Démarrer la session. AgentSession gère automatiquement la création
-    # et la publication des pistes audio.
-    logger.info("🔧 [SESSION] Démarrage de la session Agent...")
+    # Démarrer la session avec l'agent - TOUT EST AUTOMATIQUE
+    logger.info("🔧 [SESSION] Démarrage de la session Agent (architecture moderne)...")
     await session.start(
         room=ctx.room,
         agent=agent,
     )
-    logger.info("✅ [SESSION] Session Agent démarrée.")
+    logger.info("✅ [SESSION] Session Agent démarrée - gestion automatique des événements")
 
-    # Connexion à la room
-    await ctx.connect()
-    logger.info(f"✅ [ROOM] Agent connecté à la room: {ctx.room.name}")
-
-    # Envoyer un message de bienvenue pour indiquer que l'agent est prêt
-    logger.info("🎙️ [WELCOME] Envoi du message de bienvenue...")
+    # Message de bienvenue automatique
+    logger.info("🎙️ [WELCOME] Génération du message de bienvenue...")
     try:
         await session.generate_reply(
-            instructions="Bonjour ! Je suis votre coach d'éloquence IA. Je suis maintenant connecté et prêt à vous aider. Parlez-moi pour commencer notre session."
+            instructions="Bonjour ! Je suis votre coach d'éloquence IA Marie. Je suis maintenant connecté et prêt à vous aider à améliorer votre éloquence. Parlez-moi pour commencer notre session !"
         )
-        logger.info("✅ [WELCOME] Message de bienvenue envoyé.")
+        logger.info("✅ [WELCOME] Message de bienvenue généré automatiquement")
     except Exception as e:
         logger.error(f"❌ [WELCOME] Erreur lors de l'envoi du message de bienvenue: {e}")
 
-    # Surveiller les événements de transcription (STT) et les messages du chat
-    try:
-        async for e in session.events():
-            if isinstance(e, agents.Agent.AgentSpeechEvent):
-                if e.type == agents.Agent.AgentSpeechEventTypes.STARTED:
-                    logger.info("🔊 [SPEECH] Détection de parole STARTED")
-                elif e.type == agents.Agent.AgentSpeechEventTypes.FINISHED:
-                    logger.info("🔊 [SPEECH] Détection de parole FINISHED")
-            elif isinstance(e, agents.Agent.AgentUserSpeechEvent):
-                logger.info(f"🗣️ [USER_SPEECH] Transcription utilisateur: {e.text}")
-                if e.text:
-                    logger.info(f"✅ [STT] Texte transcrit non vide: {e.text}")
-                    # Réinitialiser le compteur d'erreurs sur une interaction réussie
-                    agent.error_count = 0
-                else:
-                    logger.warning(f"⚠️ [STT] Texte transcrit vide reçu.")
-            elif isinstance(e, agents.Agent.AgentChatMessageEvent):
-                logger.info(f"💬 [CHAT] Message de chat reçu: {e.message.body}")
-                # Réinitialiser le compteur d'erreurs sur une interaction réussie
-                agent.error_count = 0
-    except Exception as e:
-        logger.error(f"❌ [EVENTS] Erreur dans la boucle d'événements: {e}")
-        agent.error_count += 1
-        
-        # Si trop d'erreurs consécutives, essayer de réinitialiser le contexte
-        if agent.error_count >= agent.max_errors:
-            logger.warning("⚠️ [AGENT] Trop d'erreurs consécutives, tentative de réinitialisation du contexte")
-            try:
-                # Réinitialiser le contexte de chat si possible
-                if hasattr(session, '_chat_ctx'):
-                    session._chat_ctx.clear()
-                    logger.info("✅ [AGENT] Contexte de chat réinitialisé")
-                agent.error_count = 0
-            except Exception as reset_e:
-                logger.error(f"❌ [AGENT] Erreur lors de la réinitialisation: {reset_e}")
+    # ARCHITECTURE MODERNE : Plus de boucle d'événements manuelle !
+    # AgentSession gère automatiquement :
+    # - La détection de la parole (VAD)
+    # - La transcription (STT)
+    # - La génération de réponses (LLM)
+    # - La synthèse vocale (TTS)
+    # - La publication audio
+    logger.info("✅ [AGENT] Agent en mode automatique - attente des interactions utilisateur")
 
 # Point d'entrée principal du script
 if __name__ == "__main__":

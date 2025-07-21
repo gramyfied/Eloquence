@@ -204,9 +204,11 @@ class MockRobustLiveKitService extends _i1.Mock
 
   @override
   _i5.Future<bool> initialize({
-    required String? livekitUrl,
-    required String? livekitToken,
-    bool? isMobileOptimized = true,
+    String? livekitUrl,
+    String? livekitToken,
+    String? roomName,
+    String? participantName,
+    bool isMobileOptimized = true,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -215,6 +217,8 @@ class MockRobustLiveKitService extends _i1.Mock
           {
             #livekitUrl: livekitUrl,
             #livekitToken: livekitToken,
+            #roomName: roomName,
+            #participantName: participantName,
             #isMobileOptimized: isMobileOptimized,
           },
         ),
