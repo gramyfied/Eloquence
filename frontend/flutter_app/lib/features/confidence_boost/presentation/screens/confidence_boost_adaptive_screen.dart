@@ -326,7 +326,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
             size: 28,
           ),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Text(
               'Boost Confidence',
               style: TextStyle(
@@ -1050,7 +1050,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
         fontSize: 48,
         fontWeight: FontWeight.bold,
         color: _eloquencePalette['cyan']!,
-        fontFeatures: [const FontFeature.tabularFigures()],
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
   }

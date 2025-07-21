@@ -379,7 +379,7 @@ class _AdaptiveAICharacterWidgetState extends ConsumerState<AdaptiveAICharacterW
           ),
           boxShadow: [
             BoxShadow(
-              color: EloquenceTheme.navy.withOpacity(0.3),
+              color: EloquenceTheme.withOpacity(EloquenceTheme.navy, 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -396,7 +396,7 @@ class _AdaptiveAICharacterWidgetState extends ConsumerState<AdaptiveAICharacterW
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: _getEmotionalColor(_currentEmotion).withOpacity(0.2),
+                    color: EloquenceTheme.withOpacity(_getEmotionalColor(_currentEmotion), 0.2),
                     border: Border.all(
                       color: _getEmotionalColor(_currentEmotion),
                       width: 1,
@@ -427,7 +427,7 @@ class _AdaptiveAICharacterWidgetState extends ConsumerState<AdaptiveAICharacterW
                   onTap: _hideDialogue,
                   child: Icon(
                     Icons.close_rounded,
-                    color: Colors.white.withOpacity(0.7),
+                    color: EloquenceTheme.withOpacity(Colors.white, 0.7),
                     size: 20,
                   ),
                 ),
@@ -463,7 +463,7 @@ class _AdaptiveAICharacterWidgetState extends ConsumerState<AdaptiveAICharacterW
       children: [
         TextButton(
           onPressed: () => _hideDialogue(),
-          child: Text(
+          child: const Text(
             'Compris',
             style: TextStyle(
               color: EloquenceTheme.cyan,
@@ -509,7 +509,7 @@ class _AdaptiveAICharacterWidgetState extends ConsumerState<AdaptiveAICharacterW
               color: _getEmotionalColor(_currentEmotion),
               boxShadow: [
                 BoxShadow(
-                  color: _getEmotionalColor(_currentEmotion).withOpacity(0.5),
+                  color: EloquenceTheme.withOpacity(_getEmotionalColor(_currentEmotion), 0.5),
                   blurRadius: 8,
                   spreadRadius: 2,
                 ),
@@ -606,8 +606,8 @@ class AIRecommendationsWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: recommendation.recommender == AICharacterType.thomas
-                      ? Colors.blue.withOpacity(0.2)
-                      : Colors.pink.withOpacity(0.2),
+                      ? EloquenceTheme.withOpacity(Colors.blue, 0.2)
+                      : EloquenceTheme.withOpacity(Colors.pink, 0.2),
                 ),
                 child: Text(
                   recommendation.recommender.displayName,
@@ -638,7 +638,7 @@ class AIRecommendationsWidget extends StatelessWidget {
             recommendation.description,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.9),
+              color: EloquenceTheme.withOpacity(Colors.white, 0.9),
               height: 1.4,
             ),
           ),
@@ -663,7 +663,7 @@ class AIRecommendationsWidget extends StatelessWidget {
                         step,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.white.withOpacity(0.8),
+                          color: EloquenceTheme.withOpacity(Colors.white, 0.8),
                         ),
                       ),
                     ),
@@ -688,7 +688,7 @@ class AIRecommendationsWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: color.withOpacity(0.2),
+        color: EloquenceTheme.withOpacity(color, 0.2),
         border: Border.all(color: color, width: 1),
       ),
       child: Text(

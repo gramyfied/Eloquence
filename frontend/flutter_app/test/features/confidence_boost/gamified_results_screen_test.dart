@@ -111,10 +111,13 @@ class FakeConfidenceBoostProvider extends ChangeNotifier implements ConfidenceBo
 
 
 class FakeConfidenceRepository implements ConfidenceRepository {
+  @override
   Future<List<confidence_scenarios.ConfidenceScenario>> getScenarios() async => [];
-  Future<void> saveSession(confidence_models.ConfidenceAnalysis analysis, confidence_scenarios.ConfidenceScenario scenario) async {}
-  Future<confidence_models.ConfidenceAnalysis> analyzePerformance({required String audioFilePath, required Duration recordingDuration, required confidence_scenarios.ConfidenceScenario scenario}) async => confidence_models.ConfidenceAnalysis(overallScore: 0, confidenceScore: 0, fluencyScore: 0, clarityScore: 0, energyScore: 0, feedback: '', wordCount: 0, speakingRate: 0, keywordsUsed: [], transcription: '');
-  Future<confidence_scenarios.ConfidenceScenario> getRandomScenario() async => confidence_scenarios.ConfidenceScenario(id: '', title: '', description: '', prompt: '', type: confidence_models.ConfidenceScenarioType.presentation, durationSeconds: 0, tips: [], keywords: [], difficulty: '', icon: '');
+  @override
+  Future<confidence_models.ConfidenceAnalysis> analyzePerformance({required String audioFilePath, required Duration recordingDuration, required confidence_scenarios.ConfidenceScenario scenario}) async => confidence_models.ConfidenceAnalysis(overallScore: 0, confidenceScore: 0, fluencyScore: 0, clarityScore: 0, energyScore: 0, feedback: '', wordCount: 0, speakingRate: 0, keywordsUsed: const [], transcription: '');
+  @override
+  Future<confidence_scenarios.ConfidenceScenario> getRandomScenario() async => const confidence_scenarios.ConfidenceScenario(id: '', title: '', description: '', prompt: '', type: confidence_models.ConfidenceScenarioType.presentation, durationSeconds: 0, tips: [], keywords: [], difficulty: '', icon: '');
+  @override
   Future<confidence_scenarios.ConfidenceScenario?> getScenarioById(String id) async => null;
 }
 
@@ -169,7 +172,7 @@ void main() {
         feedback: 'Excellent travail ! Votre présentation était confiante et claire.',
         wordCount: 120,
         speakingRate: 150.0,
-        keywordsUsed: ['confiance', 'présentation', 'performance'],
+        keywordsUsed: const ['confiance', 'présentation', 'performance'],
         transcription: 'Bonjour, je vous présente aujourd\'hui...',
       );
 
@@ -289,7 +292,7 @@ void main() {
         feedback: 'Performance exceptionnelle !',
         wordCount: 150,
         speakingRate: 140.0,
-        keywordsUsed: ['excellent', 'parfait'],
+        keywordsUsed: const ['excellent', 'parfait'],
         transcription: 'Présentation remarquable...',
       );
       
@@ -370,7 +373,7 @@ void main() {
                   try {
                     return ResultsScreen(
                       analysis: mockAnalysis,
-                      onContinue: () {},
+                      onContinue: () { },
                     );
                   } catch (e, stackTrace) {
                     debugPrint('❌ [DEBUG] Error building ResultsScreen: $e');

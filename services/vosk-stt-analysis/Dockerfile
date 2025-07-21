@@ -1,45 +1,31 @@
 FROM python:3.11-slim
 
-# Install system dependencies
+# Installation des dépendances système
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libsndfile1 \
-    ffmpeg \
     wget \
     unzip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements
+# Copie des requirements
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create models directory
+# Crée le répertoire des modèles
 RUN mkdir -p /app/models
 
-# Download VOSK French model
-RUN wget -q https://alphacephei.com/vosk/models/vosk-model-fr-0.22.zip && \
-    unzip -q vosk-model-fr-0.22.zip && \
-    mv vosk-model-fr-0.22 /app/models/ && \
-    rm vosk-model-fr-0.22.zip
+# Copie le code de l'application
+COPY . .
 
-# Copy application code
-COPY main.py .
+# Script de téléchargement automatique du modèle
+COPY download_model.sh /app/
+RUN chmod +x /app/download_model.sh
 
-# Set environment variables
-ENV VOSK_MODEL_PATH=/app/models/vosk-model-fr-0.22
-ENV PYTHONUNBUFFERED=1
+# Télécharge le modèle au build
+RUN /app/download_model.sh
 
-# Expose port
-EXPOSE 8003
+EXPOSE 2700
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8003/health || exit 1
-
-# Run the application
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["python", "main.py"]

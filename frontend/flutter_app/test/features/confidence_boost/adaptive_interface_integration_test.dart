@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:eloquence_2_0/main.dart' as app;
 import 'package:eloquence_2_0/features/confidence_boost/presentation/screens/confidence_boost_adaptive_screen.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/animated_microphone_button.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/scenario_generation_animation.dart';
@@ -12,7 +11,6 @@ import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/ada
 import 'package:eloquence_2_0/features/confidence_boost/presentation/widgets/gamified_results_widget.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart';
-import 'package:eloquence_2_0/core/animation/eloquence_animation_service.dart';
 import 'package:eloquence_2_0/core/theme/eloquence_unified_theme.dart';
 
 /// Tests d'intégration sophistiqués pour l'interface adaptative finale Boost Confidence
@@ -202,10 +200,10 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: EloquenceTheme.darkTheme,
-            home: Scaffold(
+            home: const Scaffold(
               body: Column(
                 children: [
-                  const AnimatedMicrophoneButton(isRecording: false),
+                  AnimatedMicrophoneButton(isRecording: false),
                   ScenarioGenerationAnimation(
                     currentStage: 'Test',
                     stageDescription: 'Test Description',
@@ -368,10 +366,10 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: EloquenceTheme.darkTheme,
-            home: Scaffold(
+            home: const Scaffold(
               body: Column(
                 children: [
-                  const AnimatedMicrophoneButton(isRecording: true),
+                  AnimatedMicrophoneButton(isRecording: true),
                   ScenarioGenerationAnimation(
                     currentStage: 'Analyse',
                     stageDescription: 'Analyse en cours...',

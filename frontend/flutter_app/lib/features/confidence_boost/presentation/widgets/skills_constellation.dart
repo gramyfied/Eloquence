@@ -168,7 +168,7 @@ class _SkillsConstellationState extends State<SkillsConstellation>
   }
   
   Widget _buildSkillNode(Skill skill, bool isUnlocked) {
-    final size = 60.0;
+    const size = 60.0;
     final color = isUnlocked ? _getSkillColor(skill.category) : Colors.grey;
     
     return AnimatedBuilder(
@@ -187,18 +187,18 @@ class _SkillsConstellationState extends State<SkillsConstellation>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  color.withOpacity(0.8),
+                  EloquenceTheme.withOpacity(color, 0.8),
                   color,
                 ],
               ),
               border: Border.all(
-                color: EloquenceTheme.white.withOpacity(0.3),
+                color: EloquenceTheme.withOpacity(EloquenceTheme.white, 0.3),
                 width: 2,
               ),
               boxShadow: [
                 if (isUnlocked)
                   BoxShadow(
-                    color: color.withOpacity(0.5),
+                    color: EloquenceTheme.withOpacity(color, 0.5),
                     blurRadius: 15,
                     spreadRadius: 3,
                   ),
@@ -212,7 +212,7 @@ class _SkillsConstellationState extends State<SkillsConstellation>
                   color: EloquenceTheme.white,
                   size: 20,
                 ),
-                SizedBox(height: EloquenceTheme.spacingXs),
+                const SizedBox(height: EloquenceTheme.spacingXs),
                 Text(
                   '${(skill.progress * 100).toInt()}%',
                   style: EloquenceTheme.caption.copyWith(
@@ -230,9 +230,9 @@ class _SkillsConstellationState extends State<SkillsConstellation>
   }
   
   Offset _getSkillPosition(int index, int total) {
-    final centerX = 150.0;
-    final centerY = 150.0;
-    final radius = 80.0;
+    const centerX = 150.0;
+    const centerY = 150.0;
+    const radius = 80.0;
     
     final angle = (index * 2 * math.pi / total) + _constellationAnimation.value * 0.1;
     final x = centerX + radius * math.cos(angle);
@@ -297,7 +297,7 @@ class _ConstellationPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final centerX = size.width / 2;
     final centerY = size.height / 2;
-    final radius = 80.0;
+    const radius = 80.0;
     
     // Dessiner les connexions entre les compétences
     _drawConnections(canvas, size, centerX, centerY, radius);
@@ -308,7 +308,7 @@ class _ConstellationPainter extends CustomPainter {
   
   void _drawConnections(Canvas canvas, Size size, double centerX, double centerY, double radius) {
     final paint = Paint()
-      ..color = EloquenceTheme.cyan.withOpacity(0.3)
+      ..color = EloquenceTheme.withOpacity(EloquenceTheme.cyan, 0.3)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     
@@ -329,7 +329,7 @@ class _ConstellationPainter extends CustomPainter {
       
       if (skill1Unlocked && skill2Unlocked) {
         final opacity = 0.3 + 0.2 * math.sin(twinklePhase * 2 * math.pi + i);
-        paint.color = EloquenceTheme.cyan.withOpacity(opacity);
+        paint.color = EloquenceTheme.withOpacity(EloquenceTheme.cyan, opacity);
         
         canvas.drawLine(
           Offset(x1, y1),
@@ -352,7 +352,7 @@ class _ConstellationPainter extends CustomPainter {
       final y = size.height / 2 + distance * math.sin(angle);
       
       final opacity = (0.3 + 0.4 * math.sin(twinklePhase * 2 * math.pi + i * 0.5)).clamp(0.0, 0.7);
-      paint.color = EloquenceTheme.violet.withOpacity(opacity);
+      paint.color = EloquenceTheme.withOpacity(EloquenceTheme.violet, opacity);
       
       canvas.drawCircle(
         Offset(x, y),

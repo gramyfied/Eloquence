@@ -112,35 +112,37 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
   
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all(EloquenceTheme.spacingLg),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(EloquenceTheme.spacingLg),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           // Indicateur de chargement principal
           _buildMainLoadingIndicator(),
           
-          SizedBox(height: EloquenceTheme.spacingXl),
+          const SizedBox(height: EloquenceTheme.spacingXl),
           
           // Étape actuelle
           _buildCurrentStage(),
           
-          SizedBox(height: EloquenceTheme.spacingLg),
+          const SizedBox(height: EloquenceTheme.spacingLg),
           
           // Description de l'étape
           _buildStageDescription(),
           
-          SizedBox(height: EloquenceTheme.spacingXl),
+          const SizedBox(height: EloquenceTheme.spacingXl),
           
           // Barre de progression globale
           _buildProgressBar(),
           
-          SizedBox(height: EloquenceTheme.spacingXl),
+          const SizedBox(height: EloquenceTheme.spacingXl),
           
           // Indicateur d'optimisation mobile
           if (widget.isUsingMobileOptimization)
             _buildMobileOptimizationIndicator(),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -159,7 +161,7 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
               gradient: EloquenceTheme.primaryGradient,
               boxShadow: [
                 BoxShadow(
-                  color: EloquenceTheme.cyan.withOpacity(0.4),
+                  color: EloquenceTheme.withOpacity(EloquenceTheme.cyan, 0.4),
                   blurRadius: 30,
                   spreadRadius: 10,
                 ),
@@ -177,7 +179,7 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: EloquenceTheme.white.withOpacity(0.3),
+                        color: EloquenceTheme.withOpacity(EloquenceTheme.white, 0.3),
                         width: 2,
                       ),
                     ),
@@ -203,11 +205,11 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
   
   Widget _buildCurrentStage() {
     return Container(
-      padding: EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: EloquenceTheme.spacingMd,
         vertical: EloquenceTheme.spacingSm,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         borderRadius: EloquenceTheme.borderRadiusLarge,
         color: EloquenceTheme.glassBackground,
         border: EloquenceTheme.borderThin,
@@ -227,7 +229,7 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
     return Text(
       widget.stageDescription,
       style: EloquenceTheme.bodyLarge.copyWith(
-        color: EloquenceTheme.white.withOpacity(0.9),
+        color: EloquenceTheme.withOpacity(EloquenceTheme.white, 0.9),
       ),
       textAlign: TextAlign.center,
     );
@@ -251,14 +253,14 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
                 child: LinearProgressIndicator(
                   value: _progressAnimation.value,
                   backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(EloquenceTheme.cyan),
+                  valueColor: const AlwaysStoppedAnimation<Color>(EloquenceTheme.cyan),
                 ),
               ),
             );
           },
         ),
         
-        SizedBox(height: EloquenceTheme.spacingMd),
+        const SizedBox(height: EloquenceTheme.spacingMd),
         
         // Étapes de progression
         _buildStageIndicators(),
@@ -293,13 +295,13 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
                   ),
                 ),
               ),
-              SizedBox(height: EloquenceTheme.spacingSm),
+              const SizedBox(height: EloquenceTheme.spacingSm),
               Text(
                 stage,
                 style: EloquenceTheme.caption.copyWith(
-                  color: isActive 
+                  color: isActive
                       ? EloquenceTheme.white
-                      : EloquenceTheme.white.withOpacity(0.5),
+                      : EloquenceTheme.withOpacity(EloquenceTheme.white, 0.5),
                   fontSize: 10,
                 ),
                 textAlign: TextAlign.center,
@@ -315,27 +317,27 @@ class _ScenarioGenerationAnimationState extends State<ScenarioGenerationAnimatio
   
   Widget _buildMobileOptimizationIndicator() {
     return Container(
-      padding: EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: EloquenceTheme.spacingMd,
         vertical: EloquenceTheme.spacingSm,
       ),
       decoration: BoxDecoration(
         borderRadius: EloquenceTheme.borderRadiusMedium,
-        color: EloquenceTheme.violet.withOpacity(0.2),
+        color: EloquenceTheme.withOpacity(EloquenceTheme.violet, 0.2),
         border: Border.all(
-          color: EloquenceTheme.violet.withOpacity(0.5),
+          color: EloquenceTheme.withOpacity(EloquenceTheme.violet, 0.5),
           width: 1,
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.speed_rounded,
             size: 16,
             color: EloquenceTheme.violet,
           ),
-          SizedBox(width: EloquenceTheme.spacingSm),
+          const SizedBox(width: EloquenceTheme.spacingSm),
           Text(
             'Optimisation mobile active',
             style: EloquenceTheme.caption.copyWith(
@@ -387,7 +389,7 @@ class _LoadingCirclePainter extends CustomPainter {
     
     // Dessiner des points sur le cercle
     final paint = Paint()
-      ..color = EloquenceTheme.white.withOpacity(0.6)
+      ..color = EloquenceTheme.withOpacity(EloquenceTheme.white, 0.6)
       ..style = PaintingStyle.fill;
     
     for (int i = 0; i < 8; i++) {

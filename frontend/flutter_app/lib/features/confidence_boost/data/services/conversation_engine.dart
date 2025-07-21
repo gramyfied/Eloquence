@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:logger/logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/services/optimized_http_service.dart';
@@ -136,9 +137,7 @@ Focus sur: accroche, proposition de valeur, storytelling, call-to-action.''',
     
     // Appeler Mistral pour une réponse plus naturelle
     final mistralResponse = await _callMistralAPI(
-      systemPrompt: systemPrompt,
-      userPrompt: userPrompt,
-      temperature: 0.8, // Plus créatif pour l'introduction
+      '$systemPrompt\n\n$userPrompt'
     );
     
     // Créer le tour de conversation
@@ -166,130 +165,126 @@ Focus sur: accroche, proposition de valeur, storytelling, call-to-action.''',
   }
 
   /// Génère une réponse IA basée sur l'entrée utilisateur
-  Future<ConversationResponse> generateAIResponse({
-    required String userMessage,
-    Map<String, double>? performanceMetrics,
-    AIInterventionPhase? currentPhase,
+  Future<String> generateResponse({
+    required String userInput,
+    required List<ConversationTurn> conversationHistory,
+    required ConfidenceScenario scenario,
+    required AICharacterType character,
+    required UserAdaptiveProfile userProfile,
   }) async {
-    if (_currentScenario == null || _currentCharacter == null || _userProfile == null) {
-      throw StateError('ConversationEngine non initialisé');
-    }
+    _logger.i('🧠 [MISTRAL] Generating response for $character');
     
-    _logger.d('💬 [$_tag] Traitement message utilisateur: ${userMessage.length > 50 ? userMessage.substring(0, 50) + '...' : userMessage}');
-    
-    // Ajouter le message utilisateur à l'historique
-    _conversationHistory.add(ConversationTurn(
-      speaker: ConversationSpeaker.user,
-      character: null,
-      message: userMessage,
-      emotionalState: null,
-      timestamp: DateTime.now(),
-      metadata: performanceMetrics ?? {},
-    ));
-    
-    // Déterminer la phase actuelle
-    final phase = currentPhase ?? _determineCurrentPhase();
-    
-    // Analyser le contexte pour adapter la réponse
-    final context = SessionContext(
-      scenario: _currentScenario!,
-      userProfile: _userProfile!,
-      currentPhase: phase,
-      sessionDuration: _calculateSessionDuration(),
-      attemptsCount: _conversationHistory.where((t) => t.speaker == ConversationSpeaker.user).length,
-      previousFeedback: _extractPreviousFeedback(),
-      currentMetrics: performanceMetrics ?? {},
-    );
-    
-    // Générer le dialogue adaptatif
-    final adaptiveDialogue = await _aiCharacterService.generateContextualDialogue(
-      character: _currentCharacter!,
-      phase: phase,
-      context: context,
-    );
-    
-    // Construire le prompt pour Mistral avec l'historique
-    final systemPrompt = _buildSystemPrompt();
-    final conversationPrompt = _buildConversationPrompt(userMessage, performanceMetrics);
-    
-    // Appeler Mistral
-    final mistralResponse = await _callMistralAPI(
-      systemPrompt: systemPrompt,
-      userPrompt: conversationPrompt,
-      temperature: _getTemperatureForPhase(phase),
-    );
-    
-    // Créer le tour de conversation IA
-    final aiTurn = ConversationTurn(
-      speaker: ConversationSpeaker.ai,
-      character: _currentCharacter!,
-      message: mistralResponse,
-      emotionalState: adaptiveDialogue.emotionalState,
-      timestamp: DateTime.now(),
-      metadata: {
-        'phase': phase.name,
-        'adaptiveScore': performanceMetrics?['confidence_level'] ?? 0.0,
-      },
-    );
-    
-    _conversationHistory.add(aiTurn);
-    
-    return ConversationResponse(
-      message: mistralResponse,
-      character: _currentCharacter!,
-      emotionalState: adaptiveDialogue.emotionalState,
-      suggestedUserResponses: _generateSuggestedResponses(aiTurn),
-      requiresUserResponse: adaptiveDialogue.requiresUserResponse,
-    );
-  }
-
-  /// Appel API Mistral
-  Future<String> _callMistralAPI({
-    required String systemPrompt,
-    required String userPrompt,
-    double temperature = 0.7,
-  }) async {
     try {
-      final messages = [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': userPrompt},
-      ];
-      
-      final requestBody = {
-        'model': _mistralModel,
-        'messages': messages,
-        'temperature': temperature,
-        'max_tokens': 300, // Réponses concises
-        'top_p': 0.95,
-        'stream': false,
-      };
-      
-      _logger.d('🤖 [$_tag] Appel Mistral API...');
-      
-      final response = await _httpService.post(
-        '$_mistralBaseUrl/v1/chat/completions',
-        headers: {
-          'Authorization': 'Bearer $_mistralApiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
-        timeout: OptimizedHttpService.mediumTimeout,
+      // 1. CONSTRUCTION DU PROMPT CONTEXTUEL
+      final prompt = _buildContextualPrompt(
+        userInput: userInput,
+        conversationHistory: conversationHistory,
+        scenario: scenario,
+        character: character,
+        userProfile: userProfile,
       );
       
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'] as String;
-        _logger.d('✅ [$_tag] Réponse Mistral reçue');
-        return content.trim();
-      } else {
-        _logger.e('❌ [$_tag] Erreur Mistral: ${response.statusCode} - ${response.body}');
-        throw Exception('Erreur Mistral API: ${response.statusCode}');
-      }
+      // 2. APPEL À MISTRAL
+      final response = await _callMistralAPI(prompt);
+      
+      // 3. POST-TRAITEMENT DE LA RÉPONSE
+      final processedResponse = _postProcessResponse(response, character);
+      
+      _logger.i('✅ [MISTRAL] Generated response: ${processedResponse.substring(0, math.min(100, processedResponse.length))}...');
+      
+      return processedResponse;
       
     } catch (e) {
-      _logger.e('❌ [$_tag] Erreur appel Mistral: $e');
-      return _generateFallbackResponse();
+      _logger.e('❌ [MISTRAL] Failed to generate response: $e');
+      return _generateFallbackResponse(character, userInput);
     }
+  }
+
+  String _buildContextualPrompt({
+    required String userInput,
+    required List<ConversationTurn> conversationHistory,
+    required ConfidenceScenario scenario,
+    required AICharacterType character,
+    required UserAdaptiveProfile userProfile,
+  }) {
+    final systemPrompt = _characterSystemPrompts[character]!;
+    final scenarioContext = _scenarioContextPrompts[scenario.type]!;
+    
+    // Historique de conversation formaté
+    final historyText = conversationHistory
+        .reversed
+        .take(6)
+        .toList()
+        .reversed
+        .map((turn) => '${turn.speaker.name}: ${turn.message}')
+        .join('\n');
+    
+    // Adaptation selon le profil utilisateur
+    final adaptationNote = _buildAdaptationNote(userProfile);
+    
+    return '''
+$systemPrompt
+
+$scenarioContext
+
+$adaptationNote
+
+Historique de la conversation:
+$historyText
+
+Utilisateur: $userInput
+
+Réponds en tant que ${character.name} de manière naturelle et contextuelle. Ta réponse doit:
+1. Être cohérente avec ta personnalité
+2. S'adapter au niveau de l'utilisateur
+3. Faire progresser la conversation
+4. Rester dans le contexte du scénario
+5. Être concise (2-3 phrases maximum)
+
+Réponse:''';
+  }
+
+  Future<String> _callMistralAPI(String prompt) async {
+    final response = await _httpService.post(
+      '$_mistralBaseUrl/chat/completions',
+      headers: {
+        'Authorization': 'Bearer $_mistralApiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': _mistralModel,
+        'messages': [
+          {'role': 'user', 'content': prompt}
+        ],
+        'max_tokens': 150,
+        'temperature': 0.7,
+        'top_p': 0.9,
+      }),
+      timeout: const Duration(seconds: 10),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['choices'][0]['message']['content'].trim();
+    } else {
+      throw Exception('Mistral API error: ${response.statusCode}');
+    }
+  }
+  
+  String _postProcessResponse(String response, AICharacterType character) {
+    // Nettoie la réponse
+    String cleaned = response.trim();
+    
+    // Supprime les préfixes indésirables
+    cleaned = cleaned.replaceAll(RegExp(r'^(Thomas|Marie):\s*'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'^Réponse:\s*'), '');
+    
+    // Assure une ponctuation correcte
+    if (!cleaned.endsWith('.') && !cleaned.endsWith('!') && !cleaned.endsWith('?')) {
+      cleaned += '.';
+    }
+    
+    return cleaned;
   }
 
   /// Construit le prompt système complet
@@ -318,80 +313,6 @@ Présente-toi brièvement et explique comment tu vas l'aider dans cet exercice.
 Mets l'utilisateur à l'aise tout en montrant ton expertise.''';
   }
 
-  /// Construit le prompt de conversation avec historique
-  String _buildConversationPrompt(String userMessage, Map<String, double>? metrics) {
-    final buffer = StringBuffer();
-    
-    // Ajouter l'historique récent (max 5 derniers échanges)
-    final recentHistory = _conversationHistory.length > 10 
-        ? _conversationHistory.sublist(_conversationHistory.length - 10)
-        : _conversationHistory;
-    
-    buffer.writeln('Historique de conversation:');
-    for (final turn in recentHistory) {
-      final speaker = turn.speaker == ConversationSpeaker.user ? 'Utilisateur' : turn.character!.displayName;
-      buffer.writeln('$speaker: ${turn.message}');
-    }
-    
-    // Ajouter les métriques si disponibles
-    if (metrics != null && metrics.isNotEmpty) {
-      buffer.writeln('\nMétriques de performance actuelles:');
-      if (metrics['confidence_level'] != null) {
-        buffer.writeln('- Niveau de confiance: ${(metrics['confidence_level']! * 100).toStringAsFixed(0)}%');
-      }
-      if (metrics['fluency_score'] != null) {
-        buffer.writeln('- Fluidité: ${(metrics['fluency_score']! * 100).toStringAsFixed(0)}%');
-      }
-    }
-    
-    buffer.writeln('\nRéponds à ce message de l\'utilisateur de manière adaptée à son niveau et au contexte.');
-    
-    return buffer.toString();
-  }
-
-  /// Détermine la phase actuelle de la conversation
-  AIInterventionPhase _determineCurrentPhase() {
-    final userTurns = _conversationHistory.where((t) => t.speaker == ConversationSpeaker.user).length;
-    
-    if (userTurns == 0) return AIInterventionPhase.scenarioIntroduction;
-    if (userTurns <= 2) return AIInterventionPhase.preparationCoaching;
-    if (userTurns <= 5) return AIInterventionPhase.realTimeGuidance;
-    return AIInterventionPhase.performanceAnalysis;
-  }
-
-  /// Calcule la durée de session
-  Duration _calculateSessionDuration() {
-    if (_conversationHistory.isEmpty) return Duration.zero;
-    
-    final firstTurn = _conversationHistory.first;
-    final lastTurn = _conversationHistory.last;
-    return lastTurn.timestamp.difference(firstTurn.timestamp);
-  }
-
-  /// Extrait les feedbacks précédents
-  List<String> _extractPreviousFeedback() {
-    return _conversationHistory
-        .where((t) => t.speaker == ConversationSpeaker.ai)
-        .map((t) => t.message)
-        .take(3)
-        .toList();
-  }
-
-  /// Température adaptée selon la phase
-  double _getTemperatureForPhase(AIInterventionPhase phase) {
-    switch (phase) {
-      case AIInterventionPhase.scenarioIntroduction:
-        return 0.8; // Plus créatif
-      case AIInterventionPhase.preparationCoaching:
-        return 0.7; // Équilibré
-      case AIInterventionPhase.realTimeGuidance:
-        return 0.6; // Plus focalisé
-      case AIInterventionPhase.performanceAnalysis:
-        return 0.5; // Plus analytique
-      default:
-        return 0.7;
-    }
-  }
 
   /// Génère des suggestions de réponses pour l'utilisateur
   List<String> _generateSuggestedResponses(ConversationTurn aiTurn) {
@@ -429,23 +350,25 @@ Mets l'utilisateur à l'aise tout en montrant ton expertise.''';
     }
   }
 
+  String _buildAdaptationNote(UserAdaptiveProfile userProfile) {
+    // Cette méthode peut être étendue pour des adaptations plus fines
+    if (userProfile.confidenceLevel < 4) {
+      return "Note: L'utilisateur est débutant et peu confiant. Sois particulièrement encourageant et simple dans tes explications.";
+    } else if (userProfile.confidenceLevel > 7) {
+      return "Note: L'utilisateur est avancé et confiant. Challenge-le avec des questions plus complexes et des feedbacks plus directs.";
+    }
+    return "Note: L'utilisateur a un niveau intermédiaire. Maintiens un équilibre entre soutien et challenge.";
+  }
+
   /// Réponse de fallback en cas d'erreur Mistral
-  String _generateFallbackResponse() {
-    final responses = {
-      AICharacterType.thomas: [
-        "Concentrez-vous sur la structure de votre message. Soyez clair et direct.",
-        "Votre approche manque de précision. Reformulez avec des exemples concrets.",
-        "Bien. Maintenant, travaillons sur l'impact de votre communication.",
-      ],
-      AICharacterType.marie: [
-        "Je sens que vous progressez ! Continuez avec cette énergie positive.",
-        "N'hésitez pas à prendre votre temps. L'important est d'être authentique.",
-        "C'est très bien ! Essayons d'ajouter un peu plus d'émotion dans votre message.",
-      ],
-    };
-    
-    final characterResponses = responses[_currentCharacter!] ?? ["Continuez, vous êtes sur la bonne voie."];
-    return characterResponses[DateTime.now().millisecond % characterResponses.length];
+  String _generateFallbackResponse(AICharacterType character, String userInput) {
+    _logger.w('Generating fallback response for $character');
+    switch (character) {
+      case AICharacterType.thomas:
+        return "Je n'ai pas bien saisi votre point. Pouvez-vous reformuler votre idée plus clairement ?";
+      case AICharacterType.marie:
+        return "Excusez-moi, j'ai eu un petit problème technique. Pouvez-vous répéter ce que vous venez de dire ?";
+    }
   }
 
   /// Obtient l'historique de conversation
