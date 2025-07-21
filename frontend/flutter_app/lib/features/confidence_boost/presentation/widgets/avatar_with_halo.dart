@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../../../presentation/theme/eloquence_design_system.dart';
+import '../../../../core/theme/eloquence_unified_theme.dart';
 
 /// Widget d'avatar avec halo lumineux pour les personnages IA
 /// 
@@ -181,8 +182,8 @@ class _AvatarWithHaloState extends State<AvatarWithHalo>
             radius: 0.8,
             colors: [
               Colors.transparent,
-              color.withOpacity(0.1),
-              color.withOpacity(0.3),
+              EloquenceTheme.withOpacity(color, 0.1),
+              EloquenceTheme.withOpacity(color, 0.3),
               Colors.transparent,
             ],
             stops: const [0.0, 0.3, 0.7, 1.0],
@@ -208,19 +209,19 @@ class _AvatarWithHaloState extends State<AvatarWithHalo>
         shape: BoxShape.circle,
         gradient: LinearGradient(
           colors: [
-            color.withOpacity(0.8),
+            EloquenceTheme.withOpacity(color, 0.8),
             color,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: EloquenceTheme.withOpacity(Colors.white, 0.3),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: EloquenceTheme.withOpacity(color, 0.4),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -274,7 +275,7 @@ class _AvatarWithHaloState extends State<AvatarWithHalo>
           ),
           boxShadow: [
             BoxShadow(
-              color: EloquenceColors.cyan.withOpacity(0.6),
+              color: EloquenceTheme.withOpacity(EloquenceColors.cyan, 0.6),
               blurRadius: 10,
               spreadRadius: 2,
             ),
@@ -350,7 +351,7 @@ class _HaloPainter extends CustomPainter {
       final y = center.dy + distance * math.sin(angle);
       
       final opacity = (math.sin(progress * 2 + i) + 1) / 2;
-      paint.color = color.withOpacity(opacity * 0.6);
+      paint.color = EloquenceTheme.withOpacity(color, opacity * 0.6);
       
       _drawStar(canvas, Offset(x, y), 3, paint);
     }

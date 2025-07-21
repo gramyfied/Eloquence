@@ -4,23 +4,24 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i5;
-import 'dart:typed_data' as _i9;
+import 'dart:typed_data' as _i10;
 
 import 'package:eloquence_2_0/features/confidence_boost/data/services/adaptive_ai_character_service.dart'
-    as _i10;
+    as _i11;
 import 'package:eloquence_2_0/features/confidence_boost/data/services/ai_character_factory.dart'
     as _i3;
 import 'package:eloquence_2_0/features/confidence_boost/data/services/conversation_engine.dart'
     as _i2;
 import 'package:eloquence_2_0/features/confidence_boost/data/services/robust_livekit_service.dart'
-    as _i7;
+    as _i8;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/ai_character_models.dart'
     as _i4;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_models.dart'
-    as _i8;
+    as _i9;
 import 'package:eloquence_2_0/features/confidence_boost/domain/entities/confidence_scenario.dart'
     as _i6;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:mockito/src/dummies.dart' as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -138,35 +139,40 @@ class MockConversationEngine extends _i1.Mock
       ) as _i5.Future<_i2.ConversationResponse>);
 
   @override
-  _i5.Future<_i2.ConversationResponse> generateAIResponse({
-    required String? userMessage,
-    Map<String, double>? performanceMetrics,
-    _i4.AIInterventionPhase? currentPhase,
+  _i5.Future<String> generateResponse({
+    required String? userInput,
+    required List<_i2.ConversationTurn>? conversationHistory,
+    required _i6.ConfidenceScenario? scenario,
+    required _i4.AICharacterType? character,
+    required _i4.UserAdaptiveProfile? userProfile,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
-          #generateAIResponse,
+          #generateResponse,
           [],
           {
-            #userMessage: userMessage,
-            #performanceMetrics: performanceMetrics,
-            #currentPhase: currentPhase,
+            #userInput: userInput,
+            #conversationHistory: conversationHistory,
+            #scenario: scenario,
+            #character: character,
+            #userProfile: userProfile,
           },
         ),
-        returnValue: _i5.Future<_i2.ConversationResponse>.value(
-            _FakeConversationResponse_0(
+        returnValue: _i5.Future<String>.value(_i7.dummyValue<String>(
           this,
           Invocation.method(
-            #generateAIResponse,
+            #generateResponse,
             [],
             {
-              #userMessage: userMessage,
-              #performanceMetrics: performanceMetrics,
-              #currentPhase: currentPhase,
+              #userInput: userInput,
+              #conversationHistory: conversationHistory,
+              #scenario: scenario,
+              #character: character,
+              #userProfile: userProfile,
             },
           ),
         )),
-      ) as _i5.Future<_i2.ConversationResponse>);
+      ) as _i5.Future<String>);
 
   @override
   List<_i2.ConversationTurn> getConversationHistory() => (super.noSuchMethod(
@@ -185,6 +191,77 @@ class MockConversationEngine extends _i1.Mock
         ),
         returnValueForMissingStub: null,
       );
+}
+
+/// A class which mocks [RobustLiveKitService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockRobustLiveKitService extends _i1.Mock
+    implements _i8.RobustLiveKitService {
+  MockRobustLiveKitService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i5.Future<bool> initialize({
+    required String? livekitUrl,
+    required String? livekitToken,
+    bool? isMobileOptimized = true,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #initialize,
+          [],
+          {
+            #livekitUrl: livekitUrl,
+            #livekitToken: livekitToken,
+            #isMobileOptimized: isMobileOptimized,
+          },
+        ),
+        returnValue: _i5.Future<bool>.value(false),
+      ) as _i5.Future<bool>);
+
+  @override
+  _i5.Future<_i9.ConfidenceAnalysis?> analyzePerformanceRobust({
+    required _i6.ConfidenceScenario? scenario,
+    required _i9.TextSupport? textSupport,
+    required Duration? recordingDuration,
+    _i10.Uint8List? audioData,
+    String? userContext = '',
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #analyzePerformanceRobust,
+          [],
+          {
+            #scenario: scenario,
+            #textSupport: textSupport,
+            #recordingDuration: recordingDuration,
+            #audioData: audioData,
+            #userContext: userContext,
+          },
+        ),
+        returnValue: _i5.Future<_i9.ConfidenceAnalysis?>.value(),
+      ) as _i5.Future<_i9.ConfidenceAnalysis?>);
+
+  @override
+  _i5.Future<bool> healthCheck() => (super.noSuchMethod(
+        Invocation.method(
+          #healthCheck,
+          [],
+        ),
+        returnValue: _i5.Future<bool>.value(false),
+      ) as _i5.Future<bool>);
+
+  @override
+  _i5.Future<void> dispose() => (super.noSuchMethod(
+        Invocation.method(
+          #dispose,
+          [],
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 }
 
 /// A class which mocks [AICharacterFactory].
@@ -227,82 +304,11 @@ class MockAICharacterFactory extends _i1.Mock
       ) as _i3.AICharacterInstance);
 }
 
-/// A class which mocks [RobustLiveKitService].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockRobustLiveKitService extends _i1.Mock
-    implements _i7.RobustLiveKitService {
-  MockRobustLiveKitService() {
-    _i1.throwOnMissingStub(this);
-  }
-
-  @override
-  _i5.Future<bool> initialize({
-    required String? livekitUrl,
-    required String? livekitToken,
-    bool? isMobileOptimized = true,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #initialize,
-          [],
-          {
-            #livekitUrl: livekitUrl,
-            #livekitToken: livekitToken,
-            #isMobileOptimized: isMobileOptimized,
-          },
-        ),
-        returnValue: _i5.Future<bool>.value(false),
-      ) as _i5.Future<bool>);
-
-  @override
-  _i5.Future<_i8.ConfidenceAnalysis?> analyzePerformanceRobust({
-    required _i6.ConfidenceScenario? scenario,
-    required _i8.TextSupport? textSupport,
-    required Duration? recordingDuration,
-    _i9.Uint8List? audioData,
-    String? userContext = '',
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #analyzePerformanceRobust,
-          [],
-          {
-            #scenario: scenario,
-            #textSupport: textSupport,
-            #recordingDuration: recordingDuration,
-            #audioData: audioData,
-            #userContext: userContext,
-          },
-        ),
-        returnValue: _i5.Future<_i8.ConfidenceAnalysis?>.value(),
-      ) as _i5.Future<_i8.ConfidenceAnalysis?>);
-
-  @override
-  _i5.Future<bool> healthCheck() => (super.noSuchMethod(
-        Invocation.method(
-          #healthCheck,
-          [],
-        ),
-        returnValue: _i5.Future<bool>.value(false),
-      ) as _i5.Future<bool>);
-
-  @override
-  _i5.Future<void> dispose() => (super.noSuchMethod(
-        Invocation.method(
-          #dispose,
-          [],
-        ),
-        returnValue: _i5.Future<void>.value(),
-        returnValueForMissingStub: _i5.Future<void>.value(),
-      ) as _i5.Future<void>);
-}
-
 /// A class which mocks [AdaptiveAICharacterService].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockAdaptiveAICharacterService extends _i1.Mock
-    implements _i10.AdaptiveAICharacterService {
+    implements _i11.AdaptiveAICharacterService {
   MockAdaptiveAICharacterService() {
     _i1.throwOnMissingStub(this);
   }
@@ -354,7 +360,7 @@ class MockAdaptiveAICharacterService extends _i1.Mock
   @override
   _i5.Future<_i4.BehavioralAnalysis> analyzeBehaviorPattern({
     required _i4.UserAdaptiveProfile? profile,
-    required List<_i8.ConfidenceAnalysis>? sessionHistory,
+    required List<_i9.ConfidenceAnalysis>? sessionHistory,
     required _i6.ConfidenceScenario? currentScenario,
   }) =>
       (super.noSuchMethod(
@@ -385,7 +391,7 @@ class MockAdaptiveAICharacterService extends _i1.Mock
   @override
   _i5.Future<_i4.UserAdaptiveProfile> updateUserProfile({
     required _i4.UserAdaptiveProfile? currentProfile,
-    required _i8.ConfidenceAnalysis? newAnalysis,
+    required _i9.ConfidenceAnalysis? newAnalysis,
     required _i6.ConfidenceScenario? scenario,
     required Duration? sessionDuration,
   }) =>

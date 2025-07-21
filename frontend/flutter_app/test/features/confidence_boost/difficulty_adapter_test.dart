@@ -15,13 +15,13 @@ void main() {
         // Arrange
         final userProfile = UserPerformanceProfile(
           userId: 'test_user',
-          skillLevels: {'pronunciation': 0.7, 'fluency': 0.6},
+          skillLevels: const {'pronunciation': 0.7, 'fluency': 0.6},
           totalSessions: 10,
           overallConfidence: 75.0,
           lastSessionDate: DateTime.now().subtract(const Duration(days: 1)),
         );
 
-        final context = DifficultyContext(
+        const context = DifficultyContext(
           objective: LearningObjective.rapidProgress,
           timeConstraint: TimeConstraint.medium,
           fatigueLevel: 0.2,
@@ -47,7 +47,7 @@ void main() {
         final performances = List.generate(5, (index) => 
           PerformanceMetrics(
             overallScore: 0.75, // Score constant = plateau
-            skillScores: {'pronunciation': 0.75},
+            skillScores: const {'pronunciation': 0.75},
             timestamp: DateTime.now().subtract(Duration(days: index)),
             sessionDuration: const Duration(minutes: 5),
             exerciseType: 'pronunciation',
@@ -56,13 +56,13 @@ void main() {
 
         final userProfile = UserPerformanceProfile(
           userId: 'test_user',
-          skillLevels: {'pronunciation': 0.75},
+          skillLevels: const {'pronunciation': 0.75},
           totalSessions: 10,
           overallConfidence: 75.0,
           lastSessionDate: DateTime.now(),
         );
 
-        final context = DifficultyContext(
+        const context = DifficultyContext(
           objective: LearningObjective.mastery,
           timeConstraint: TimeConstraint.low,
         );
@@ -85,7 +85,7 @@ void main() {
         final performances = List.generate(3, (index) => 
           PerformanceMetrics(
             overallScore: 0.4, // Score faible = difficulté
-            skillScores: {'pronunciation': 0.4},
+            skillScores: const {'pronunciation': 0.4},
             timestamp: DateTime.now().subtract(Duration(days: index)),
             sessionDuration: const Duration(minutes: 5),
             exerciseType: 'pronunciation',
@@ -94,13 +94,13 @@ void main() {
 
         final userProfile = UserPerformanceProfile(
           userId: 'test_user',
-          skillLevels: {'pronunciation': 0.6},
+          skillLevels: const {'pronunciation': 0.6},
           totalSessions: 5,
           overallConfidence: 50.0,
           lastSessionDate: DateTime.now(),
         );
 
-        final context = DifficultyContext(
+        const context = DifficultyContext(
           objective: LearningObjective.confidence,
           timeConstraint: TimeConstraint.high,
         );
@@ -122,13 +122,13 @@ void main() {
         // Arrange
         final userProfile = UserPerformanceProfile(
           userId: 'test_user',
-          skillLevels: {'pronunciation': 0.5},
+          skillLevels: const {'pronunciation': 0.5},
           totalSessions: 15,
           overallConfidence: 70.0,
           lastSessionDate: DateTime.now(),
         );
 
-        final contextHighTime = DifficultyContext(
+        const contextHighTime = DifficultyContext(
           objective: LearningObjective.rapidProgress,
           timeConstraint: TimeConstraint.high,
           fatigueLevel: 0.8, // Très fatigué
@@ -176,7 +176,7 @@ void main() {
         // Arrange
         final userProfile = UserPerformanceProfile(
           userId: 'test_user',
-          skillLevels: {'pronunciation': 0.7},
+          skillLevels: const {'pronunciation': 0.7},
           totalSessions: 20,
           overallConfidence: 80.0,
           lastSessionDate: DateTime.now(),
@@ -202,13 +202,13 @@ void main() {
         // Arrange
         final userProfile = UserPerformanceProfile(
           userId: 'test_user',
-          skillLevels: {'fluency': 0.6},
+          skillLevels: const {'fluency': 0.6},
           totalSessions: 8,
           overallConfidence: 65.0,
           lastSessionDate: DateTime.now(),
         );
 
-        final context = DifficultyContext(
+        const context = DifficultyContext(
           objective: LearningObjective.mastery,
           timeConstraint: TimeConstraint.medium,
         );
@@ -231,13 +231,13 @@ void main() {
         // Arrange - profil avec des données incorrectes
         final invalidProfile = UserPerformanceProfile(
           userId: '',
-          skillLevels: {},
+          skillLevels: const {},
           totalSessions: -1,
           overallConfidence: -10.0,
           lastSessionDate: DateTime.now(),
         );
 
-        final context = DifficultyContext(
+        const context = DifficultyContext(
           objective: LearningObjective.rapidProgress,
           timeConstraint: TimeConstraint.medium,
         );
@@ -264,12 +264,12 @@ Future<AdaptedDifficultyResult> _getAdaptationResult(double targetLevel) async {
   final adapter = DifficultyAdapter();
   final userProfile = UserPerformanceProfile(
     userId: 'test',
-    skillLevels: {'test': targetLevel},
+    skillLevels: {'test': targetLevel}, // Impossible d'être const
     totalSessions: 10,
     overallConfidence: targetLevel * 100,
     lastSessionDate: DateTime.now(),
   );
-  final context = DifficultyContext(
+  const context = DifficultyContext(
     objective: LearningObjective.mastery,
     timeConstraint: TimeConstraint.medium,
   );

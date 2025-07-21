@@ -51,6 +51,11 @@ class AppConfig {
     final url = dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000'; // BACKEND_URL ou LLM_SERVICE_URL
     return isProduction ? "https://api.eloquence.app" : _replaceLocalhostWithDevIp(url);
   }
+
+  static String get voskServiceUrl {
+    final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:8003';
+    return isProduction ? "https://your-prod-server.com/vosk" : _replaceLocalhostWithDevIp(url);
+  }
   
   static String get mistralBaseUrl {
     // Utiliser MISTRAL_BASE_URL s'il est spécifié, sinon fallback

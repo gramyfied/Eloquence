@@ -22,13 +22,23 @@ class ConversationManager {
   final Logger _logger = Logger();
   
   // Services
-  final ConversationEngine _conversationEngine = ConversationEngine();
-  final AICharacterFactory _characterFactory = AICharacterFactory();
-  final RobustLiveKitService _liveKitService = RobustLiveKitService();
-  final AdaptiveAICharacterService _aiCharacterService = AdaptiveAICharacterService();
+  final ConversationEngine _conversationEngine;
+  final AICharacterFactory _characterFactory;
+  final RobustLiveKitService _liveKitService;
+  final AdaptiveAICharacterService _aiCharacterService;
   
   // État de la conversation
   ConversationState _state = ConversationState.idle;
+
+  ConversationManager({
+    ConversationEngine? conversationEngine,
+    AICharacterFactory? characterFactory,
+    RobustLiveKitService? liveKitService,
+    AdaptiveAICharacterService? aiCharacterService,
+  })  : _conversationEngine = conversationEngine ?? ConversationEngine(),
+        _characterFactory = characterFactory ?? AICharacterFactory(),
+        _liveKitService = liveKitService ?? RobustLiveKitService(),
+        _aiCharacterService = aiCharacterService ?? AdaptiveAICharacterService();
   ConfidenceScenario? _currentScenario;
   UserAdaptiveProfile? _userProfile;
   AICharacterInstance? _aiCharacter;
@@ -250,19 +260,14 @@ class ConversationManager {
         confidence: analysis.confidenceScore,
       );
       
-      // Obtenir les métriques de performance
-      final performanceMetrics = {
-        'confidence_level': analysis.confidenceScore,
-        'fluency_score': analysis.fluencyScore,
-        'clarity_score': analysis.clarityScore,
-        'speaking_rate': analysis.speakingRate,
-      };
-      
       // Générer la réponse IA
       _setState(ConversationState.aiThinking);
-      final aiResponse = await _conversationEngine.generateAIResponse(
-        userMessage: analysis.transcription,
-        performanceMetrics: performanceMetrics,
+      final aiResponse = await _conversationEngine.generateResponse(
+        userInput: analysis.transcription,
+        conversationHistory: _conversationEngine.getConversationHistory(),
+        scenario: _currentScenario!,
+        character: _aiCharacter!.type,
+        userProfile: _userProfile!,
       );
       
       // Émettre la réponse IA
@@ -270,27 +275,22 @@ class ConversationManager {
       _emitEvent(
         ConversationEventType.aiMessage,
         data: {
-          'message': aiResponse.message,
-          'character': aiResponse.character.name,
-          'emotion': aiResponse.emotionalState.name,
-          'suggestions': aiResponse.suggestedUserResponses,
+          'message': aiResponse,
+          'character': _aiCharacter!.type.displayName,
+          'emotion': 'analytical', // TODO: Get emotion from a service
         },
       );
       
       // Jouer la réponse audio
-      await _playAIResponse(aiResponse.message);
+      await _playAIResponse(aiResponse);
       
       // Incrémenter le nombre de tours
       _turnCount++;
       
       // Continuer l'écoute si nécessaire
-      if (aiResponse.requiresUserResponse) {
-        _setState(ConversationState.userSpeaking);
-        _startListening();
-      } else {
-        _setState(ConversationState.ready);
-        _emitEvent(ConversationEventType.conversationPaused);
-      }
+      // Pour l'instant, on continue toujours
+      _setState(ConversationState.userSpeaking);
+      _startListening();
       
     } catch (e) {
       _logger.e('❌ [$_tag] Erreur traitement tour utilisateur: $e');
@@ -302,15 +302,16 @@ class ConversationManager {
   /// Joue la réponse audio de l'IA
   Future<void> _playAIResponse(String text) async {
     try {
-      // TODO: Implémenter la synthèse vocale via TTS
-      // Pour l'instant, simuler un délai
+      // TODO: Implémenter la synthèse vocale via un service TTS dédié.
+      // Le AdaptiveAICharacterService ne gère pas la synthèse.
+      // Pour l'instant, simuler un délai pour ne pas bloquer le flux.
       final speakingDuration = Duration(
         milliseconds: text.length * 50, // ~50ms par caractère
       );
       
       await Future.delayed(speakingDuration);
       
-      _logger.d('🔊 [$_tag] Réponse IA jouée');
+      _logger.d('🔊 [$_tag] Réponse IA jouée (simulation)');
       
     } catch (e) {
       _logger.e('❌ [$_tag] Erreur lecture audio IA: $e');

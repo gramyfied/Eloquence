@@ -156,7 +156,7 @@ class DifficultyAdapter {
 
   PerformancePattern _analyzePerformancePattern(List<PerformanceMetrics> performances) {
     if (performances.isEmpty) {
-      return PerformancePattern(
+      return const PerformancePattern(
         trend: PerformanceTrend.stable,
         variance: 0.0,
         primaryReason: 'Données insuffisantes',
@@ -468,9 +468,9 @@ class DifficultyAdapter {
   // ========== FALLBACK ==========
 
   AdaptedDifficultyResult _createFallbackResult(DifficultyContext context) {
-    final fallbackLevel = 0.5; // Niveau moyen par défaut
+    const fallbackLevel = 0.5; // Niveau moyen par défaut
 
-    return AdaptedDifficultyResult(
+    return const AdaptedDifficultyResult(
       numericLevel: fallbackLevel,
       stringLevel: 'intermédiaire',
       exerciseDifficulty: ExerciseDifficulty.intermediate,
@@ -481,7 +481,7 @@ class DifficultyAdapter {
         '🔄 Plus de données nécessaires pour une adaptation précise',
       ],
       confidence: 0.3,
-      suggestedDuration: const Duration(minutes: 8),
+      suggestedDuration: Duration(minutes: 8),
       nextReviewInHours: 48,
     );
   }

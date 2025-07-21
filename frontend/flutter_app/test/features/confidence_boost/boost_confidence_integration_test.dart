@@ -38,7 +38,7 @@ void main() {
       logger.w('🚨 TEST: Ce test reproduit le timeout backend actuel de 30s');
       
       final provider = container.read(confidenceBoostProvider.notifier);
-      final scenario = const ConfidenceScenario.professional();
+      const scenario = ConfidenceScenario.professional();
       final textSupport = TextSupport(
         type: SupportType.fillInBlanks,
         content: 'Test de timeout backend',
@@ -81,7 +81,7 @@ void main() {
       logger.w('🚨 TEST: Ce test reproduit les race conditions actuelles');
       
       final provider = container.read(confidenceBoostProvider.notifier);
-      final scenario = const ConfidenceScenario.interview();
+      const scenario = ConfidenceScenario.interview();
       final textSupport = TextSupport(
         type: SupportType.freeImprovisation,
         content: 'Test race conditions',
@@ -138,7 +138,7 @@ void main() {
       logger.w('🚨 TEST: Ce test montre le timeout global actuel de 35s');
       
       final provider = container.read(confidenceBoostProvider.notifier);
-      final scenario = const ConfidenceScenario.publicSpeaking();
+      const scenario = ConfidenceScenario.publicSpeaking();
       final textSupport = TextSupport(
         type: SupportType.guidedStructure,
         content: 'Test timeout global',
@@ -177,7 +177,7 @@ void main() {
       
       final provider = container.read(confidenceBoostProvider);
       final notifier = container.read(confidenceBoostProvider.notifier);
-      final scenario = const ConfidenceScenario.professional();
+      const scenario = ConfidenceScenario.professional();
       final textSupport = TextSupport(
         type: SupportType.fillInBlanks,
         content: 'Test d\'état',

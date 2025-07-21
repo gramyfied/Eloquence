@@ -46,7 +46,8 @@ class ConfidenceAnalysisBackendService {
     _logger.i('$_tag: Démarrage analyse backend - Scenario: ${scenario.title}');
     
     try {
-      // Valider les données audio
+      return await Future.sync(() async {
+        // Valider les données audio
       if (audioData.isEmpty) {
         _logger.w('$_tag: Données audio vides, abandon analyse');
         return null;
@@ -72,6 +73,10 @@ class ConfidenceAnalysisBackendService {
         await _cleanupTemporaryFile(audioFile);
       }
       
+      }).timeout(const Duration(seconds: 10)); // Timeout global de 10s
+    } on TimeoutException {
+      _logger.w('$_tag: Timeout global 10s dépassé pour l\'analyse complète.');
+      return _createFallbackAnalysis(scenario, recordingDurationSeconds);
     } catch (e, stackTrace) {
       _logger.e('$_tag: Erreur analyse backend: $e', error: e, stackTrace: stackTrace);
       return _createFallbackAnalysis(scenario, recordingDurationSeconds);

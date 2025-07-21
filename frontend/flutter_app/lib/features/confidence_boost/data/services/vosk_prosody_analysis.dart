@@ -25,12 +25,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
     
     try {
       // Analyser avec VOSK - la méthode prend seulement audioData
-      final voskResult = await _voskService.analyzeSpeech(audioData);
-      
-      if (voskResult == null) {
-        _logger.w('$_tag: Analyse VOSK a retourné null');
-        return _createFallbackAnalysis(audioData, scenario);
-      }
+      final voskResult = await _voskService.analyzeAudio(audioData);
       
       // Convertir les résultats VOSK en analyse prosodique complète
       return ProsodyAnalysisResult(
@@ -53,7 +48,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
   @override
   Future<SpeechRateAnalysis?> analyzeSpeechRate(Uint8List audioData) async {
     try {
-      final voskResult = await _voskService.analyzeSpeech(audioData);
+      final voskResult = await _voskService.analyzeAudio(audioData);
       return _createSpeechRateFromVosk(voskResult);
     } catch (e) {
       _logger.w('$_tag: Erreur analyse débit: $e');
@@ -64,7 +59,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
   @override
   Future<IntonationAnalysis?> analyzeIntonation(Uint8List audioData) async {
     try {
-      final voskResult = await _voskService.analyzeSpeech(audioData);
+      final voskResult = await _voskService.analyzeAudio(audioData);
       return _createIntonationFromVosk(voskResult);
     } catch (e) {
       _logger.w('$_tag: Erreur analyse intonation: $e');
@@ -75,7 +70,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
   @override
   Future<PauseAnalysis?> analyzePauses(Uint8List audioData) async {
     try {
-      final voskResult = await _voskService.analyzeSpeech(audioData);
+      final voskResult = await _voskService.analyzeAudio(audioData);
       return _createPauseAnalysisFromVosk(voskResult);
     } catch (e) {
       _logger.w('$_tag: Erreur analyse pauses: $e');
@@ -86,7 +81,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
   @override
   Future<EnergyAnalysis?> analyzeVocalEnergy(Uint8List audioData) async {
     try {
-      final voskResult = await _voskService.analyzeSpeech(audioData);
+      final voskResult = await _voskService.analyzeAudio(audioData);
       return _createEnergyAnalysisFromVosk(voskResult);
     } catch (e) {
       _logger.w('$_tag: Erreur analyse énergie: $e');
@@ -97,7 +92,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
   @override
   Future<DisfluencyAnalysis?> analyzeDisfluencies(Uint8List audioData) async {
     try {
-      final voskResult = await _voskService.analyzeSpeech(audioData);
+      final voskResult = await _voskService.analyzeAudio(audioData);
       return _createDisfluencyAnalysisFromVosk(voskResult);
     } catch (e) {
       _logger.w('$_tag: Erreur analyse disfluences: $e');
@@ -372,7 +367,7 @@ class VoskProsodyAnalysis implements ProsodyAnalysisInterface {
     
     return ProsodyAnalysisResult(
       overallProsodyScore: 70.0,
-      speechRate: SpeechRateAnalysis(
+      speechRate: const SpeechRateAnalysis(
         wordsPerMinute: 150,
         syllablesPerSecond: 3.75,
         fluencyScore: 0.7,

@@ -9,33 +9,23 @@ import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/m
 void main() {
   group('🪲 Tests de Validation Debug - Corrections des Problèmes', () {
     test('LOG TEST: Validation initialisation Hive Repository', () async {
-      debugPrint('\n=== 🔍 TEST DIAGNOSTIC: INITIALISATION HIVE ===');
+      debugPrint('\n=== 🔍 TEST DIAGNOSTIC: INITIALISATION HIVE (FutureProvider) ===');
       
       // Test de création du provider
       final container = ProviderContainer();
       
       try {
-        debugPrint('📋 Création du gamificationRepositoryProvider...');
-        final repo = container.read(gamificationRepositoryProvider);
-        debugPrint('✅ Repository créé: ${repo.runtimeType}');
-        
-        if (repo is HiveGamificationRepository) {
-          debugPrint('✅ Type correct: HiveGamificationRepository');
-          
-          // Test d'initialisation (peut échouer, mais on capture l'erreur)
-          try {
-            await repo.initialize();
-            debugPrint('✅ SUCCÈS: Hive initialisé correctement');
-          } catch (e) {
-            debugPrint('⚠️ INFO: Initialisation échouée (normal en test): $e');
-            debugPrint('🔧 CAUSE: Tests unitaires sans environnement Flutter complet');
-          }
-        } else {
-          debugPrint('❌ ERREUR: Type incorrect du repository');
-        }
-        
+        debugPrint('📋 Lecture du gamificationRepositoryProvider (FutureProvider)...');
+        // Correction: On doit lire la future du provider et l'attendre
+        final repoFuture = container.read(gamificationRepositoryProvider.future);
+        debugPrint('✅ Future<GamificationRepository> obtenue.');
+
+        await repoFuture;
+        debugPrint('✅ SUCCÈS: FutureProvider a résolu la future, Hive est considéré comme initialisé.');
+
       } catch (e) {
-        debugPrint('❌ ERREUR Provider: $e');
+        debugPrint('⚠️ INFO: Le future a échoué comme prévu en environnement de test (sans Flutter): $e');
+        debugPrint('🔧 CAUSE: C\'est normal, Hive a besoin de `path_provider` qui dépend de l\'environnement Flutter UI.');
       } finally {
         container.dispose();
       }
