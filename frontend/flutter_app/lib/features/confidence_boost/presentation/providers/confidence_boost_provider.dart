@@ -15,7 +15,6 @@ import '../../data/services/confidence_livekit_integration.dart';
 import '../../data/services/text_support_generator.dart';
 import '../../data/services/confidence_analysis_backend_service.dart';
 import '../../data/services/prosody_analysis_interface.dart';
-import '../../data/services/unified_speech_analysis_service.dart';
 import '../../data/services/vosk_prosody_analysis.dart';
 import '../../data/services/vosk_analysis_service.dart';
 import '../../data/services/mistral_api_service.dart';
@@ -30,8 +29,6 @@ import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/repositories/confidence_repository.dart';
 import 'mistral_api_service_provider.dart'; // Import du nouveau provider
 import 'network_config_provider.dart'; // Provider réseau adaptatif
-import '../../data/services/conversation_manager.dart';
-import '../../data/services/conversation_engine.dart';
 import '../../data/services/ai_character_factory.dart';
 import '../../data/services/robust_livekit_service.dart';
 import '../../data/services/adaptive_ai_character_service.dart';
@@ -94,11 +91,6 @@ final confidenceAnalysisBackendServiceProvider = Provider<ConfidenceAnalysisBack
   // Configure dynamiquement l’URL du backend
   ConfidenceAnalysisBackendService.configureBackendUrl(networkConfig.getBestLlmServiceUrl());
   return ConfidenceAnalysisBackendService();
-});
-
-// Provider pour l'interface d'analyse prosodique (maintenant unifié)
-final unifiedSpeechAnalysisProvider = Provider<UnifiedSpeechAnalysisService>((ref) {
-  return UnifiedSpeechAnalysisService();
 });
 
 // Provider pour le service VOSK
@@ -197,16 +189,6 @@ final confidenceScenariosProvider = FutureProvider<List<confidence_scenarios.Con
   return await repository.getScenarios();
 });
 
-// Provider pour le ConversationManager
-final conversationManagerProvider = Provider<ConversationManager>((ref) {
-  return ConversationManager(
-    conversationEngine: ConversationEngine(),
-    characterFactory: AICharacterFactory(),
-    liveKitService: ref.watch(robustLiveKitServiceProvider),
-    aiCharacterService: AdaptiveAICharacterService(),
-    voskAnalysisService: ref.watch(voskAnalysisServiceProvider),
-  );
-});
 
 // Provider pour RobustLiveKitService
 final robustLiveKitServiceProvider = Provider<RobustLiveKitService>((ref) {

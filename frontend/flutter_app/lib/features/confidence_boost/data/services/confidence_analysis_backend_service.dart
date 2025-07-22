@@ -13,7 +13,7 @@ import '../../../../core/config/app_config.dart'; // Importer AppConfig
 import '../../../../core/services/optimized_http_service.dart';
 import '../../domain/entities/confidence_models.dart';
 
-/// Service pour l'analyse backend utilisant Whisper + Mistral sur Scaleway
+/// Service pour l'analyse backend utilisant l'IA sur Scaleway
 class ConfidenceAnalysisBackendService {
   static const String _tag = 'ConfidenceAnalysisBackendService';
   static final Logger _logger = Logger();
@@ -31,8 +31,8 @@ class ConfidenceAnalysisBackendService {
   static const String _analysisEndpoint = '/api/confidence-analysis';
   // Timeout géré automatiquement par OptimizedHttpService
   
-  /// Analyse un enregistrement audio via le pipeline Whisper + Mistral
-  /// 
+  /// Analyse un enregistrement audio via le pipeline d'IA
+  ///
   /// [audioData] : Données audio brutes (WAV/MP3)
   /// [scenario] : Scénario d'exercice pour contextualiser l'analyse
   /// [userContext] : Contexte utilisateur optionnel
@@ -126,9 +126,9 @@ class ConfidenceAnalysisBackendService {
         'user_context': userContext,
         'recording_duration_seconds': recordingDurationSeconds,
         'analysis_config': {
-          'enable_whisper': true,
+          'enable_transcription': true,
           'enable_mistral': true,
-          'whisper_model': 'large-v3',
+          'transcription_model': 'large-v3',
           'mistral_model': '7B-Instruct-v0.2',
           'language': 'fr',
         },
@@ -183,10 +183,10 @@ class ConfidenceAnalysisBackendService {
     try {
       final data = jsonDecode(responseBody) as Map<String, dynamic>;
       
-      // Extraire les résultats Whisper
-      final whisperData = data['whisper_result'] as Map<String, dynamic>?;
-      final transcription = whisperData?['transcription'] as String? ?? '';
-      final whisperConfidence = (whisperData?['confidence'] as num?)?.toDouble() ?? 0.0;
+      // Extraire les résultats de transcription
+      final transcriptionData = data['transcription_result'] as Map<String, dynamic>?;
+      final transcription = transcriptionData?['transcription'] as String? ?? '';
+      final transcriptionConfidence = (transcriptionData?['confidence'] as num?)?.toDouble() ?? 0.0;
       
       // Extraire les résultats Mistral
       final mistralData = data['mistral_result'] as Map<String, dynamic>?;
@@ -195,7 +195,7 @@ class ConfidenceAnalysisBackendService {
       // Construire l'analyse finale
       return ConfidenceAnalysis(
         overallScore: _extractScore(analysis, 'overall_score', 75.0),
-        confidenceScore: _extractScore(analysis, 'confidence_score', whisperConfidence),
+        confidenceScore: _extractScore(analysis, 'confidence_score', transcriptionConfidence),
         fluencyScore: _extractScore(analysis, 'fluency_score', 0.75),
         clarityScore: _extractScore(analysis, 'clarity_score', 0.80),
         energyScore: _extractScore(analysis, 'energy_score', 0.75),

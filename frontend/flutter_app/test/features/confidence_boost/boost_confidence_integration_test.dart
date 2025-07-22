@@ -226,22 +226,22 @@ void main() {
       logger.i('🎯 TEST: Ce test définit les performances cibles après corrections');
       
       // Définir les métriques cibles
-      const targetWhisperTimeout = Duration(seconds: 6);
+      const targetVoskTimeout = Duration(seconds: 6);
       const targetBackendTimeout = Duration(seconds: 30);
       const targetGlobalTimeout = Duration(seconds: 35);
       const targetMobileOptimal = Duration(seconds: 8);
       
       logger.i('📊 TEST: MÉTRIQUES CIBLES APRÈS CORRECTIONS:');
-      logger.i('   🎵 Whisper timeout: ${targetWhisperTimeout.inSeconds}s');
+      logger.i('   🎵 Vosk timeout: ${targetVoskTimeout.inSeconds}s');
       logger.i('   🔧 Backend timeout: ${targetBackendTimeout.inSeconds}s');
       logger.i('   📱 Mobile optimal: ${targetMobileOptimal.inSeconds}s');
       logger.i('   🌍 Global timeout: ${targetGlobalTimeout.inSeconds}s');
       
       // Ce test passera une fois les corrections appliquées
-      expect(targetMobileOptimal.inSeconds, lessThan(10), 
+      expect(targetMobileOptimal.inSeconds, lessThan(10),
         reason: 'L\'expérience mobile doit être fluide');
-      expect(targetWhisperTimeout.inSeconds, lessThan(targetBackendTimeout.inSeconds),
-        reason: 'Whisper doit être plus rapide que le backend complet');
+      expect(targetVoskTimeout.inSeconds, lessThan(targetBackendTimeout.inSeconds),
+        reason: 'Vosk doit être plus rapide que le backend complet');
         
       logger.i('✅ TEST: Métriques cibles validées');
     });

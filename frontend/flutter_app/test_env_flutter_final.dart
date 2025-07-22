@@ -21,7 +21,7 @@ Future<void> main() async {
     // Tester les variables critiques
     final criticalVars = {
       'LLM_SERVICE_URL': 'Service Backend Principal',
-      'WHISPER_STT_URL': 'Service Whisper STT',
+      'VOSK_STT_URL': 'Service Vosk STT',
       'HYBRID_EVALUATION_URL': 'Service Hybrid Evaluation',
       'MOBILE_MODE': 'Mode Mobile',
       'ENVIRONMENT': 'Environnement'
