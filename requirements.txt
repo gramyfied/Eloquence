@@ -1,0 +1,8 @@
+livekit
+fastapi
+uvicorn[standard]
+aiohttp
+aiofiles
+python-multipart
+pydantic
+websockets

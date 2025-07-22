@@ -1,0 +1,25 @@
+{
+  "name": "Boost de Confiance",
+  "description": "Exercice d'amélioration de la confiance en soi",
+  "character": {
+    "name": "Marie",
+    "role": "Cliente exigeante",
+    "personality": "Directe mais juste, apprécie les arguments chiffrés",
+    "conversation_patterns": {
+      "opening": "Bonjour ! Présentez-moi votre solution, je vous écoute.",
+      "challenge_triggers": ["hesitation", "vague_answers"],
+      "positive_triggers": ["concrete_data", "confident_delivery"],
+      "responses": {
+        "skeptical": "Hmm, je ne suis pas convaincue. Pouvez-vous être plus précis ?",
+        "interested": "Intéressant ! Dites-moi en plus sur ce point.",
+        "impressed": "Excellent ! Votre argumentation est solide."
+      }
+    }
+  },
+  "evaluation_criteria": {
+    "confidence_vocal": {"weight": 0.3, "description": "Assurance dans la voix"},
+    "argumentation": {"weight": 0.3, "description": "Qualité des arguments"},
+    "adaptabilité": {"weight": 0.2, "description": "Capacité d'adaptation"},
+    "engagement": {"weight": 0.2, "description": "Niveau d'engagement"}
+  }
+}
