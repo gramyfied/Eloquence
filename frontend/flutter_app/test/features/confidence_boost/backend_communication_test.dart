@@ -14,7 +14,7 @@ import '../../fakes/fake_mistral_api_service.dart';
 /// Tests complets de communication backend pour l'exercice Confidence Boost Express
 ///
 /// Ces tests valident l'intégration complète entre :
-/// - ConfidenceAnalysisBackendService (Pipeline Whisper + Mistral)
+/// - ConfidenceAnalysisBackendService (Pipeline Vosk + Mistral)
 /// - ConfidenceLiveKitIntegration (Session LiveKit avec fallbacks)
 /// - ProsodyAnalysisInterface (Analyse prosodique VOSK/Fallback)
 /// - ConfidenceBoostProvider (Gestion d'état et coordination)
@@ -176,7 +176,7 @@ void main() {
       container.dispose();
     });
 
-    test('Backend Service - Intégration complète pipeline Whisper + Mistral', () async {
+    test('Backend Service - Intégration complète pipeline Vosk + Mistral', () async {
       // Arrange
       final testAudioData = Uint8List.fromList([1, 2, 3, 4, 5]); // Audio fictif
       const testScenario = ConfidenceScenario(

@@ -62,7 +62,7 @@ class OptimizedHttpService {
     - Timeout idle: ${_idleTimeout.inSeconds}s
     - Keep-alive: activé
     - Compression gzip: activée
-    - Default Short Timeout: ${shortTimeout.inSeconds}s (Whisper)
+    - Default Short Timeout: ${shortTimeout.inSeconds}s (Vosk)
     - Default Medium Timeout: ${mediumTimeout.inSeconds}s (Mistral)
     - Default Long Timeout: ${longTimeout.inSeconds}s (Upload)
     ''');

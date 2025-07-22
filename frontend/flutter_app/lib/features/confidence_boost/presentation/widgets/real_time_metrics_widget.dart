@@ -152,7 +152,7 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
             end: Alignment.bottomRight,
             colors: [
               EloquenceColors.glassBackground,
-              EloquenceColors.glassBackground.withOpacity(0.8),
+              EloquenceColors.glassBackground.withAlpha(204),
             ],
           ),
           borderRadius: BorderRadius.circular(20),
@@ -163,7 +163,7 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
           boxShadow: widget.isActive
               ? [
                   BoxShadow(
-                    color: EloquenceColors.cyan.withOpacity(0.3),
+                    color: EloquenceColors.cyan.withAlpha(77),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -199,7 +199,7 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
                 ),
                 const Spacer(),
                 if (widget.metrics != null) ...[
-                  Icon(
+                  const Icon(
                     Icons.timer_outlined,
                     color: Colors.grey,
                     size: 16,
@@ -289,13 +289,13 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  color.withOpacity(0.1),
-                  color.withOpacity(0.05),
+                  color.withAlpha(26),
+                  color.withAlpha(13),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: color.withOpacity(score > 0.7 ? 0.6 : 0.3),
+                color: color.withAlpha((255 * (score > 0.7 ? 0.6 : 0.3)).round()),
               ),
             ),
             child: Column(
@@ -325,7 +325,7 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
                 const SizedBox(height: 6),
                 LinearProgressIndicator(
                   value: score,
-                  backgroundColor: color.withOpacity(0.2),
+                  backgroundColor: color.withAlpha(51),
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                   minHeight: 3,
                 ),
@@ -343,7 +343,7 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: EloquenceColors.navy.withOpacity(0.3),
+        color: EloquenceColors.navy.withAlpha(77),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

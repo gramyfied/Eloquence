@@ -21,7 +21,7 @@ import 'package:eloquence_2_0/core/theme/eloquence_unified_theme.dart';
 /// - Validation animations optimisées selon Design System Eloquence
 /// - Tests personnages IA adaptatifs Thomas et Marie
 /// - Vérification timeouts optimisés mobile (6s Vosk, 8s global)
-/// - Migration complète Whisper → Vosk
+/// - Migration complète vers Vosk
 /// - Performance mobile avec Future.any() pour race conditions
 ///
 /// 🎯 PHASES TESTÉES :
@@ -417,7 +417,7 @@ void main() {
       expect(find.byType(ConfidenceBoostAdaptiveScreen), findsOneWidget);
     });
 
-    testWidgets('Doit valider la migration Whisper → Vosk', (tester) async {
+    testWidgets('Doit valider la migration vers Vosk', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
@@ -441,7 +441,7 @@ void main() {
         await tester.pumpAndSettle();
       }
       
-      // Vérifier qu'aucune référence Whisper ne subsiste
+      // Vérifier qu'aucune référence à l'ancien système ne subsiste
       expect(tester.takeException(), isNull);
     });
   });

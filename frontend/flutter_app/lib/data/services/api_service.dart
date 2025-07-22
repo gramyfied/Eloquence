@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async'; // Ajout de l'import pour StreamController
-import 'dart:io'; // Import pour File
 import 'dart:typed_data'; // Import pour Uint8List
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -408,56 +407,6 @@ class ApiService {
       logger.e(_tag, 'Erreur lors de la connexion à l\'ancien endpoint: $e');
       logger.performance(_tag, 'endSession', end: true);
       return false;
-    }
-  }
-
-  // Transcrire un fichier audio avec Whisper
-  Future<String> transcribeAudio(String audioFilePath) async {
-    logger.i(_tag, 'Transcription audio avec Whisper: $audioFilePath');
-    logger.performance(_tag, 'transcribeAudio', start: true);
-
-    try {
-      // Lire le fichier audio
-      final file = File(audioFilePath);
-      if (!await file.exists()) {
-        throw Exception('Fichier audio introuvable: $audioFilePath');
-      }
-
-      // Créer une requête multipart pour envoyer le fichier
-      final uri = Uri.parse('$baseUrl/api/transcribe');
-      final request = http.MultipartRequest('POST', uri);
-      
-      // Ajouter les headers d'authentification
-      request.headers.addAll(headers);
-      
-      // Ajouter le fichier audio
-      request.files.add(await http.MultipartFile.fromPath(
-        'audio',
-        audioFilePath,
-        filename: 'recording.wav',
-      ));
-
-      // Envoyer la requête
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        logger.i(_tag, 'Transcription réussie');
-        
-        final responseData = json.decode(response.body);
-        final transcription = responseData['transcription'] ?? '';
-        
-        logger.performance(_tag, 'transcribeAudio', end: true);
-        return transcription;
-      } else {
-        logger.e(_tag, 'Erreur ${response.statusCode} lors de la transcription: ${response.body}');
-        logger.performance(_tag, 'transcribeAudio', end: true);
-        throw Exception('Erreur lors de la transcription audio');
-      }
-    } catch (e) {
-      logger.e(_tag, 'Exception lors de la transcription: $e');
-      logger.performance(_tag, 'transcribeAudio', end: true);
-      rethrow;
     }
   }
 

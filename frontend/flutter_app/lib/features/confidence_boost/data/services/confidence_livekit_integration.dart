@@ -417,7 +417,7 @@ class ConfidenceLiveKitIntegration {
       fluencyScore: 0.70 + (_debugRandom() * 0.18),
       clarityScore: 0.68 + (_debugRandom() * 0.20),
       energyScore: 0.75 + (_debugRandom() * 0.15),
-      feedback: 'Analyse de secours - ${scenario?.title ?? "Exercice Confidence Boost"}. L\'intégration Whisper + Mistral fournira des résultats plus précis.',
+      feedback: 'Analyse de secours - ${scenario?.title ?? "Exercice Confidence Boost"}. L\'intégration IA fournira des résultats plus précis.',
       wordCount: wordCount,
       speakingRate: speakingRate,
       keywordsUsed: scenario?.keywords.take(2).toList() ?? [],

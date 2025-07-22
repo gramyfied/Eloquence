@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
-import '../../domain/entities/ai_character_models.dart';
 
 /// Rôle dans la conversation
 enum ConversationRole {
@@ -204,14 +203,14 @@ class _ConversationChatWidgetState extends State<ConversationChatWidget>
                 height: 12,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: EloquenceColors.violet.withOpacity(0.5 + 0.5 * _typingAnimation.value),
+                  color: EloquenceColors.violet.withAlpha((255 * (0.5 + 0.5 * _typingAnimation.value)).round()),
                 ),
               ),
               const SizedBox(width: EloquenceSpacing.xs),
               Text(
                 'IA parle...',
                 style: EloquenceTextStyles.caption.copyWith(
-                  color: EloquenceColors.violet.withOpacity(0.7 + 0.3 * _typingAnimation.value),
+                  color: EloquenceColors.violet.withAlpha((255 * (0.7 + 0.3 * _typingAnimation.value)).round()),
                 ),
               ),
             ],
@@ -229,7 +228,7 @@ class _ConversationChatWidgetState extends State<ConversationChatWidget>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: EloquenceColors.cyan.withOpacity(0.5),
+                  color: EloquenceColors.cyan.withAlpha(128),
                   blurRadius: 4,
                   spreadRadius: 1,
                 ),
@@ -437,7 +436,7 @@ class _ConversationChatWidgetState extends State<ConversationChatWidget>
               Icons.psychology,
               size: 20,
               color: widget.isAISpeaking
-                ? EloquenceColors.violet.withOpacity(0.7 + 0.3 * _typingAnimation.value)
+                ? EloquenceColors.violet.withAlpha((255 * (0.7 + 0.3 * _typingAnimation.value)).round())
                 : EloquenceColors.violet,
             ),
           ),

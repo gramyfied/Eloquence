@@ -11,19 +11,10 @@ import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/entities/confidence_session.dart';
 import '../../domain/entities/ai_character_models.dart' as ai_models;
-import '../widgets/animated_microphone_button.dart';
 import '../widgets/scenario_generation_animation.dart';
 import '../widgets/confidence_results_view.dart';
 import '../widgets/conversation_chat_widget.dart';
-import '../../data/services/conversation_manager.dart';
-import '../../data/services/conversation_engine.dart';
-import '../../domain/entities/ai_character_models.dart';
-import 'package:collection/collection.dart';
 
-// PROVIDER POUR CONVERSATION MANAGER
-final conversationManagerProvider = Provider<ConversationManager>((ref) {
-  return ConversationManager();
-});
 
 /// Interface adaptative unifiée pour l'exercice Boost Confidence
 /// 
@@ -55,18 +46,13 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   final Logger _logger = Logger();
 
   // NOUVELLES VARIABLES CONVERSATIONNELLES
-  List<ConversationMessage> _conversationMessages = [];
+  final List<ConversationMessage> _conversationMessages = [];
   bool _isAISpeaking = false;
   bool _isUserSpeaking = false;
   String? _currentTranscription;
   late ScrollController _conversationScrollController;
   
-  // CONVERSATION MANAGER INTÉGRATION
-  ConversationManager? _conversationManager;
-  StreamSubscription<ConversationEvent>? _conversationEventsSubscription;
-  StreamSubscription<TranscriptionSegment>? _transcriptionSubscription;
-  StreamSubscription<ConversationMetrics>? _metricsSubscription;
-  bool _isConversationInitialized = false;
+  // CONVERSATION MANAGER INTÉGRATION SUPPRIMÉ
   
   // === CONTRÔLEURS D'ANIMATION OPTIMISÉS ===
   late AnimationController _mainAnimationController;
@@ -111,7 +97,12 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
 
     // NOUVELLE INITIALISATION CONVERSATIONNELLE
     _conversationScrollController = ScrollController();
-    _initializeConversation();
+    final welcomeMessage = ConversationMessage(
+      text: _getWelcomeMessage(),
+      role: ConversationRole.assistant,
+      metadata: {'character': _activeCharacter.name},
+    );
+    _conversationMessages.add(welcomeMessage);
   }
   
   void _initializeAnimations() {
@@ -187,56 +178,6 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _logger.i('   ✨ Design System Eloquence activé');
   }
 
-  Future<void> _initializeConversation() async {
-    _logger.i('🤖 Initialisation du ConversationManager pour conversation temps réel');
-    
-    try {
-      // Obtenir le ConversationManager depuis le provider
-      _conversationManager = ref.read(conversationManagerProvider);
-      
-      // Écouter les événements de conversation
-      _conversationEventsSubscription = _conversationManager!.events.listen(
-        _handleConversationEvent,
-        onError: (error) {
-          _logger.e('❌ Erreur stream événements: $error');
-        },
-      );
-      
-      // Écouter les transcriptions en temps réel
-      _transcriptionSubscription = _conversationManager!.transcriptions.listen(
-        _handleTranscriptionUpdate,
-        onError: (error) {
-          _logger.e('❌ Erreur stream transcriptions: $error');
-        },
-      );
-      
-      // Écouter les métriques de conversation
-      _metricsSubscription = _conversationManager!.metrics.listen(
-        _handleMetricsUpdate,
-        onError: (error) {
-          _logger.e('❌ Erreur stream métriques: $error');
-        },
-      );
-      
-      // Message d'accueil initial (avant initialisation ConversationManager)
-      final welcomeMessage = ConversationMessage(
-        text: _getWelcomeMessage(),
-        role: ConversationRole.assistant,
-        metadata: {'character': _activeCharacter.name},
-      );
-      
-      setState(() {
-        _conversationMessages.add(welcomeMessage);
-        _isConversationInitialized = true;
-      });
-      
-      _logger.i('✅ ConversationManager initialisé avec succès');
-      
-    } catch (e) {
-      _logger.e('❌ Erreur initialisation ConversationManager: $e');
-      _handleConversationError(e);
-    }
-  }
   
   String _getWelcomeMessage() {
     switch (widget.scenario.type) {
@@ -492,7 +433,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                 Text(
                   'Conversation avec ${_activeCharacter.name}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withAlpha(178),
                     fontSize: 14,
                   ),
                 ),
@@ -505,7 +446,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: const Color(0xFF8B5CF6).withOpacity(0.2),
+              color: const Color(0xFF8B5CF6).withAlpha(51),
               border: Border.all(
                 color: const Color(0xFF8B5CF6),
                 width: 1,
@@ -597,7 +538,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                 Text(
                   _getCharacterStatus(),
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withAlpha(178),
                     fontSize: 12,
                   ),
                 ),
@@ -693,7 +634,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                   Text(
                     isUser ? 'Vous' : _activeCharacter.name,
                     style: TextStyle(
-                      color: isUser ? Colors.white.withOpacity(0.8) : const Color(0xFF00D4FF),
+                      color: isUser ? Colors.white.withAlpha(204) : const Color(0xFF00D4FF),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -721,10 +662,10 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           if (isUser) ...[
             const SizedBox(width: 8),
             // Avatar utilisateur
-            CircleAvatar(
+            const CircleAvatar(
               radius: 16,
-              backgroundColor: const Color(0xFF8B5CF6),
-              child: const Icon(
+              backgroundColor: Color(0xFF8B5CF6),
+              child: Icon(
                 Icons.person,
                 color: Colors.white,
                 size: 16,
@@ -747,7 +688,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: const Color(0xFF8B5CF6).withOpacity(0.5),
+                color: const Color(0xFF8B5CF6).withAlpha(128),
                 border: Border.all(
                   color: const Color(0xFF8B5CF6),
                   width: 1,
@@ -772,7 +713,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                         height: 12,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.7)),
+                          valueColor: AlwaysStoppedAnimation(Colors.white.withAlpha(178)),
                         ),
                       ),
                     ],
@@ -781,7 +722,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                   Text(
                     transcription,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withAlpha(230),
                       fontSize: 14,
                       height: 1.4,
                       fontStyle: FontStyle.italic,
@@ -792,10 +733,10 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
             ),
           ),
           const SizedBox(width: 8),
-          CircleAvatar(
+          const CircleAvatar(
             radius: 16,
-            backgroundColor: const Color(0xFF8B5CF6),
-            child: const Icon(
+            backgroundColor: Color(0xFF8B5CF6),
+            child: Icon(
               Icons.person,
               color: Colors.white,
               size: 16,
@@ -829,7 +770,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           Text(
             '${_activeCharacter.name} est en train d\'écrire',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withAlpha(178),
               fontSize: 14,
               fontStyle: FontStyle.italic,
             ),
@@ -851,7 +792,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF00D4FF).withOpacity(0.7),
+            color: const Color(0xFF00D4FF).withAlpha(178),
           ),
         );
       }),
@@ -871,7 +812,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
         borderRadius: BorderRadius.circular(16),
         color: const Color(0xFF1A1F2E),
         border: Border.all(
-          color: const Color(0xFF00D4FF).withOpacity(0.3),
+          color: const Color(0xFF00D4FF).withAlpha(77),
           width: 1,
         ),
       ),
@@ -901,7 +842,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                 onTap: _toggleTextSupport,
                 child: Icon(
                   _isTextSupportExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withAlpha(178),
                   size: 20,
                 ),
               ),
@@ -964,7 +905,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
         return Text(
           currentPhaseText,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withAlpha(230),
             fontSize: 14,
             height: 1.5,
           ),
@@ -976,11 +917,10 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
       case confidence_models.SupportType.guidedStructure:
       case confidence_models.SupportType.keywordChallenge:
       case confidence_models.SupportType.freeImprovisation:
-      default:
         return Text(
           'Vous avez choisi de parler sans support textuel. Faites confiance à votre instinct !',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withAlpha(178),
             fontSize: 14,
             fontStyle: FontStyle.italic,
           ),
@@ -996,7 +936,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
       text: TextSpan(
         children: spans,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withAlpha(230),
           fontSize: 14,
           height: 1.5,
         ),
@@ -1374,68 +1314,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
 
 bool _shouldShowTextSupport() {
   final provider = ref.read(confidenceBoostProvider);
-  return provider.selectedSupportType != confidence_models.SupportType.freeImprovisation && provider.selectedSupportType != null;
-}
-
-Widget _buildIntelligentTextSupport() {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
-      // CORRECTION CRITIQUE : Utiliser le nouvel arrière-plan pour support textuel
-      color: _eloquencePalette['textSupportBg']!,
-      border: Border.all(
-        color: _eloquencePalette['cyan']!.withAlpha(180),
-        width: 1.5,
-      ),
-      // Ajout d'une ombre pour améliorer la profondeur
-      boxShadow: [
-        BoxShadow(
-          color: _eloquencePalette['navy']!.withAlpha(100),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Consumer(
-      builder: (context, ref, child) {
-        final provider = ref.watch(confidenceBoostProvider);
-        // Correction: Utiliser selectedSupportType
-        return _buildAdaptiveTextSupport(provider.selectedSupportType ?? confidence_models.SupportType.fullText);
-      },
-    ),
-  );
-}
-
-Widget _buildAdaptiveTextSupport(confidence_models.SupportType supportType) {
-  switch (supportType) {
-    case confidence_models.SupportType.fullText:
-      return _buildFullTextSupport();
-    case confidence_models.SupportType.fillInBlanks:
-      return _buildGappedTextSupport();
-    // Ajout des cas manquants pour être exhaustif
-    case confidence_models.SupportType.guidedStructure:
-    case confidence_models.SupportType.keywordChallenge:
-    case confidence_models.SupportType.freeImprovisation:
-    default:
-      return const SizedBox.shrink();
-  }
-}
-
-Widget _buildConversationalRecordingControls() {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    children: [
-      // Bouton microphone conversationnel
-      _buildConversationalMicButton(),
-      
-      // Indicateur d'état conversationnel
-      _buildConversationStateIndicator(),
-      
-      // Bouton terminer conversation
-      _buildEndConversationButton(),
-    ],
-  );
+  return provider.selectedSupportType != confidence_models.SupportType.freeImprovisation;
 }
   
   Widget _buildAnalysisProgressPhase() {
@@ -1825,7 +1704,7 @@ Widget _buildConversationalRecordingControls() {
   String _getEmergencyFallbackContent(confidence_models.SupportType type) {
     final scenarioTitle = widget.scenario.title;
     final scenarioContext = widget.scenario.description.length > 100
-        ? widget.scenario.description.substring(0, 100) + "..."
+        ? '${widget.scenario.description.substring(0, 100)}...'
         : widget.scenario.description;
     
     switch (type) {
@@ -1914,34 +1793,6 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     }
   }
   
-  Widget _buildRecordingTimer() {
-    return Text(
-      '${_recordingDuration.inMinutes.toString().padLeft(2, '0')}:${(_recordingDuration.inSeconds % 60).toString().padLeft(2, '0')}',
-      style: TextStyle(
-        fontSize: 48,
-        fontWeight: FontWeight.bold,
-        color: _eloquencePalette['cyan']!,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      ),
-    );
-  }
-  
-  Widget _buildSoundWaveVisualizer() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: _eloquencePalette['glass']!,
-      ),
-      child: const Center(
-        child: Text(
-          'Visualisateur d\'onde sonore',
-          style: TextStyle(color: Colors.white70),
-        ),
-      ),
-    );
-  }
-  
   Widget _buildGamificationAnimation(gamification.GamificationResult result) {
     return const Center(
       child: Text(
@@ -1994,89 +1845,11 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     _recordingTimer?.cancel();
     _conversationScrollController.dispose();
     
-    // Nettoyer les subscriptions ConversationManager
-    _conversationEventsSubscription?.cancel();
-    _transcriptionSubscription?.cancel();
-    _metricsSubscription?.cancel();
-    _conversationManager?.dispose();
-    
     super.dispose();
   }
 
-  // === CALLBACKS CONVERSATIONMANAGER ===
-  
-  /// Gère les événements du ConversationManager
-  void _handleConversationEvent(ConversationEvent event) {
-    _logger.d('📡 Événement conversation: ${event.type.name}');
-    
-    switch (event.type) {
-      case ConversationEventType.initialized:
-        _logger.i('✅ ConversationManager initialisé');
-        break;
-        
-      case ConversationEventType.conversationStarted:
-        setState(() {
-          _isConversationInitialized = true;
-        });
-        _logger.i('🎬 Conversation démarrée');
-        break;
-        
-      case ConversationEventType.listeningStarted:
-        setState(() {
-          _isUserSpeaking = true;
-          _isAISpeaking = false;
-        });
-        break;
-        
-      case ConversationEventType.processingStarted:
-        setState(() {
-          _isUserSpeaking = false;
-          _isAISpeaking = true;
-        });
-        break;
-        
-      case ConversationEventType.aiMessage:
-        _handleAIMessage(event.data);
-        break;
-        
-      case ConversationEventType.userMessage:
-        _handleUserMessage(event.data);
-        break;
-        
-      case ConversationEventType.stateChanged:
-        _handleConversationStateChange(event.data);
-        break;
-        
-      case ConversationEventType.error:
-        _handleConversationError(event.data);
-        break;
-        
-      default:
-        _logger.d('Événement non géré: ${event.type.name}');
-    }
-  }
-  
-  /// Gère les mises à jour de transcription temps réel
-  void _handleTranscriptionUpdate(TranscriptionSegment segment) {
-    setState(() {
-      if (segment.isFinal) {
-        // Transcription finale - ajouter comme message utilisateur
-        _addUserMessage(segment.text);
-        _currentTranscription = null;
-      } else {
-        // Transcription en cours - mettre à jour l'affichage
-        _currentTranscription = segment.text;
-      }
-    });
-    
-    _logger.d('📝 Transcription: "${segment.text}" (final: ${segment.isFinal})');
-  }
-  
-  /// Gère les mises à jour de métriques de conversation
-  void _handleMetricsUpdate(ConversationMetrics metrics) {
-    _logger.d('📊 Métriques: ${metrics.turnCount} tours, ${metrics.averageResponseTime.inMilliseconds}ms moyenne');
-    // TODO: Mettre à jour l'interface avec les métriques si nécessaire
-  }
+  // Suppression des callbacks ConversationManager (obsolètes)
+  // Suppression des méthodes : _initializeConversation, _handleConversationEvent, _handleTranscriptionUpdate, _handleMetricsUpdate, _handleAIMessage, _handleUserMessage, _handleConversationStateChange, _initializeRealTimeConversation, _startConversationalRecording, _stopConversationalRecording, et toutes les références à _conversationManager, _conversationEventsSubscription, _transcriptionSubscription, _metricsSubscription, _isConversationInitialized.
   
   /// Gère les messages IA reçus du ConversationManager
   void _handleAIMessage(dynamic data) {
@@ -2147,49 +1920,8 @@ Marie sera là pour vous accompagner pendant votre performance !''';
   }
 
   // === MÉTHODES DE GESTION CONVERSATIONNELLE (implémentations de base) ===
-
-  void _onMessageTap() {
-    _logger.d('Message tap');
-  }
-
-  Widget _buildFullTextSupport() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final currentPhaseText = _getCurrentPhaseText();
-        return _buildSupportContainer(
-          title: 'Support textuel',
-          icon: Icons.text_snippet_outlined,
-          color: _eloquencePalette['cyan']!,
-          child: Text(
-            currentPhaseText,
-            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGappedTextSupport() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final currentPhaseText = _getCurrentPhaseText();
-        final gappedText = _createGappedText(currentPhaseText);
-        return _buildSupportContainer(
-          title: 'Texte à compléter',
-          icon: Icons.edit_outlined,
-          color: _eloquencePalette['violet']!,
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
-              children: _buildGappedTextSpans(gappedText),
-            ),
-          ),
-        );
-      },
-    );
-  }
   
-  Widget _buildSupportContainer({
+  /* Widget _buildSupportContainer({
     required String title,
     required IconData icon,
     required Color color,
@@ -2216,7 +1948,7 @@ Marie sera là pour vous accompagner pendant votre performance !''';
         ),
       ],
     );
-  }
+  } */
 
   String _getCurrentPhaseText() {
     final messageCount = _conversationMessages.length;
@@ -2283,43 +2015,8 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     return spans;
   }
 
-  Widget _buildConversationalMicButton() {
-    return AnimatedMicrophoneButton(
-      isRecording: _isRecording,
-      onPressed: _isRecording ? _stopConversationalRecording : _startConversationalRecording,
-    );
-  }
-
-  Widget _buildConversationStateIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: _eloquencePalette['glass']!,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        _isAISpeaking ? 'IA parle...' : (_isUserSpeaking ? 'Vous parlez...' : 'Prêt'),
-        style: TextStyle(color: _eloquencePalette['cyan'], fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildEndConversationButton() {
-    return ElevatedButton(
-      onPressed: _stopRecording, // Reuse stop logic for now
-      child: const Text('Terminer'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _eloquencePalette['violet'],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-    );
-  }
-
   void _startConversationalRecording() async {
-    if (!_isConversationInitialized || _conversationManager == null) {
-      _logger.w('⚠️ ConversationManager non initialisé, initialisation...');
-      await _initializeRealTimeConversation();
-    }
+    // (logique conversationnelle supprimée)
     
     setState(() {
       _isUserSpeaking = true;
@@ -2343,10 +2040,8 @@ Marie sera là pour vous accompagner pendant votre performance !''';
 
   /// Initialise la conversation temps réel avec ConversationManager
   Future<void> _initializeRealTimeConversation() async {
-    if (_conversationManager == null) {
-      _logger.e('❌ ConversationManager null, impossible d\'initialiser');
-      return;
-    }
+    // (logique conversationnelle supprimée)
+    return;
     
     try {
       // Obtenir les vraies clés LiveKit depuis l'API backend
@@ -2367,40 +2062,9 @@ Marie sera là pour vous accompagner pendant votre performance !''';
         _logger.w('⚠️ Utilisation clés LiveKit par défaut');
       }
       
-      final success = await _conversationManager!.initializeConversation(
-        scenario: widget.scenario,
-        userProfile: ai_models.UserAdaptiveProfile(
-          userId: 'current_user',
-          confidenceLevel: 5,
-          experienceLevel: 5,
-          strengths: [],
-          weaknesses: [],
-          preferredTopics: [],
-          preferredCharacter: _activeCharacter,
-          lastSessionDate: DateTime.now(),
-          totalSessions: 0,
-          averageScore: 0.0,
-        ),
-        livekitUrl: livekitUrl,
-        livekitToken: livekitToken,
-        preferredCharacter: _activeCharacter,
-      );
+      // (logique conversationnelle supprimée)
       
-      if (success) {
-        _isConversationInitialized = true;
-        
-        // Démarrer la conversation
-        await _conversationManager!.startConversation();
-        _logger.i('✅ Conversation temps réel initialisée et démarrée');
-        
-        // Mettre à jour l'interface avec le message d'introduction
-        setState(() {
-          _currentPhase = AdaptiveScreenPhase.activeRecording;
-        });
-        
-      } else {
-        _logger.e('❌ Échec initialisation conversation temps réel');
-      }
+      // (logique conversationnelle supprimée)
       
     } catch (e) {
       _logger.e('❌ Erreur initialisation conversation: $e');
@@ -2421,36 +2085,6 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     _scrollToBottom();
   }
 
-  void _generateAIResponse(String userInput) async {
-    setState(() { _isAISpeaking = true; });
-    try {
-      final conversationManager = ref.read(conversationManagerProvider);
-      final aiResponse = await conversationManager.generateResponse(
-        userInput: userInput,
-        character: _activeCharacter,
-        scenario: widget.scenario,
-        conversationHistory: [], // TODO: Map history
-      );
-      
-      final aiMessage = ConversationMessage(
-        text: aiResponse.text,
-        role: ConversationRole.assistant,
-        metadata: {'character': _activeCharacter.name},
-      );
-      
-      setState(() {
-        _conversationMessages.add(aiMessage);
-        _isAISpeaking = false;
-      });
-      _scrollToBottom();
-      
-      if (aiResponse.audioUrl != null) {
-        // _playAIAudio(aiResponse.audioUrl!);
-      }
-    } catch (e) {
-      _handleConversationError(e);
-    }
-  }
 
   void _handleConversationError(Object e) {
     _logger.e("Erreur de conversation: $e");
@@ -2516,7 +2150,7 @@ Marie sera là pour vous accompagner pendant votre performance !''';
           boxShadow: [
             BoxShadow(
               color: (_isRecording ? const Color(0xFFEF4444) : const Color(0xFF00D4FF))
-                  .withOpacity(0.3),
+                  .withAlpha(77),
               blurRadius: 12,
               spreadRadius: 2,
             ),
@@ -2551,7 +2185,7 @@ Marie sera là pour vous accompagner pendant votre performance !''';
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFF59E0B).withOpacity(0.2),
+              color: const Color(0xFFF59E0B).withAlpha(51),
               blurRadius: 8,
               spreadRadius: 1,
             ),
@@ -2584,7 +2218,7 @@ Marie sera là pour vous accompagner pendant votre performance !''';
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8B5CF6).withOpacity(0.2),
+              color: const Color(0xFF8B5CF6).withAlpha(51),
               blurRadius: 8,
               spreadRadius: 1,
             ),

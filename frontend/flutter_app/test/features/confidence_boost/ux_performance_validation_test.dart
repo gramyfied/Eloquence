@@ -413,7 +413,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // === TEST MIGRATION WHISPER → VOSK ===
+      // === TEST MIGRATION VOSK ===
       final voskIntegrationTimer = Stopwatch()..start();
 
       // Simuler workflow complet avec Vosk
@@ -543,7 +543,7 @@ void main() {
       debugPrint('  • Design System: Migration complète EloquenceTheme');
       debugPrint('  • Gamification: XP adaptatif + badges contextuels');
       debugPrint('  • IA: Personnages adaptatifs Thomas & Marie');
-      debugPrint('  • Audio: Migration Whisper→Vosk complète');
+      debugPrint('  • Audio: Migration Vosk complète');
       
       debugPrint('\n✅ STATUT FINAL : TOUTES LES VALIDATIONS RÉUSSIES');
       debugPrint('✅ EXERCICE BOOST CONFIDENCE : 100% OPÉRATIONNEL');
