@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
+import '../../domain/entities/ai_character_models.dart';
 
 /// Rôle dans la conversation
 enum ConversationRole {
@@ -25,13 +26,14 @@ class ConversationMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 }
 
-/// Widget pour afficher la conversation en temps réel
-class ConversationChatWidget extends StatelessWidget {
+/// Widget pour afficher la conversation en temps réel avec interface optimisée
+class ConversationChatWidget extends StatefulWidget {
   final List<ConversationMessage> messages;
   final ScrollController? scrollController;
   final bool isAISpeaking;
   final bool isUserSpeaking;
   final String? currentTranscription;
+  final VoidCallback? onMessageTap;
 
   const ConversationChatWidget({
     Key? key,
@@ -40,7 +42,91 @@ class ConversationChatWidget extends StatelessWidget {
     this.isAISpeaking = false,
     this.isUserSpeaking = false,
     this.currentTranscription,
+    this.onMessageTap,
   }) : super(key: key);
+
+  @override
+  State<ConversationChatWidget> createState() => _ConversationChatWidgetState();
+}
+
+class _ConversationChatWidgetState extends State<ConversationChatWidget>
+    with TickerProviderStateMixin {
+  late AnimationController _typingAnimationController;
+  late AnimationController _messageAnimationController;
+  late Animation<double> _typingAnimation;
+  late ScrollController _scrollController;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    _scrollController = widget.scrollController ?? ScrollController();
+    
+    // Animation pour l'indicateur de frappe
+    _typingAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _typingAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _typingAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Animation pour les nouveaux messages
+    _messageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    // Démarrer l'animation de frappe si nécessaire
+    if (widget.isAISpeaking) {
+      _typingAnimationController.repeat(reverse: true);
+    }
+  }
+  
+  @override
+  void didUpdateWidget(ConversationChatWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Gérer les changements d'état de frappe
+    if (widget.isAISpeaking != oldWidget.isAISpeaking) {
+      if (widget.isAISpeaking) {
+        _typingAnimationController.repeat(reverse: true);
+      } else {
+        _typingAnimationController.stop();
+      }
+    }
+    
+    // Animer les nouveaux messages
+    if (widget.messages.length > oldWidget.messages.length) {
+      _messageAnimationController.forward().then((_) {
+        _messageAnimationController.reset();
+        // Auto-scroll vers le bas pour le nouveau message
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      });
+    }
+  }
+  
+  @override
+  void dispose() {
+    _typingAnimationController.dispose();
+    _messageAnimationController.dispose();
+    if (widget.scrollController == null) {
+      _scrollController.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,14 +174,14 @@ class ConversationChatWidget extends StatelessWidget {
           // Messages
           Expanded(
             child: ListView.builder(
-              controller: scrollController,
+              controller: _scrollController,
               padding: const EdgeInsets.all(EloquenceSpacing.md),
-              itemCount: messages.length + (currentTranscription != null ? 1 : 0),
+              itemCount: widget.messages.length + (widget.currentTranscription != null ? 1 : 0),
               itemBuilder: (context, index) {
-                if (index < messages.length) {
-                  return _buildMessageBubble(messages[index]);
+                if (index < widget.messages.length) {
+                  return _buildAnimatedMessageBubble(widget.messages[index], index);
                 } else {
-                  // Afficher la transcription en cours
+                  // Afficher la transcription en cours avec animation
                   return _buildTranscriptionBubble();
                 }
               },
@@ -107,35 +193,47 @@ class ConversationChatWidget extends StatelessWidget {
   }
 
   Widget _buildStatusIndicator() {
-    if (isAISpeaking) {
-      return Row(
-        children: [
-          const SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: EloquenceColors.violet,
-            ),
-          ),
-          const SizedBox(width: EloquenceSpacing.xs),
-          Text(
-            'IA parle...',
-            style: EloquenceTextStyles.caption.copyWith(
-              color: EloquenceColors.violet,
-            ),
-          ),
-        ],
+    if (widget.isAISpeaking) {
+      return AnimatedBuilder(
+        animation: _typingAnimation,
+        builder: (context, child) {
+          return Row(
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: EloquenceColors.violet.withOpacity(0.5 + 0.5 * _typingAnimation.value),
+                ),
+              ),
+              const SizedBox(width: EloquenceSpacing.xs),
+              Text(
+                'IA parle...',
+                style: EloquenceTextStyles.caption.copyWith(
+                  color: EloquenceColors.violet.withOpacity(0.7 + 0.3 * _typingAnimation.value),
+                ),
+              ),
+            ],
+          );
+        },
       );
-    } else if (isUserSpeaking) {
+    } else if (widget.isUserSpeaking) {
       return Row(
         children: [
           Container(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: EloquenceColors.cyan,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: EloquenceColors.cyan.withOpacity(0.5),
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
           ),
           const SizedBox(width: EloquenceSpacing.xs),
@@ -168,24 +266,16 @@ class ConversationChatWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: crossAlignment,
           children: [
-            // Avatar et nom
+            // Avatar et nom avec animation
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (!isUser) ...[
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: color.withAlpha((255 * 0.2).round()),
-                    child: Icon(
-                      Icons.psychology,
-                      size: 20,
-                      color: color,
-                    ),
-                  ),
+                  _buildCharacterAvatar(isUser),
                   const SizedBox(width: EloquenceSpacing.xs),
                 ],
                 Text(
-                  isUser ? 'Vous' : 'Assistant IA',
+                  isUser ? 'Vous' : 'Marie',
                   style: EloquenceTextStyles.caption.copyWith(
                     color: color,
                     fontWeight: FontWeight.bold,
@@ -193,15 +283,7 @@ class ConversationChatWidget extends StatelessWidget {
                 ),
                 if (isUser) ...[
                   const SizedBox(width: EloquenceSpacing.xs),
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: color.withAlpha((255 * 0.2).round()),
-                    child: Icon(
-                      Icons.person,
-                      size: 20,
-                      color: color,
-                    ),
-                  ),
+                  _buildCharacterAvatar(isUser),
                 ],
               ],
             ),
@@ -245,52 +327,122 @@ class ConversationChatWidget extends StatelessWidget {
   }
 
   Widget _buildTranscriptionBubble() {
-    if (currentTranscription == null || currentTranscription!.isEmpty) {
+    if (widget.currentTranscription == null || widget.currentTranscription!.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(
-        bottom: EloquenceSpacing.md,
-        left: 48,
-      ),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          padding: const EdgeInsets.all(EloquenceSpacing.md),
-          decoration: BoxDecoration(
-            color: EloquenceColors.cyan.withAlpha((255 * 0.05).round()),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: EloquenceColors.cyan.withAlpha((255 * 0.2).round()),
-              style: BorderStyle.solid,
+    return AnimatedBuilder(
+      animation: _typingAnimation,
+      builder: (context, child) {
+        return Padding(
+          padding: const EdgeInsets.only(
+            bottom: EloquenceSpacing.md,
+            left: 48,
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.all(EloquenceSpacing.md),
+              decoration: BoxDecoration(
+                color: EloquenceColors.cyan.withAlpha((255 * 0.05).round()),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: EloquenceColors.cyan.withAlpha((255 * (0.2 + 0.1 * _typingAnimation.value)).round()),
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: EloquenceColors.cyan.withAlpha((255 * (0.5 + 0.3 * _typingAnimation.value)).round()),
+                    ),
+                  ),
+                  const SizedBox(width: EloquenceSpacing.sm),
+                  Flexible(
+                    child: Text(
+                      widget.currentTranscription!,
+                      style: EloquenceTextStyles.body1.copyWith(
+                        color: EloquenceColors.cyan.withAlpha((255 * (0.7 + 0.2 * _typingAnimation.value)).round()),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: EloquenceColors.cyan.withAlpha((255 * 0.5).round()),
-                ),
-              ),
-              const SizedBox(width: EloquenceSpacing.sm),
-              Flexible(
-                child: Text(
-                  currentTranscription!,
-                  style: EloquenceTextStyles.body1.copyWith(
-                    color: EloquenceColors.cyan.withAlpha((255 * 0.7).round()),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ],
+        );
+      },
+    );
+  }
+
+  /// Message animé avec effet d'apparition fluide
+  Widget _buildAnimatedMessageBubble(ConversationMessage message, int index) {
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0.3, 0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: _messageAnimationController,
+        curve: Interval(
+          (index * 0.1).clamp(0.0, 1.0),
+          1.0,
+          curve: Curves.easeOutCubic,
+        ),
+      )),
+      child: FadeTransition(
+        opacity: CurvedAnimation(
+          parent: _messageAnimationController,
+          curve: Interval(
+            (index * 0.1).clamp(0.0, 1.0),
+            1.0,
+            curve: Curves.easeOut,
           ),
         ),
+        child: _buildMessageBubble(message),
       ),
+    );
+  }
+
+  /// Avatar avec indicateur de personnage IA adaptatif
+  Widget _buildCharacterAvatar(bool isUser) {
+    if (isUser) {
+      return CircleAvatar(
+        radius: 16,
+        backgroundColor: EloquenceColors.cyan.withAlpha((255 * 0.2).round()),
+        child: const Icon(
+          Icons.person,
+          size: 20,
+          color: EloquenceColors.cyan,
+        ),
+      );
+    }
+    
+    // Avatar IA avec indicateur d'animation si en train de parler
+    return AnimatedBuilder(
+      animation: widget.isAISpeaking ? _typingAnimationController : kAlwaysCompleteAnimation,
+      builder: (context, child) {
+        final scale = widget.isAISpeaking ? (1.0 + 0.1 * _typingAnimation.value) : 1.0;
+        return Transform.scale(
+          scale: scale,
+          child: CircleAvatar(
+            radius: 16,
+            backgroundColor: EloquenceColors.violet.withAlpha((255 * 0.2).round()),
+            child: Icon(
+              Icons.psychology,
+              size: 20,
+              color: widget.isAISpeaking
+                ? EloquenceColors.violet.withOpacity(0.7 + 0.3 * _typingAnimation.value)
+                : EloquenceColors.violet,
+            ),
+          ),
+        );
+      },
     );
   }
 
