@@ -13,7 +13,7 @@ class ExercisesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return LayeredScaffold(
           carouselState: CarouselVisibilityState.medium,
-          showNavigation: true,
+          showNavigation: false, // Désactiver car déjà gérée par MainScreen
           onCarouselTap: () {
             // Retour à l'accueil pour voir le carrousel en plein
             ref.read(navigationStateProvider).navigateTo('/home');

@@ -193,6 +193,50 @@ class ConversationManager {
     _emitEvent(ConversationEventType.listeningStarted);
   }
 
+  /// Génère une réponse IA (méthode publique pour l'UI)
+  Future<AIResponse> generateResponse({
+    required String userInput,
+    required AICharacterType character,
+    required ConfidenceScenario scenario,
+    required List<ConversationTurn> conversationHistory,
+  }) async {
+    _logger.i('Generating AI response for: $userInput');
+    _setState(ConversationState.aiThinking);
+    try {
+      final responseText = await _conversationEngine.generateResponse(
+        userInput: userInput,
+        conversationHistory: conversationHistory,
+        scenario: scenario,
+        character: character,
+        userProfile: _userProfile ?? UserAdaptiveProfile(
+          userId: 'default_user',
+          confidenceLevel: 5,
+          experienceLevel: 5,
+          strengths: [],
+          weaknesses: [],
+          preferredTopics: [],
+          preferredCharacter: AICharacterType.marie,
+          lastSessionDate: DateTime.now(),
+          totalSessions: 0,
+          averageScore: 0.0,
+        ),
+      );
+
+      final aiResponse = AIResponse(
+        text: responseText,
+        confidenceScore: 0.85, // Placeholder
+        feedback: "Feedback placeholder", // Placeholder
+      );
+      
+      _setState(ConversationState.ready);
+      return aiResponse;
+    } catch (e) {
+      _logger.e('Error generating AI response: $e');
+      _setState(ConversationState.ready);
+      rethrow;
+    }
+  }
+
   /// Configure l'écoute du stream audio LiveKit
   void _setupAudioStreamListener() {
     _liveKitService.onAudioReceivedStream.listen(

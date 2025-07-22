@@ -30,6 +30,11 @@ import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/repositories/confidence_repository.dart';
 import 'mistral_api_service_provider.dart'; // Import du nouveau provider
 import 'network_config_provider.dart'; // Provider réseau adaptatif
+import '../../data/services/conversation_manager.dart';
+import '../../data/services/conversation_engine.dart';
+import '../../data/services/ai_character_factory.dart';
+import '../../data/services/robust_livekit_service.dart';
+import '../../data/services/adaptive_ai_character_service.dart';
 // Provider pour SharedPreferences
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('SharedPreferences must be initialized');
@@ -192,6 +197,21 @@ final confidenceScenariosProvider = FutureProvider<List<confidence_scenarios.Con
   return await repository.getScenarios();
 });
 
+// Provider pour le ConversationManager
+final conversationManagerProvider = Provider<ConversationManager>((ref) {
+  return ConversationManager(
+    conversationEngine: ConversationEngine(),
+    characterFactory: AICharacterFactory(),
+    liveKitService: ref.watch(robustLiveKitServiceProvider),
+    aiCharacterService: AdaptiveAICharacterService(),
+    voskAnalysisService: ref.watch(voskAnalysisServiceProvider),
+  );
+});
+
+// Provider pour RobustLiveKitService
+final robustLiveKitServiceProvider = Provider<RobustLiveKitService>((ref) {
+  return RobustLiveKitService();
+});
 
 final confidenceBoostProvider = ChangeNotifierProvider((ref) {
   return ConfidenceBoostProvider(
@@ -246,6 +266,10 @@ class ConfidenceBoostProvider with ChangeNotifier {
   String _currentStageDescription = '';
   bool _isUsingMobileOptimization = false;
 
+  // NOUVEAU Stream pour la transcription
+  final StreamController<String> _transcriptionController = StreamController<String>.broadcast();
+  Stream<String>? get transcriptionStream => _transcriptionController.stream;
+
   // Getters
   confidence_models.TextSupport? get currentTextSupport => _currentTextSupport;
   confidence_models.SupportType get selectedSupportType => _selectedSupportType;
@@ -287,6 +311,20 @@ class ConfidenceBoostProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // === NOUVELLES MÉTHODES POUR LA CONVERSATION ===
+
+  Future<void> startRecording() async {
+    logger.i("Provider: Démarrage de l'enregistrement conversationnel");
+    // Ici, on pourrait initialiser le ConversationManager si nécessaire
+    // Pour l'instant, on simule juste le début de la transcription
+  }
+
+  void stopRecording() {
+    logger.i("Provider: Arrêt de l'enregistrement conversationnel");
+    // Logique pour finaliser la transcription et l'analyse
+  }
+
 
   // MÉTHODE PHASE 4 : OPTIMISATION MOBILE CRITIQUE - Analyses parallèles au lieu de séquentielles
   Future<void> analyzePerformance({

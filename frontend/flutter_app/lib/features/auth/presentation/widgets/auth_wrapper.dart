@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
-import '../../../../presentation/screens/main/main_screen.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 
 /// AuthWrapper qui détermine si afficher l'écran d'authentification ou l'app principale
@@ -23,8 +23,12 @@ class AuthWrapper extends ConsumerWidget {
     if (authState.state == AuthState.loading) {
       return _buildLoadingScreen();
     } else if (authState.state == AuthState.authenticated && authState.user != null) {
-      debugPrint('✅ Utilisateur authentifié, affichage MainScreen');
-      return const MainScreen();
+      debugPrint('✅ Utilisateur authentifié, redirection vers /home');
+      // Rediriger vers la route principale au lieu d'instancier MainScreen directement
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.go('/home');
+      });
+      return _buildLoadingScreen(); // Afficher le loading pendant la redirection
     } else if (authState.state == AuthState.error) {
       debugPrint('🚨 Erreur d\'authentification: ${authState.error}');
       return _buildErrorScreen(authState.error ?? 'Erreur inconnue');
