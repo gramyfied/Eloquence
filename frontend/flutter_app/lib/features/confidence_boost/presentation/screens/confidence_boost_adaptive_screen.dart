@@ -68,8 +68,8 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     'cyanLight': Color(0xFF67E8F9),
     'violet': Color(0xFF8B5CF6),
     'violetLight': Color(0xFFA78BFA),
-    'glass': Color(0x80FFFFFF),
-    'glassAccent': Color(0x40FFFFFF),
+    'glass': Color(0xE0FFFFFF),
+    'glassAccent': Color(0xB3E2E8F0),
   };
   
   @override
@@ -161,6 +161,62 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           // Arrière-plan animé avec glassmorphisme
           _buildAnimatedBackground(),
           
+          // INDICATEUR TEMPORAIRE ULTRA-VISIBLE POUR CONFIRMER LA NOUVELLE INTERFACE
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: Colors.yellow, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    spreadRadius: 5,
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    '🎉 NOUVELLE INTERFACE CONVERSATIONNELLE 🎉',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Thomas & Marie - IA Adaptative Activée',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Version: ${DateTime.now().millisecondsSinceEpoch}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
           // Interface principale adaptative
           SafeArea(
             child: AnimatedBuilder(
@@ -170,7 +226,10 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                   offset: Offset(0, 50 * (1 - _slideAnimation.value)),
                   child: Opacity(
                     opacity: _fadeAnimation.value,
-                    child: _buildMainContent(),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 160, left: 16, right: 16, bottom: 16),
+                      child: _buildMainContent(),
+                    ),
                   ),
                 );
               },
@@ -1022,6 +1081,11 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           );
         }
         
+        // CORRECTION CRITIQUE : Système de fallback d'urgence pour garantir l'affichage du contenu
+        final supportContent = textSupport.content.isEmpty
+            ? _getEmergencyFallbackContent(textSupport.type)
+            : textSupport.content;
+        
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1030,7 +1094,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           ),
           child: SingleChildScrollView(
             child: Text(
-              textSupport.content,
+              supportContent,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -1041,6 +1105,100 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
         );
       },
     );
+  }
+
+  /// Système de fallback d'urgence pour garantir l'affichage de contenu adaptatif
+  /// même si le TextSupportGenerator échoue ou retourne du contenu vide
+  String _getEmergencyFallbackContent(confidence_models.SupportType type) {
+    final scenarioTitle = widget.scenario.title;
+    final scenarioContext = widget.scenario.description.length > 100
+        ? widget.scenario.description.substring(0, 100) + "..."
+        : widget.scenario.description;
+    
+    switch (type) {
+      case confidence_models.SupportType.fullText:
+        return '''Bienvenue dans cet exercice : "$scenarioTitle"
+
+$scenarioContext
+
+Pour cet exercice, concentrez-vous sur :
+• Exprimer vos idées avec clarté et confiance
+• Adapter votre discours au contexte présenté
+• Maintenir un ton professionnel et engageant
+• Structurer votre intervention de manière logique
+
+Commencez par vous présenter brièvement, puis développez votre réponse en vous appuyant sur le scénario proposé. N'hésitez pas à donner des exemples concrets pour illustrer vos propos.
+
+Bonne chance !''';
+
+      case confidence_models.SupportType.fillInBlanks:
+        return '''Exercice : "$scenarioTitle"
+
+Complétez les phrases suivantes avec vos propres mots :
+
+"Dans cette situation, je pense que _________ serait la meilleure approche car _________."
+
+"Mon expérience m'a appris que _________, c'est pourquoi je propose de _________."
+
+"Pour résoudre ce défi, nous devons d'abord _________, puis _________ et finalement _________."
+
+"Ce qui me semble le plus important ici, c'est _________ parce que _________."
+
+Utilisez ces structures pour développer votre réponse complète !''';
+
+      case confidence_models.SupportType.guidedStructure:
+        return '''Plan pour "$scenarioTitle" :
+
+1. **Introduction (30 secondes)**
+   - Présentez-vous brièvement
+   - Annoncez votre approche
+
+2. **Développement (60-90 secondes)**
+   - Point principal n°1 : Votre analyse de la situation
+   - Point principal n°2 : Votre proposition de solution
+   - Point principal n°3 : Les bénéfices attendus
+
+3. **Conclusion (20-30 secondes)**
+   - Résumez votre message clé
+   - Proposez une action concrète
+
+**Conseils :**
+• Gardez un débit naturel
+• Utilisez des exemples
+• Montrez votre conviction''';
+
+      case confidence_models.SupportType.keywordChallenge:
+        return '''Défi de mots-clés pour "$scenarioTitle" :
+
+**Mots obligatoires à intégrer :**
+• INNOVATION
+• COLLABORATION
+• RÉSULTATS
+• CONFIANCE
+• SOLUTION
+
+**Mission :**
+Créez un discours de 2 minutes qui intègre naturellement ces 5 mots-clés tout en répondant au scénario présenté.
+
+**Astuce :** Préparez mentalement comment relier chaque mot-clé au contexte avant de commencer à parler.
+
+C'est un excellent exercice pour développer votre agilité verbale !''';
+
+      case confidence_models.SupportType.freeImprovisation:
+        return '''Improvisation libre sur "$scenarioTitle" !
+
+**Votre mission :** Laissez libre cours à votre créativité et exprimez-vous naturellement sur ce sujet.
+
+**Quelques suggestions pour vous lancer :**
+• Commencez par votre première réaction au scénario
+• Partagez une anecdote personnelle si pertinente
+• Exprimez votre point de vue unique
+• N'ayez pas peur des silences, ils font partie du discours
+
+**Rappel :** Il n'y a pas de "bonne" ou "mauvaise" réponse. L'objectif est de vous exprimer avec authenticité et confiance.
+
+Marie sera là pour vous accompagner pendant votre performance !''';
+    }
   }
   
   Widget _buildRecordingTimer() {

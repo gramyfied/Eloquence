@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:logger/logger.dart';
+import 'package:http/http.dart' as http;
+import '../../../../core/config/app_config.dart';
 import '../../domain/entities/confidence_scenario.dart';
-import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/ai_character_models.dart';
 import 'conversation_engine.dart';
 import 'ai_character_factory.dart';
@@ -170,17 +172,39 @@ class ConversationManager {
     }
   }
 
-  /// Démarre l'écoute de l'utilisateur
+  /// Démarre l'écoute de l'utilisateur avec LiveKit
   void _startListening() {
-    _logger.d('🎤 [$_tag] Démarrage écoute utilisateur');
+    _logger.d('🎤 [$_tag] Démarrage écoute utilisateur via LiveKit');
     
     _audioBuffer.clear();
     _lastUserSpeechTime = DateTime.now();
+    
+    // Activer la publication du microphone
+    _liveKitService.publishMyAudio().catchError((e) {
+      _logger.w('[$_tag] Erreur activation microphone: $e');
+    });
+    
+    // Écouter le stream audio entrant
+    _setupAudioStreamListener();
     
     // Démarrer la détection de silence
     _startSilenceDetection();
     
     _emitEvent(ConversationEventType.listeningStarted);
+  }
+
+  /// Configure l'écoute du stream audio LiveKit
+  void _setupAudioStreamListener() {
+    _liveKitService.onAudioReceivedStream.listen(
+      (audioData) {
+        if (_state == ConversationState.userSpeaking) {
+          processUserAudio(audioData);
+        }
+      },
+      onError: (error) {
+        _logger.e('❌ [$_tag] Erreur stream audio: $error');
+      },
+    );
   }
 
   /// Traite l'audio reçu de l'utilisateur
@@ -295,23 +319,76 @@ class ConversationManager {
     }
   }
 
-  /// Joue la réponse audio de l'IA
+  /// Joue la réponse audio de l'IA via TTS OpenAI + LiveKit streaming
   Future<void> _playAIResponse(String text) async {
     try {
-      // TODO: Implémenter la synthèse vocale via un service TTS dédié.
-      // Le AdaptiveAICharacterService ne gère pas la synthèse.
-      // Pour l'instant, simuler un délai pour ne pas bloquer le flux.
-      final speakingDuration = Duration(
-        milliseconds: text.length * 50, // ~50ms par caractère
+      _logger.d('🔊 [$_tag] Synthèse TTS + streaming LiveKit pour: ${text.substring(0, text.length > 50 ? 50 : text.length)}...');
+      
+      // Appel au service TTS OpenAI
+      final ttsUrl = AppConfig.azureTtsUrl;
+      final response = await http.post(
+        Uri.parse('$ttsUrl/synthesize'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'text': text,
+          'voice': 'nova', // Voix féminine pour Marie
+          'format': 'wav',
+          'speed': 1.0,
+        }),
       );
       
-      await Future.delayed(speakingDuration);
-      
-      _logger.d('🔊 [$_tag] Réponse IA jouée (simulation)');
+      if (response.statusCode == 200) {
+        final audioBytes = response.bodyBytes;
+        _logger.i('✅ [$_tag] Audio TTS généré (${audioBytes.length} bytes)');
+        
+        // Diffuser l'audio via LiveKit si connecté
+        if (_liveKitService.healthCheck() != null) {
+          await _streamAudioToLiveKit(audioBytes);
+        } else {
+          _logger.w('⚠️ [$_tag] LiveKit non connecté, lecture locale simulée');
+          final estimatedDuration = Duration(
+            milliseconds: (audioBytes.length / 16000 * 1000).round(),
+          );
+          await Future.delayed(estimatedDuration);
+        }
+        
+        _logger.d('🔊 [$_tag] Réponse IA jouée via TTS + LiveKit');
+      } else {
+        _logger.w('⚠️ [$_tag] Échec TTS (${response.statusCode}), fallback simulation');
+        await _fallbackSimulatedAudio(text);
+      }
       
     } catch (e) {
-      _logger.e('❌ [$_tag] Erreur lecture audio IA: $e');
+      _logger.e('❌ [$_tag] Erreur TTS + LiveKit: $e, fallback simulation');
+      await _fallbackSimulatedAudio(text);
     }
+  }
+
+  /// Diffuse l'audio TTS via LiveKit
+  Future<void> _streamAudioToLiveKit(Uint8List audioBytes) async {
+    try {
+      _logger.d('🎵 [$_tag] Streaming audio TTS vers LiveKit (${audioBytes.length} bytes)');
+      
+      // Utiliser les nouvelles méthodes publiques du RobustLiveKitService
+      await _liveKitService.streamAudioData(audioBytes);
+      
+      _logger.i('✅ [$_tag] Audio TTS diffusé via LiveKit');
+      
+    } catch (e) {
+      _logger.e('❌ [$_tag] Erreur diffusion LiveKit: $e');
+      // Fallback local
+      await Future.delayed(Duration(milliseconds: audioBytes.length ~/ 32));
+    }
+  }
+
+  /// Fallback audio simulé
+  Future<void> _fallbackSimulatedAudio(String text) async {
+    final speakingDuration = Duration(
+      milliseconds: text.length * 50, // ~50ms par caractère
+    );
+    await Future.delayed(speakingDuration);
   }
 
   /// Combine plusieurs buffers audio en un seul

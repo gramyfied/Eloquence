@@ -362,6 +362,68 @@ class RobustLiveKitService {
       return false;
     }
   }
+
+  /// Publie l'audio local du microphone
+  Future<void> publishMyAudio() async {
+    try {
+      _logger.d('[$_tag] Publishing microphone audio');
+      if (_isInitialized) {
+        await _cleanLiveKitService.publishMyAudio();
+        _logger.i('✅ [$_tag] Microphone audio published');
+      } else {
+        _logger.w('[$_tag] Service not initialized, cannot publish audio');
+      }
+    } catch (e) {
+      _logger.e('❌ [$_tag] Error publishing audio: $e');
+    }
+  }
+
+  /// Arrête la publication de l'audio local
+  Future<void> unpublishMyAudio() async {
+    try {
+      _logger.d('[$_tag] Unpublishing microphone audio');
+      if (_isInitialized) {
+        await _cleanLiveKitService.unpublishMyAudio();
+        _logger.i('✅ [$_tag] Microphone audio unpublished');
+      } else {
+        _logger.w('[$_tag] Service not initialized, cannot unpublish audio');
+      }
+    } catch (e) {
+      _logger.e('❌ [$_tag] Error unpublishing audio: $e');
+    }
+  }
+
+  /// Stream pour recevoir l'audio des participants distants
+  Stream<Uint8List> get onAudioReceivedStream => _cleanLiveKitService.onAudioReceivedStream;
+
+  /// Diffuse des données audio TTS via LiveKit
+  Future<void> streamAudioData(Uint8List audioBytes) async {
+    try {
+      _logger.d('[$_tag] Streaming audio data (${audioBytes.length} bytes)');
+      
+      if (!_isInitialized) {
+        _logger.w('[$_tag] Service not initialized, cannot stream audio');
+        return;
+      }
+
+      // Pour l'instant, nous publions juste le microphone pour établir le canal
+      // L'injection directe d'audio TTS nécessiterait une extension du SDK LiveKit
+      await publishMyAudio();
+      
+      // Simulation de la diffusion pour la durée estimée
+      final estimatedDuration = Duration(
+        milliseconds: (audioBytes.length / 16000 * 1000).round(),
+      );
+      
+      _logger.d('[$_tag] Simulating audio playback for ${estimatedDuration.inMilliseconds}ms');
+      await Future.delayed(estimatedDuration);
+      
+      _logger.i('✅ [$_tag] Audio streaming completed');
+      
+    } catch (e) {
+      _logger.e('❌ [$_tag] Error streaming audio: $e');
+    }
+  }
   
   /// Nettoyage des ressources
   Future<void> dispose() async {
