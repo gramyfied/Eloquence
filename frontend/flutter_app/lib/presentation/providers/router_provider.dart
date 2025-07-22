@@ -45,30 +45,37 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           
-          // Routes principales de l'application
-          GoRoute(
-            path: 'home',
-            builder: (BuildContext context, GoRouterState state) {
-              return const HomeScreen();
+          // Route principale avec navigation intégrée
+          ShellRoute(
+            builder: (BuildContext context, GoRouterState state, Widget child) {
+              return MainScreen(child: child);
             },
-          ),
-          GoRoute(
-            path: 'exercises',
-            builder: (BuildContext context, GoRouterState state) {
-              return const ExercisesScreen();
-            },
-          ),
-          GoRoute(
-            path: 'scenarios',
-            builder: (BuildContext context, GoRouterState state) {
-              return const ExercisesScreen(); // Redirection temporaire
-            },
-          ),
-          GoRoute(
-            path: 'profile',
-            builder: (BuildContext context, GoRouterState state) {
-              return const ProfileScreen();
-            },
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'home',
+                builder: (BuildContext context, GoRouterState state) {
+                  return const HomeScreen();
+                },
+              ),
+              GoRoute(
+                path: 'exercises',
+                builder: (BuildContext context, GoRouterState state) {
+                  return const ExercisesScreen();
+                },
+              ),
+              GoRoute(
+                path: 'scenarios',
+                builder: (BuildContext context, GoRouterState state) {
+                  return const ScenarioScreen();
+                },
+              ),
+              GoRoute(
+                path: 'profile',
+                builder: (BuildContext context, GoRouterState state) {
+                  return const ProfileScreen();
+                },
+              ),
+            ],
           ),
           
           // Route confidence_boost - NOUVELLE INTERFACE ADAPTATIVE

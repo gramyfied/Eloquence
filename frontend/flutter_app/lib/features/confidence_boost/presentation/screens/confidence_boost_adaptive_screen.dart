@@ -1,16 +1,29 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import '../providers/confidence_boost_provider.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/entities/confidence_session.dart';
+import '../../domain/entities/ai_character_models.dart' as ai_models;
 import '../widgets/animated_microphone_button.dart';
 import '../widgets/scenario_generation_animation.dart';
 import '../widgets/confidence_results_view.dart';
+import '../widgets/conversation_chat_widget.dart';
+import '../../data/services/conversation_manager.dart';
+import '../../data/services/conversation_engine.dart';
+import '../../domain/entities/ai_character_models.dart';
+import 'package:collection/collection.dart';
+
+// PROVIDER POUR CONVERSATION MANAGER
+final conversationManagerProvider = Provider<ConversationManager>((ref) {
+  return ConversationManager();
+});
 
 /// Interface adaptative unifiée pour l'exercice Boost Confidence
 /// 
@@ -40,6 +53,20 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     with TickerProviderStateMixin {
   
   final Logger _logger = Logger();
+
+  // NOUVELLES VARIABLES CONVERSATIONNELLES
+  List<ConversationMessage> _conversationMessages = [];
+  bool _isAISpeaking = false;
+  bool _isUserSpeaking = false;
+  String? _currentTranscription;
+  late ScrollController _conversationScrollController;
+  
+  // CONVERSATION MANAGER INTÉGRATION
+  ConversationManager? _conversationManager;
+  StreamSubscription<ConversationEvent>? _conversationEventsSubscription;
+  StreamSubscription<TranscriptionSegment>? _transcriptionSubscription;
+  StreamSubscription<ConversationMetrics>? _metricsSubscription;
+  bool _isConversationInitialized = false;
   
   // === CONTRÔLEURS D'ANIMATION OPTIMISÉS ===
   late AnimationController _mainAnimationController;
@@ -55,7 +82,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   
   // === ÉTAT ADAPTATIF DE L'INTERFACE ===
   AdaptiveScreenPhase _currentPhase = AdaptiveScreenPhase.scenarioPresentation;
-  AICharacterType _activeCharacter = AICharacterType.thomas;
+  ai_models.AICharacterType _activeCharacter = ai_models.AICharacterType.thomas;
   bool _isRecording = false;
   Duration _recordingDuration = Duration.zero;
   Timer? _recordingTimer;
@@ -68,8 +95,11 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     'cyanLight': Color(0xFF67E8F9),
     'violet': Color(0xFF8B5CF6),
     'violetLight': Color(0xFFA78BFA),
-    'glass': Color(0xE0FFFFFF),
-    'glassAccent': Color(0xB3E2E8F0),
+    // CORRECTION CRITIQUE : Arrière-plans avec contraste optimal pour texte blanc
+    'glass': Color(0x40334155), // Navy semi-transparent pour meilleur contraste
+    'glassAccent': Color(0x60475569), // Accent plus foncé pour bordures
+    'textSupportBg': Color(0x80334155), // Arrière-plan spécial pour support textuel
+    'dialogueBg': Color(0x90475569), // Arrière-plan optimisé pour dialogues IA
   };
   
   @override
@@ -78,6 +108,10 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _initializeAnimations();
     _startBackgroundAnimations();
     _logAdaptiveScreenInit();
+
+    // NOUVELLE INITIALISATION CONVERSATIONNELLE
+    _conversationScrollController = ScrollController();
+    _initializeConversation();
   }
   
   void _initializeAnimations() {
@@ -152,73 +186,90 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _logger.i('   🤖 Personnage actif: ${_activeCharacter.name}');
     _logger.i('   ✨ Design System Eloquence activé');
   }
+
+  Future<void> _initializeConversation() async {
+    _logger.i('🤖 Initialisation du ConversationManager pour conversation temps réel');
+    
+    try {
+      // Obtenir le ConversationManager depuis le provider
+      _conversationManager = ref.read(conversationManagerProvider);
+      
+      // Écouter les événements de conversation
+      _conversationEventsSubscription = _conversationManager!.events.listen(
+        _handleConversationEvent,
+        onError: (error) {
+          _logger.e('❌ Erreur stream événements: $error');
+        },
+      );
+      
+      // Écouter les transcriptions en temps réel
+      _transcriptionSubscription = _conversationManager!.transcriptions.listen(
+        _handleTranscriptionUpdate,
+        onError: (error) {
+          _logger.e('❌ Erreur stream transcriptions: $error');
+        },
+      );
+      
+      // Écouter les métriques de conversation
+      _metricsSubscription = _conversationManager!.metrics.listen(
+        _handleMetricsUpdate,
+        onError: (error) {
+          _logger.e('❌ Erreur stream métriques: $error');
+        },
+      );
+      
+      // Message d'accueil initial (avant initialisation ConversationManager)
+      final welcomeMessage = ConversationMessage(
+        text: _getWelcomeMessage(),
+        role: ConversationRole.assistant,
+        metadata: {'character': _activeCharacter.name},
+      );
+      
+      setState(() {
+        _conversationMessages.add(welcomeMessage);
+        _isConversationInitialized = true;
+      });
+      
+      _logger.i('✅ ConversationManager initialisé avec succès');
+      
+    } catch (e) {
+      _logger.e('❌ Erreur initialisation ConversationManager: $e');
+      _handleConversationError(e);
+    }
+  }
+  
+  String _getWelcomeMessage() {
+    switch (widget.scenario.type) {
+      case confidence_models.ConfidenceScenarioType.presentation:
+        return "Bonjour ! Je suis Marie, votre cliente. Je suis curieuse de découvrir votre présentation. Commencez quand vous êtes prêt !";
+      case confidence_models.ConfidenceScenarioType.interview:
+        return "Bonjour ! Je suis Thomas, votre recruteur. Présentez-vous et expliquez-moi pourquoi vous souhaitez rejoindre notre équipe.";
+      default:
+        return "Bonjour ! Je suis votre interlocuteur IA. Commençons cet exercice ensemble !";
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
+    // Calculer la hauteur de la barre de navigation système
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomInsets = MediaQuery.of(context).viewInsets.bottom;
+    final systemNavigationHeight = math.max(bottomPadding, bottomInsets);
+    
     return Scaffold(
       body: Stack(
         children: [
           // Arrière-plan animé avec glassmorphisme
           _buildAnimatedBackground(),
           
-          // INDICATEUR TEMPORAIRE ULTRA-VISIBLE POUR CONFIRMER LA NOUVELLE INTERFACE
-          Positioned(
-            top: 50,
-            left: 0,
-            right: 0,
-            child: Container(
-              margin: const EdgeInsets.all(20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.yellow, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    spreadRadius: 5,
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    '🎉 NOUVELLE INTERFACE CONVERSATIONNELLE 🎉',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Thomas & Marie - IA Adaptative Activée',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Version: ${DateTime.now().millisecondsSinceEpoch}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+          // Interface principale adaptative avec padding Android optimisé
+          Padding(
+            padding: EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: MediaQuery.of(context).padding.top + 16.0,
+              bottom: systemNavigationHeight + 80.0, // +80 pour l'espace des icônes
             ),
-          ),
-          
-          // Interface principale adaptative
-          SafeArea(
             child: AnimatedBuilder(
               animation: _mainAnimationController,
               builder: (context, child) {
@@ -226,10 +277,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
                   offset: Offset(0, 50 * (1 - _slideAnimation.value)),
                   child: Opacity(
                     opacity: _fadeAnimation.value,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 160, left: 16, right: 16, bottom: 16),
-                      child: _buildMainContent(),
-                    ),
+                    child: _buildMainContent(),
                   ),
                 );
               },
@@ -400,6 +448,569 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
         ],
       ),
     );
+  }
+
+  Widget _buildCleanHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: [
+          // Icône Eloquence
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00D4FF), Color(0xFF8B5CF6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Icon(
+              Icons.psychology_outlined,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Titre clair et lisible
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Boost Confidence',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Conversation avec ${_activeCharacter.name}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Indicateur de niveau
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFF8B5CF6).withOpacity(0.2),
+              border: Border.all(
+                color: const Color(0xFF8B5CF6),
+                width: 1,
+              ),
+            ),
+            child: const Text(
+              'Niveau Facile',
+              style: TextStyle(
+                color: Color(0xFF8B5CF6),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationArea() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF1A1F2E), // Fond conversation
+        border: Border.all(
+          color: const Color(0xFF2A3441),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header de la conversation
+          _buildConversationHeader(),
+          
+          // Messages de conversation
+          Expanded(
+            child: _buildMessagesList(),
+          ),
+          
+          // Indicateur de saisie
+          _buildTypingIndicator(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        color: Color(0xFF2A3441),
+      ),
+      child: Row(
+        children: [
+          // Avatar Marie/Thomas
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: const Color(0xFF00D4FF),
+            child: Text(
+              _activeCharacter.name[0],
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // Nom et statut
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _activeCharacter.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  _getCharacterStatus(),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Indicateur d'état
+          _buildStatusIndicator(),
+        ],
+      ),
+    );
+  }
+
+  String _getCharacterStatus() {
+    if (_isAISpeaking) return 'En train de parler...';
+    if (_isUserSpeaking) return 'Vous écoute...';
+    return 'En ligne';
+  }
+
+  Widget _buildStatusIndicator() {
+    Color statusColor = const Color(0xFF10B981); // Vert par défaut
+    if (_isAISpeaking) statusColor = const Color(0xFF3B82F6); // Bleu
+    if (_isUserSpeaking) statusColor = const Color(0xFFF59E0B); // Orange
+    
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: statusColor,
+      ),
+    );
+  }
+
+  Widget _buildMessagesList() {
+    return ListView.builder(
+      controller: _conversationScrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _conversationMessages.length + (_currentTranscription != null ? 1 : 0),
+      itemBuilder: (context, index) {
+        // Message de transcription en cours
+        if (index == _conversationMessages.length && _currentTranscription != null) {
+          return _buildTranscriptionMessage(_currentTranscription!);
+        }
+        
+        final message = _conversationMessages[index];
+        return _buildMessageBubble(message);
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(ConversationMessage message) {
+    final isUser = message.role == ConversationRole.user;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            // Avatar IA
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: const Color(0xFF00D4FF),
+              child: Text(
+                _activeCharacter.name[0],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          
+          // Bulle de message
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: isUser
+                    ? const Color(0xFF8B5CF6) // Violet pour utilisateur
+                    : const Color(0xFF2A3441), // Gris pour IA
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nom du locuteur
+                  Text(
+                    isUser ? 'Vous' : _activeCharacter.name,
+                    style: TextStyle(
+                      color: isUser ? Colors.white.withOpacity(0.8) : const Color(0xFF00D4FF),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  
+                  // Texte du message
+                  Text(
+                    message.text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                  
+                  // Métadonnées (scores, feedback)
+                  if (message.metadata != null && message.metadata!.isNotEmpty)
+                    _buildMessageMetadata(message.metadata!),
+                ],
+              ),
+            ),
+          ),
+          
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            // Avatar utilisateur
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: const Color(0xFF8B5CF6),
+              child: const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTranscriptionMessage(String transcription) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFF8B5CF6).withOpacity(0.5),
+                border: Border.all(
+                  color: const Color(0xFF8B5CF6),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Vous (en cours)',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.7)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    transcription,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                      height: 1.4,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: const Color(0xFF8B5CF6),
+            child: const Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    if (!_isAISpeaking) return const SizedBox.shrink();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: const Color(0xFF00D4FF),
+            child: Text(
+              _activeCharacter.name[0],
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '${_activeCharacter.name} est en train d\'écrire',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(width: 8),
+          _buildTypingAnimation(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingAnimation() {
+    return Row(
+      children: List.generate(3, (index) {
+        return AnimatedContainer(
+          duration: Duration(milliseconds: 600 + (index * 200)),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF00D4FF).withOpacity(0.7),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildMessageMetadata(Map<String, dynamic> metadata) {
+    // TODO: Implémenter l'affichage des métadonnées (scores, etc.)
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildCleanTextSupport() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF1A1F2E),
+        border: Border.all(
+          color: const Color(0xFF00D4FF).withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header du support textuel
+          Row(
+            children: [
+              Icon(
+                _getTextSupportIcon(),
+                color: const Color(0xFF00D4FF),
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _getTextSupportTitle(),
+                style: const TextStyle(
+                  color: Color(0xFF00D4FF),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              // Bouton pour masquer/afficher
+              GestureDetector(
+                onTap: _toggleTextSupport,
+                child: Icon(
+                  _isTextSupportExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.white.withOpacity(0.7),
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+          
+          if (_isTextSupportExpanded) ...[
+            const SizedBox(height: 12),
+            
+            // Contenu du support textuel
+            Expanded(
+              child: SingleChildScrollView(
+                child: _buildTextSupportContent(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  IconData _getTextSupportIcon() {
+    final provider = ref.read(confidenceBoostProvider);
+    switch (provider.selectedSupportType) {
+      case confidence_models.SupportType.fullText:
+        return Icons.text_snippet_outlined;
+      case confidence_models.SupportType.fillInBlanks:
+        return Icons.edit_outlined;
+      case confidence_models.SupportType.guidedStructure:
+        return Icons.account_tree_outlined;
+      case confidence_models.SupportType.keywordChallenge:
+        return Icons.key_outlined;
+      case confidence_models.SupportType.freeImprovisation:
+        return Icons.visibility_off_outlined;
+    }
+  }
+
+  String _getTextSupportTitle() {
+    final provider = ref.read(confidenceBoostProvider);
+    switch (provider.selectedSupportType) {
+      case confidence_models.SupportType.fullText:
+        return 'Support textuel complet';
+      case confidence_models.SupportType.fillInBlanks:
+        return 'Texte à compléter';
+      case confidence_models.SupportType.guidedStructure:
+        return 'Structure guidée';
+      case confidence_models.SupportType.keywordChallenge:
+        return 'Défi de mots-clés';
+      case confidence_models.SupportType.freeImprovisation:
+        return 'Aucun support';
+    }
+  }
+
+  Widget _buildTextSupportContent() {
+    final provider = ref.read(confidenceBoostProvider);
+    final currentPhaseText = _getCurrentPhaseText();
+    
+    switch (provider.selectedSupportType) {
+      case confidence_models.SupportType.fullText:
+        return Text(
+          currentPhaseText,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 14,
+            height: 1.5,
+          ),
+        );
+        
+      case confidence_models.SupportType.fillInBlanks:
+        return _buildGappedTextContent(currentPhaseText);
+        
+      case confidence_models.SupportType.guidedStructure:
+      case confidence_models.SupportType.keywordChallenge:
+      case confidence_models.SupportType.freeImprovisation:
+      default:
+        return Text(
+          'Vous avez choisi de parler sans support textuel. Faites confiance à votre instinct !',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 14,
+            fontStyle: FontStyle.italic,
+          ),
+        );
+    }
+  }
+
+  Widget _buildGappedTextContent(String fullText) {
+    final gappedText = _createGappedText(fullText);
+    final spans = _buildGappedTextSpans(gappedText);
+    
+    return RichText(
+      text: TextSpan(
+        children: spans,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.9),
+          fontSize: 14,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+
+  // Variables d'état pour le support textuel
+  bool _isTextSupportExpanded = true;
+
+  void _toggleTextSupport() {
+    setState(() {
+      _isTextSupportExpanded = !_isTextSupportExpanded;
+    });
   }
   
   Widget _buildConfidenceIndicator() {
@@ -612,15 +1223,24 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: isSelected 
-                  ? _eloquencePalette['violet']!.withAlpha(51)
+              // CORRECTION : Améliorer le contraste pour les cartes de sélection
+              color: isSelected
+                  ? _eloquencePalette['violet']!.withAlpha(80)
                   : _eloquencePalette['glass']!,
               border: Border.all(
-                color: isSelected 
+                color: isSelected
                     ? _eloquencePalette['violet']!
                     : _eloquencePalette['glassAccent']!,
                 width: isSelected ? 2 : 1,
               ),
+              // Ajout d'une ombre pour améliorer la lisibilité
+              boxShadow: [
+                BoxShadow(
+                  color: _eloquencePalette['navy']!.withAlpha(60),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -720,40 +1340,103 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   }
   
   Widget _buildActiveRecordingPhase() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        children: [
-          _buildEloquenceHeader(),
-          const SizedBox(height: 32),
-          
-          // Interface d'enregistrement
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Timer d'enregistrement
-                _buildRecordingTimer(),
-                
-                const SizedBox(height: 40),
-                
-                // Microphone animé
-                AnimatedMicrophoneButton(
-                  isRecording: _isRecording,
-                  onPressed: _stopRecording,
-                ),
-                
-                const SizedBox(height: 40),
-                
-                // Visualisateur d'onde sonore
-                _buildSoundWaveVisualizer(),
-              ],
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0E1A), // Fond sombre Eloquence
+      body: SafeArea(
+        child: Column(
+          children: [
+            // HEADER PROPRE ET LISIBLE
+            _buildCleanHeader(),
+            
+            // ZONE CONVERSATION PRINCIPALE (70% de l'écran)
+            Expanded(
+              flex: 7,
+              child: _buildConversationArea(),
             ),
-          ),
-        ],
+            
+            // SUPPORT TEXTUEL CONDITIONNEL (15% si activé)
+            if (_shouldShowTextSupport())
+              Expanded(
+                flex: 2,
+                child: _buildCleanTextSupport(),
+              ),
+            
+            // CONTRÔLES CONVERSATION (15% de l'écran)
+            Expanded(
+              flex: 2,
+              child: _buildCleanConversationControls(),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+bool _shouldShowTextSupport() {
+  final provider = ref.read(confidenceBoostProvider);
+  return provider.selectedSupportType != confidence_models.SupportType.freeImprovisation && provider.selectedSupportType != null;
+}
+
+Widget _buildIntelligentTextSupport() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      // CORRECTION CRITIQUE : Utiliser le nouvel arrière-plan pour support textuel
+      color: _eloquencePalette['textSupportBg']!,
+      border: Border.all(
+        color: _eloquencePalette['cyan']!.withAlpha(180),
+        width: 1.5,
+      ),
+      // Ajout d'une ombre pour améliorer la profondeur
+      boxShadow: [
+        BoxShadow(
+          color: _eloquencePalette['navy']!.withAlpha(100),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Consumer(
+      builder: (context, ref, child) {
+        final provider = ref.watch(confidenceBoostProvider);
+        // Correction: Utiliser selectedSupportType
+        return _buildAdaptiveTextSupport(provider.selectedSupportType ?? confidence_models.SupportType.fullText);
+      },
+    ),
+  );
+}
+
+Widget _buildAdaptiveTextSupport(confidence_models.SupportType supportType) {
+  switch (supportType) {
+    case confidence_models.SupportType.fullText:
+      return _buildFullTextSupport();
+    case confidence_models.SupportType.fillInBlanks:
+      return _buildGappedTextSupport();
+    // Ajout des cas manquants pour être exhaustif
+    case confidence_models.SupportType.guidedStructure:
+    case confidence_models.SupportType.keywordChallenge:
+    case confidence_models.SupportType.freeImprovisation:
+    default:
+      return const SizedBox.shrink();
+  }
+}
+
+Widget _buildConversationalRecordingControls() {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      // Bouton microphone conversationnel
+      _buildConversationalMicButton(),
+      
+      // Indicateur d'état conversationnel
+      _buildConversationStateIndicator(),
+      
+      // Bouton terminer conversation
+      _buildEndConversationButton(),
+    ],
+  );
+}
   
   Widget _buildAnalysisProgressPhase() {
     return Padding(
@@ -1030,12 +1713,12 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   }
   
   // Widgets temporaires pour les fonctionnalités à implémenter
-  Widget _buildAICharacterAvatar(AICharacterType character) {
+  Widget _buildAICharacterAvatar(ai_models.AICharacterType character) {
     return CircleAvatar(
       radius: 30,
       backgroundColor: _eloquencePalette['violet']!,
       child: Icon(
-        character == AICharacterType.thomas 
+        character == ai_models.AICharacterType.thomas 
             ? Icons.business_rounded 
             : Icons.person_rounded,
         color: Colors.white,
@@ -1045,7 +1728,7 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   }
   
   Widget _buildAICharacterDialogue() {
-    final message = _activeCharacter == AICharacterType.thomas
+    final message = _activeCharacter == ai_models.AICharacterType.thomas
         ? "Excellent choix de scénario ! En tant que manager, je recommande de vous concentrer sur la clarté et la confiance."
         : "C'est un scénario intéressant ! En tant que cliente, j'apprécie quand on me parle avec assurance et empathie.";
         
@@ -1053,7 +1736,20 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: _eloquencePalette['glassAccent']!,
+        // CORRECTION : Utiliser le nouvel arrière-plan pour dialogues
+        color: _eloquencePalette['dialogueBg']!,
+        border: Border.all(
+          color: _eloquencePalette['cyan']!.withAlpha(120),
+          width: 1,
+        ),
+        // Ajout d'une ombre pour améliorer la lisibilité
+        boxShadow: [
+          BoxShadow(
+            color: _eloquencePalette['navy']!.withAlpha(80),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Text(
         message,
@@ -1061,6 +1757,8 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           color: Colors.white,
           fontSize: 14,
           fontStyle: FontStyle.italic,
+          // Améliorer la lisibilité avec une hauteur de ligne optimisée
+          height: 1.5,
         ),
       ),
     );
@@ -1090,7 +1788,20 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: _eloquencePalette['glassAccent']!,
+            // CORRECTION : Utiliser l'arrière-plan optimisé pour le support textuel
+            color: _eloquencePalette['textSupportBg']!,
+            border: Border.all(
+              color: _eloquencePalette['cyan']!.withAlpha(150),
+              width: 1,
+            ),
+            // Ajout d'une ombre pour la profondeur
+            boxShadow: [
+              BoxShadow(
+                color: _eloquencePalette['navy']!.withAlpha(120),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: SingleChildScrollView(
             child: Text(
@@ -1098,7 +1809,9 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
-                height: 1.5,
+                height: 1.6, // Améliorer l'interlignage pour la lisibilité
+                fontWeight: FontWeight.w400, // Assurer une épaisseur de police suffisante
+                letterSpacing: 0.2, // Améliorer l'espacement des lettres
               ),
             ),
           ),
@@ -1242,14 +1955,14 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildCharacterButton(AICharacterType.thomas),
+        _buildCharacterButton(ai_models.AICharacterType.thomas),
         const SizedBox(width: 8),
-        _buildCharacterButton(AICharacterType.marie),
+        _buildCharacterButton(ai_models.AICharacterType.marie),
       ],
     );
   }
   
-  Widget _buildCharacterButton(AICharacterType character) {
+  Widget _buildCharacterButton(ai_models.AICharacterType character) {
     final isActive = _activeCharacter == character;
     return GestureDetector(
       onTap: () => setState(() => _activeCharacter = character),
@@ -1262,7 +1975,7 @@ Marie sera là pour vous accompagner pendant votre performance !''';
               : _eloquencePalette['glass']!,
         ),
         child: Icon(
-          character == AICharacterType.thomas 
+          character == ai_models.AICharacterType.thomas 
               ? Icons.business_rounded 
               : Icons.person_rounded,
           color: Colors.white,
@@ -1279,11 +1992,627 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     _aiCharacterController.dispose();
     _gamificationController.dispose();
     _recordingTimer?.cancel();
+    _conversationScrollController.dispose();
+    
+    // Nettoyer les subscriptions ConversationManager
+    _conversationEventsSubscription?.cancel();
+    _transcriptionSubscription?.cancel();
+    _metricsSubscription?.cancel();
+    _conversationManager?.dispose();
+    
     super.dispose();
+  }
+
+  // === CALLBACKS CONVERSATIONMANAGER ===
+  
+  /// Gère les événements du ConversationManager
+  void _handleConversationEvent(ConversationEvent event) {
+    _logger.d('📡 Événement conversation: ${event.type.name}');
+    
+    switch (event.type) {
+      case ConversationEventType.initialized:
+        _logger.i('✅ ConversationManager initialisé');
+        break;
+        
+      case ConversationEventType.conversationStarted:
+        setState(() {
+          _isConversationInitialized = true;
+        });
+        _logger.i('🎬 Conversation démarrée');
+        break;
+        
+      case ConversationEventType.listeningStarted:
+        setState(() {
+          _isUserSpeaking = true;
+          _isAISpeaking = false;
+        });
+        break;
+        
+      case ConversationEventType.processingStarted:
+        setState(() {
+          _isUserSpeaking = false;
+          _isAISpeaking = true;
+        });
+        break;
+        
+      case ConversationEventType.aiMessage:
+        _handleAIMessage(event.data);
+        break;
+        
+      case ConversationEventType.userMessage:
+        _handleUserMessage(event.data);
+        break;
+        
+      case ConversationEventType.stateChanged:
+        _handleConversationStateChange(event.data);
+        break;
+        
+      case ConversationEventType.error:
+        _handleConversationError(event.data);
+        break;
+        
+      default:
+        _logger.d('Événement non géré: ${event.type.name}');
+    }
+  }
+  
+  /// Gère les mises à jour de transcription temps réel
+  void _handleTranscriptionUpdate(TranscriptionSegment segment) {
+    setState(() {
+      if (segment.isFinal) {
+        // Transcription finale - ajouter comme message utilisateur
+        _addUserMessage(segment.text);
+        _currentTranscription = null;
+      } else {
+        // Transcription en cours - mettre à jour l'affichage
+        _currentTranscription = segment.text;
+      }
+    });
+    
+    _logger.d('📝 Transcription: "${segment.text}" (final: ${segment.isFinal})');
+  }
+  
+  /// Gère les mises à jour de métriques de conversation
+  void _handleMetricsUpdate(ConversationMetrics metrics) {
+    _logger.d('📊 Métriques: ${metrics.turnCount} tours, ${metrics.averageResponseTime.inMilliseconds}ms moyenne');
+    // TODO: Mettre à jour l'interface avec les métriques si nécessaire
+  }
+  
+  /// Gère les messages IA reçus du ConversationManager
+  void _handleAIMessage(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final message = data['message'] as String?;
+      final character = data['character'] as String?;
+      final emotion = data['emotion'] as String?;
+      
+      if (message != null) {
+        final aiMessage = ConversationMessage(
+          text: message,
+          role: ConversationRole.assistant,
+          metadata: {
+            'character': character ?? _activeCharacter.name,
+            'emotion': emotion ?? 'neutral',
+          },
+        );
+        
+        setState(() {
+          _conversationMessages.add(aiMessage);
+          _isAISpeaking = false;
+        });
+        
+        _scrollToBottom();
+      }
+    }
+  }
+  
+  /// Gère les messages utilisateur reçus du ConversationManager
+  void _handleUserMessage(dynamic data) {
+    if (data is String) {
+      _addUserMessage(data);
+    }
+  }
+  
+  /// Gère les changements d'état de conversation
+  void _handleConversationStateChange(dynamic data) {
+    if (data is String) {
+      _logger.d('🔄 État conversation: $data');
+      // Mettre à jour l'interface selon l'état
+      switch (data) {
+        case 'userSpeaking':
+          setState(() {
+            _isUserSpeaking = true;
+            _isAISpeaking = false;
+          });
+          break;
+        case 'aiSpeaking':
+          setState(() {
+            _isUserSpeaking = false;
+            _isAISpeaking = true;
+          });
+          break;
+        case 'aiThinking':
+          setState(() {
+            _isUserSpeaking = false;
+            _isAISpeaking = true;
+          });
+          break;
+        case 'ready':
+          setState(() {
+            _isUserSpeaking = false;
+            _isAISpeaking = false;
+          });
+          break;
+      }
+    }
+  }
+
+  // === MÉTHODES DE GESTION CONVERSATIONNELLE (implémentations de base) ===
+
+  void _onMessageTap() {
+    _logger.d('Message tap');
+  }
+
+  Widget _buildFullTextSupport() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final currentPhaseText = _getCurrentPhaseText();
+        return _buildSupportContainer(
+          title: 'Support textuel',
+          icon: Icons.text_snippet_outlined,
+          color: _eloquencePalette['cyan']!,
+          child: Text(
+            currentPhaseText,
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGappedTextSupport() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final currentPhaseText = _getCurrentPhaseText();
+        final gappedText = _createGappedText(currentPhaseText);
+        return _buildSupportContainer(
+          title: 'Texte à compléter',
+          icon: Icons.edit_outlined,
+          color: _eloquencePalette['violet']!,
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+              children: _buildGappedTextSpans(gappedText),
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildSupportContainer({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getCurrentPhaseText() {
+    final messageCount = _conversationMessages.length;
+    if (messageCount <= 2) return _getIntroductionText();
+    if (messageCount <= 6) return _getDevelopmentText();
+    return _getConclusionText();
+  }
+
+  String _getIntroductionText() {
+    switch (widget.scenario.type) {
+      case confidence_models.ConfidenceScenarioType.presentation:
+        return "Commencez par vous présenter brièvement, puis introduisez le sujet de votre présentation. Captez l'attention de Marie dès les premiers mots.";
+      case confidence_models.ConfidenceScenarioType.interview:
+        return "Présentez-vous de manière professionnelle. Mentionnez votre parcours, vos compétences clés et votre motivation pour ce poste.";
+      default:
+        return "Commencez par une introduction claire et engageante. Établissez le contact avec votre interlocuteur.";
+    }
+  }
+
+  String _getDevelopmentText() => "Développez votre point principal. Fournissez des exemples concrets et structurez votre argumentation.";
+  String _getConclusionText() => "Concluez votre intervention. Résumez les points clés et terminez sur une note positive et mémorable.";
+
+  String _createGappedText(String fullText) {
+    return fullText
+        .replaceAll(RegExp(r'\b(présenter|expliquer|mentionner)\b'), '______')
+        .replaceAll(RegExp(r'\b(compétences|motivation|expérience)\b'), '______');
+  }
+
+  List<TextSpan> _buildGappedTextSpans(String gappedText) {
+    // CORRECTION CRITIQUE : Améliorer la visibilité des espaces à compléter
+    final List<TextSpan> spans = [];
+    final parts = gappedText.split('______');
+    
+    for (int i = 0; i < parts.length; i++) {
+      // Ajouter le texte normal
+      if (parts[i].isNotEmpty) {
+        spans.add(TextSpan(
+          text: parts[i],
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ));
+      }
+      
+      // Ajouter l'espace à compléter avec un style distinctif
+      if (i < parts.length - 1) {
+        spans.add(TextSpan(
+          text: '______',
+          style: TextStyle(
+            color: _eloquencePalette['cyan']!,
+            fontSize: 14,
+            height: 1.5,
+            fontWeight: FontWeight.bold,
+            backgroundColor: _eloquencePalette['navy']!.withAlpha(120),
+            decoration: TextDecoration.underline,
+            decorationColor: _eloquencePalette['cyan']!,
+          ),
+        ));
+      }
+    }
+    
+    return spans;
+  }
+
+  Widget _buildConversationalMicButton() {
+    return AnimatedMicrophoneButton(
+      isRecording: _isRecording,
+      onPressed: _isRecording ? _stopConversationalRecording : _startConversationalRecording,
+    );
+  }
+
+  Widget _buildConversationStateIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _eloquencePalette['glass']!,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        _isAISpeaking ? 'IA parle...' : (_isUserSpeaking ? 'Vous parlez...' : 'Prêt'),
+        style: TextStyle(color: _eloquencePalette['cyan'], fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildEndConversationButton() {
+    return ElevatedButton(
+      onPressed: _stopRecording, // Reuse stop logic for now
+      child: const Text('Terminer'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _eloquencePalette['violet'],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
+
+  void _startConversationalRecording() async {
+    if (!_isConversationInitialized || _conversationManager == null) {
+      _logger.w('⚠️ ConversationManager non initialisé, initialisation...');
+      await _initializeRealTimeConversation();
+    }
+    
+    setState(() {
+      _isUserSpeaking = true;
+      _isRecording = true;
+    });
+    
+    _logger.i('🎤 Démarrage écoute conversationnelle - ConversationManager gère automatiquement');
+    // Le ConversationManager démarre automatiquement l'écoute après startConversation()
+  }
+
+  void _stopConversationalRecording() {
+    setState(() {
+      _isUserSpeaking = false;
+      _isRecording = false;
+    });
+    
+    // Le ConversationManager gère automatiquement la fin de l'écoute
+    // et la génération de la réponse IA via les streams
+    _logger.i('🛑 Arrêt écoute conversationnelle');
+  }
+
+  /// Initialise la conversation temps réel avec ConversationManager
+  Future<void> _initializeRealTimeConversation() async {
+    if (_conversationManager == null) {
+      _logger.e('❌ ConversationManager null, impossible d\'initialiser');
+      return;
+    }
+    
+    try {
+      // Obtenir les vraies clés LiveKit depuis l'API backend
+      final response = await http.get(
+        Uri.parse('http://localhost:8000/api/livekit/token'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      
+      String livekitUrl = 'ws://192.168.1.44:7880';
+      String livekitToken = 'temp_token';
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        livekitUrl = data['url'] ?? livekitUrl;
+        livekitToken = data['token'] ?? livekitToken;
+        _logger.i('✅ Clés LiveKit obtenues depuis backend');
+      } else {
+        _logger.w('⚠️ Utilisation clés LiveKit par défaut');
+      }
+      
+      final success = await _conversationManager!.initializeConversation(
+        scenario: widget.scenario,
+        userProfile: ai_models.UserAdaptiveProfile(
+          userId: 'current_user',
+          confidenceLevel: 5,
+          experienceLevel: 5,
+          strengths: [],
+          weaknesses: [],
+          preferredTopics: [],
+          preferredCharacter: _activeCharacter,
+          lastSessionDate: DateTime.now(),
+          totalSessions: 0,
+          averageScore: 0.0,
+        ),
+        livekitUrl: livekitUrl,
+        livekitToken: livekitToken,
+        preferredCharacter: _activeCharacter,
+      );
+      
+      if (success) {
+        _isConversationInitialized = true;
+        
+        // Démarrer la conversation
+        await _conversationManager!.startConversation();
+        _logger.i('✅ Conversation temps réel initialisée et démarrée');
+        
+        // Mettre à jour l'interface avec le message d'introduction
+        setState(() {
+          _currentPhase = AdaptiveScreenPhase.activeRecording;
+        });
+        
+      } else {
+        _logger.e('❌ Échec initialisation conversation temps réel');
+      }
+      
+    } catch (e) {
+      _logger.e('❌ Erreur initialisation conversation: $e');
+      _handleConversationError(e);
+    }
+  }
+
+  void _addUserMessage(String text) {
+    final userMessage = ConversationMessage(
+      text: text,
+      role: ConversationRole.user,
+    );
+    setState(() {
+      _conversationMessages.add(userMessage);
+      _isUserSpeaking = false;
+      _currentTranscription = null;
+    });
+    _scrollToBottom();
+  }
+
+  void _generateAIResponse(String userInput) async {
+    setState(() { _isAISpeaking = true; });
+    try {
+      final conversationManager = ref.read(conversationManagerProvider);
+      final aiResponse = await conversationManager.generateResponse(
+        userInput: userInput,
+        character: _activeCharacter,
+        scenario: widget.scenario,
+        conversationHistory: [], // TODO: Map history
+      );
+      
+      final aiMessage = ConversationMessage(
+        text: aiResponse.text,
+        role: ConversationRole.assistant,
+        metadata: {'character': _activeCharacter.name},
+      );
+      
+      setState(() {
+        _conversationMessages.add(aiMessage);
+        _isAISpeaking = false;
+      });
+      _scrollToBottom();
+      
+      if (aiResponse.audioUrl != null) {
+        // _playAIAudio(aiResponse.audioUrl!);
+      }
+    } catch (e) {
+      _handleConversationError(e);
+    }
+  }
+
+  void _handleConversationError(Object e) {
+    _logger.e("Erreur de conversation: $e");
+    setState(() { _isAISpeaking = false; });
+    final errorMessage = ConversationMessage(
+      text: "Désolé, une erreur est survenue. Veuillez réessayer.",
+      role: ConversationRole.assistant,
+      metadata: {'error': true},
+    );
+    setState(() { _conversationMessages.add(errorMessage); });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_conversationScrollController.hasClients) {
+        _conversationScrollController.animateTo(
+          _conversationScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Widget _buildCleanConversationControls() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // Bouton Pause/Reprendre (56x56)
+          _buildPauseButton(),
+          
+          // Bouton Microphone Principal (80x80)
+          _buildMainMicrophoneButton(),
+          
+          // Bouton Terminer (56x56)
+          _buildEndButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainMicrophoneButton() {
+    return GestureDetector(
+      onTap: _isRecording ? _stopConversationalRecording : _startConversationalRecording,
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: _isRecording
+              ? const LinearGradient(
+                  colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : const LinearGradient(
+                  colors: [Color(0xFF00D4FF), Color(0xFF0EA5E9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          boxShadow: [
+            BoxShadow(
+              color: (_isRecording ? const Color(0xFFEF4444) : const Color(0xFF00D4FF))
+                  .withOpacity(0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Icon(
+          _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+          color: Colors.white,
+          size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPauseButton() {
+    final isPaused = !_isRecording && _conversationMessages.length > 1;
+    
+    return GestureDetector(
+      onTap: () {
+        // TODO: Implémenter logique pause/reprendre
+        _logger.d('Pause/Reprendre conversation');
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF1A1F2E),
+          border: Border.all(
+            color: const Color(0xFFF59E0B),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withOpacity(0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Icon(
+          isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+          color: const Color(0xFFF59E0B),
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEndButton() {
+    return GestureDetector(
+      onTap: () {
+        _stopRecording();
+        _logger.d('Terminer conversation');
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF1A1F2E),
+          border: Border.all(
+            color: const Color(0xFF8B5CF6),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF8B5CF6).withOpacity(0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.stop_circle_outlined,
+          color: Color(0xFF8B5CF6),
+          size: 24,
+        ),
+      ),
+    );
   }
 }
 
+
 // === ÉNUMÉRATIONS ===
+
+// ENUM POUR LES PHASES DE CONVERSATION
+enum BoostConfidencePhase {
+  initializing,
+  ready,
+  recording,
+  conversing,
+  analyzing,
+  completed,
+  error
+}
 
 enum AdaptiveScreenPhase {
   scenarioPresentation,
@@ -1292,11 +2621,6 @@ enum AdaptiveScreenPhase {
   activeRecording,
   analysisInProgress,
   resultsAndGamification,
-}
-
-enum AICharacterType {
-  thomas,
-  marie,
 }
 
 extension AdaptiveScreenPhaseExtension on AdaptiveScreenPhase {
@@ -1314,17 +2638,6 @@ extension AdaptiveScreenPhaseExtension on AdaptiveScreenPhase {
         return 'Analyse en cours';
       case AdaptiveScreenPhase.resultsAndGamification:
         return 'Résultats et gamification';
-    }
-  }
-}
-
-extension AICharacterTypeExtension on AICharacterType {
-  String get name {
-    switch (this) {
-      case AICharacterType.thomas:
-        return 'Thomas (Manager)';
-      case AICharacterType.marie:
-        return 'Marie (Cliente)';
     }
   }
 }
