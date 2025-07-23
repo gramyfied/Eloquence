@@ -1,7 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
-import '../../data/services/conversation_manager.dart';
+import '../../domain/entities/confidence_models.dart';
+// Conversation manager supprimé dans l'architecture simplifiée
 
 /// Widget d'affichage des métriques comportementales temps réel
 /// 
@@ -103,8 +104,8 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
     // Pour l'instant, utiliser des valeurs simulées basées sur la durée
     // TODO: Intégrer les vraies métriques comportementales depuis ConversationManager
     if (widget.metrics != null) {
-      final duration = widget.metrics!.totalDuration.inSeconds;
-      final turns = widget.metrics!.turnCount;
+      final duration = widget.metrics!.conversationDuration.inSeconds;
+      final turns = widget.metrics!.messageCount;
       
       setState(() {
         // Simuler progression réaliste des métriques
@@ -206,7 +207,7 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDuration(widget.metrics!.totalDuration),
+                    _formatDuration(widget.metrics!.conversationDuration),
                     style: EloquenceTextStyles.caption.copyWith(
                       color: Colors.grey,
                     ),
@@ -351,17 +352,17 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
         children: [
           _buildStatItem(
             Icons.chat_outlined,
-            '${metrics.turnCount}',
+            '${metrics.messageCount}',
             'Tours',
           ),
           _buildStatItem(
             Icons.speed_outlined,
-            '${metrics.averageResponseTime.inMilliseconds}ms',
+            '${metrics.speechRate.toStringAsFixed(1)} mots/min',
             'Réponse moy.',
           ),
           _buildStatItem(
             Icons.trending_up_outlined,
-            _getStateEmoji(metrics.currentState),
+            _getStateEmoji(ConversationState.idle),
             'État',
           ),
         ],
@@ -400,18 +401,18 @@ class _RealTimeMetricsWidgetState extends State<RealTimeMetricsWidget>
 
   String _getStateEmoji(ConversationState state) {
     switch (state) {
-      case ConversationState.aiSpeaking:
+      case ConversationState.speaking:
         return '🤖';
-      case ConversationState.userSpeaking:
+      case ConversationState.listening:
         return '🎤';
       case ConversationState.processing:
         return '⚡';
-      case ConversationState.aiThinking:
-        return '🧠';
-      case ConversationState.paused:
+      case ConversationState.idle:
         return '⏸️';
-      case ConversationState.ended:
+      case ConversationState.completed:
         return '✅';
+      case ConversationState.error:
+        return '❌';
       default:
         return '🔄';
     }

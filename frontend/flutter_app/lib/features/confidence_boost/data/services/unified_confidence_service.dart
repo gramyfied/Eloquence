@@ -7,7 +7,6 @@ import '../../domain/entities/confidence_scenario.dart';
 import 'badge_service.dart';
 import 'gamification_service.dart';
 import 'mistral_api_service.dart';
-import 'prosody_analysis_interface.dart';
 import 'streak_service.dart';
 import 'xp_calculator_service.dart';
 import 'text_support_generator.dart';
@@ -22,7 +21,6 @@ class UnifiedConfidenceService {
   final BadgeService badgeService;
   final StreakService streakService;
   final XPCalculatorService xpCalculatorService;
-  final ProsodyAnalysisInterface prosodyAnalysis;
   final Ref ref;
 
   UnifiedConfidenceService({
@@ -31,7 +29,6 @@ class UnifiedConfidenceService {
     required this.badgeService,
     required this.streakService,
     required this.xpCalculatorService,
-    required this.prosodyAnalysis,
     required this.ref,
   });
 
@@ -53,12 +50,9 @@ class UnifiedConfidenceService {
       feedback: 'Analyse temporaire en attendant l\'intégration LiveKit',
     );
 
-    // Prosodie
-    final prosody = await prosodyAnalysis.analyzeProsody(
-      audioData: audioData,
-      scenario: scenario,
-      language: 'fr',
-    );
+    // Prosodie : Intégrée dans l'architecture LiveKit unifiée
+    // L'analyse prosodique est maintenant gérée par l'agent Python unifié
+    final prosody = null; // Supprimé dans l'architecture simplifiée
 
     // Feedback IA (optionnel, peut être intégré dans l'analyse)
     final feedback = await mistralApiService.generateText(
@@ -100,7 +94,7 @@ final unifiedConfidenceServiceProvider = Provider<UnifiedConfidenceService>((ref
     badgeService: ref.read(badgeServiceProvider),
     streakService: ref.read(streakServiceProvider),
     xpCalculatorService: ref.read(xpCalculatorServiceProvider),
-    prosodyAnalysis: ref.read(prosodyAnalysisInterfaceProvider),
+    // prosodyAnalysis: Supprimé dans l'architecture simplifiée
     ref: ref,
   );
 });
