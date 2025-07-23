@@ -430,7 +430,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=2700, # Port standard pour ce service
+        port=8002, # Port standard pour ce service
         reload=False,
         log_level="info"
     )

@@ -20,7 +20,7 @@ ENV LIVEKIT_API_SECRET=secret
 ENV LIVEKIT_URL=ws://localhost:7880
 
 # Exposer le port
-EXPOSE 8004
+EXPOSE 7880
 
 # Lancer l'application
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004", "--reload"]
