@@ -1,127 +1,144 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-/// Configuration API dynamique pour mobile et développement
-class ApiConstants {
-  // Configuration de base
-  static const String defaultPort = '8000';
-  static const String defaultVoskPort = '8003';
-  static const String defaultLiveKitPort = '7880';
-  static const String defaultMistralPort = '8000';
+/// Constantes globales pour l'application Eloquence
+class AppConstants {
+  // URLs des services backend
+  static const String defaultApiBaseUrl = 'http://localhost:8000';
+  static const String defaultVoskUrl = 'http://localhost:2700';
+  static const String defaultMistralUrl = 'http://localhost:8001';
+  static const String defaultLivekitUrl = 'ws://localhost:7880';
+  static const String defaultEloquenceConversationUrl = 'http://localhost:8003';
   
-  /// Obtenir l'IP de la machine hôte dynamiquement
-  static String get hostIP {
-    // Priorité 1 : Variable d'environnement MOBILE_HOST_IP
-    final envIP = dotenv.env['MOBILE_HOST_IP'];
-    if (envIP != null && envIP.isNotEmpty) {
-      return envIP;
-    }
-    
-    // Priorité 2 : IP depuis app_config.dart (fallback)
-    if (kDebugMode && Platform.isAndroid) {
-      // Pour Android émulateur : 10.0.2.2
-      // Pour device physique : utiliser l'IP locale
-      return '192.168.1.44'; // TODO: Remplacer par votre IP locale
-    }
-    
-    // Priorité 3 : localhost pour web/desktop
-    return 'localhost';
-  }
+  // Timeouts
+  static const Duration defaultTimeout = Duration(seconds: 30);
+  static const Duration longTimeout = Duration(minutes: 2);
+  static const Duration shortTimeout = Duration(seconds: 10);
   
-  /// URL de base pour l'API backend
-  static String get baseUrl {
-    const protocol = kIsWeb ? 'http' : 'http'; // HTTPS en production
-    final host = hostIP;
-    final port = dotenv.env['API_PORT'] ?? defaultPort;
-    return '$protocol://$host:$port';
-  }
-  
-  /// URL pour VOSK STT
-  static String get voskUrl {
-    const protocol = kIsWeb ? 'http' : 'http';
-    final host = hostIP;
-    final port = dotenv.env['VOSK_PORT'] ?? defaultVoskPort;
-    return '$protocol://$host:$port';
-  }
-  
-  
-  /// URL pour LiveKit
-  static String get liveKitUrl {
-    const protocol = kIsWeb ? 'ws' : 'ws'; // WSS en production
-    final host = hostIP;
-    final port = dotenv.env['LIVEKIT_PORT'] ?? defaultLiveKitPort;
-    return '$protocol://$host:$port';
-  }
-  
-  /// URL pour le service Mistral/LLM
-  static String get llmServiceUrl {
-    // Utiliser l'URL complète depuis .env si disponible
-    final envUrl = dotenv.env['LLM_SERVICE_URL'];
-    if (envUrl != null && envUrl.isNotEmpty) {
-      return envUrl;
-    }
-    
-    // Sinon construire l'URL
-    const protocol = kIsWeb ? 'http' : 'http';
-    final host = hostIP;
-    final port = dotenv.env['LLM_PORT'] ?? defaultMistralPort;
-    return '$protocol://$host:$port/api/v1/eloquence/llm/analyze';
-  }
-  
-  /// Configuration ICE pour WebRTC/LiveKit
-  static const List<Map<String, dynamic>> iceServers = [
-    {"urls": ["stun:stun.l.google.com:19302"]},
-    {"urls": ["stun:stun1.l.google.com:19302"]},
-    {"urls": ["stun:stun2.l.google.com:19302"]},
-    {"urls": ["stun:stun3.l.google.com:19302"]},
-  ];
-  
-  /// Timeouts optimisés pour mobile
-  static const Duration apiTimeout = Duration(seconds: 4); // Réduit de 15s
-  static const Duration voskTimeout = Duration(seconds: 6); // Timeout VOSK optimisé mobile
-  static const Duration mistralTimeout = Duration(seconds: 4); // Optimisé
-  static const Duration liveKitConnectTimeout = Duration(seconds: 3);
-  
-  /// Mode debug
-  static bool get isDebugMode => kDebugMode;
-  
-  /// Platform detection
-  static bool get isAndroid => !kIsWeb && Platform.isAndroid;
-  static bool get isIOS => !kIsWeb && Platform.isIOS;
-  static bool get isMobile => isAndroid || isIOS;
-  static bool get isWeb => kIsWeb;
-  
-  /// Afficher la configuration actuelle (pour debug)
-  static void printConfiguration() {
-    if (kDebugMode) {
-      print('=== Configuration API ===');
-      print('Host IP: $hostIP');
-      print('Base URL: $baseUrl');
-      print('VOSK URL: $voskUrl');
-      print('LiveKit URL: $liveKitUrl');
-      print('LLM Service URL: $llmServiceUrl');
-      print('Platform: ${Platform.operatingSystem}');
-      print('Is Mobile: $isMobile');
-      print('======================');
-    }
-  }
+  // Retry configuration
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 2);
 }
 
-/// Configuration de cache optimisée
+/// Constantes pour le système de cache
 class CacheConstants {
-  static const Duration memoryExpiration = Duration(minutes: 10);
+  // Durées d'expiration
+  static const Duration memoryExpiration = Duration(minutes: 30);
   static const Duration diskExpiration = Duration(hours: 24);
+  
+  // Tailles de cache
   static const int maxMemoryCacheSize = 100;
   static const int maxDiskCacheSize = 500;
-  static const String cachePrefix = 'eloquence_cache_';
+  
+  // Préfixes et clés
+  static const String cachePrefix = 'mistral_cache_';
+  static const String userPrefsPrefix = 'user_prefs_';
+  
+  // Configuration cache
+  static const bool enableDiskCache = true;
+  static const bool enableMemoryCache = true;
 }
 
-/// Configuration de performance
-class PerformanceConstants {
-  static const int maxTokensMistral = 500; // Limité pour réduire latence
-  static const double temperatureMistral = 0.3; // Plus déterministe pour cache
-  static const int audioChunkSize = 10; // Secondes par chunk audio
-  static const int audioSampleRate = 16000; // 16kHz pour mobile
-  static const int audioBitrate = 64000; // 64kbps pour mobile
+/// Constantes pour l'interface utilisateur
+class UIConstants {
+  // Animations
+  static const Duration shortAnimation = Duration(milliseconds: 200);
+  static const Duration mediumAnimation = Duration(milliseconds: 400);
+  static const Duration longAnimation = Duration(milliseconds: 800);
+  
+  // Espacements
+  static const double smallPadding = 8.0;
+  static const double mediumPadding = 16.0;
+  static const double largePadding = 24.0;
+  
+  // Rayons de bordure
+  static const double smallRadius = 4.0;
+  static const double mediumRadius = 8.0;
+  static const double largeRadius = 16.0;
+}
+
+/// Constantes pour l'analyse vocale
+class SpeechConstants {
+  // Paramètres d'enregistrement
+  static const int sampleRate = 16000;
+  static const int channels = 1;
+  static const int bitDepth = 16;
+  
+  // Durées
+  static const Duration minRecordingDuration = Duration(seconds: 1);
+  static const Duration maxRecordingDuration = Duration(minutes: 5);
+  static const Duration silenceThreshold = Duration(milliseconds: 500);
+  
+  // Seuils d'analyse
+  static const double confidenceThreshold = 0.7;
+  static const double volumeThreshold = 0.1;
+}
+
+/// Constantes pour la gamification
+class GamificationConstants {
+  // Points et scores
+  static const int basePoints = 10;
+  static const int bonusPoints = 25;
+  static const int perfectScorePoints = 100;
+  
+  // Niveaux
+  static const int pointsPerLevel = 500;
+  static const int maxLevel = 50;
+  
+  // Badges
+  static const List<String> availableBadges = [
+    'first_conversation',
+    'confident_speaker',
+    'pronunciation_master',
+    'fluency_expert',
+    'vocabulary_champion',
+  ];
+}
+
+/// Constantes pour les exercices de confiance
+class ConfidenceBoostConstants {
+  // Durées d'exercice
+  static const Duration minExerciseDuration = Duration(minutes: 2);
+  static const Duration maxExerciseDuration = Duration(minutes: 15);
+  static const Duration defaultExerciseDuration = Duration(minutes: 5);
+  
+  // Niveaux de difficulté
+  static const List<String> difficultyLevels = [
+    'beginner',
+    'intermediate',
+    'advanced',
+    'expert',
+  ];
+  
+  // Types de scénarios
+  static const List<String> scenarioTypes = [
+    'job_interview',
+    'presentation',
+    'casual_conversation',
+    'phone_call',
+    'meeting',
+  ];
+}
+
+/// Constantes pour la connectivité réseau
+class NetworkConstants {
+  // Timeouts spécifiques
+  static const Duration connectionTimeout = Duration(seconds: 15);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration sendTimeout = Duration(seconds: 15);
+  
+  // Retry configuration
+  static const int maxNetworkRetries = 3;
+  static const Duration networkRetryDelay = Duration(seconds: 1);
+  
+  // Headers
+  static const Map<String, String> defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+}
+
+/// Constantes pour les logs
+class LogConstants {
+  static const String appTag = 'Eloquence';
+  static const bool enableDebugLogs = true;
+  static const bool enableNetworkLogs = true;
+  static const int maxLogEntries = 1000;
 }

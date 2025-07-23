@@ -26,6 +26,6 @@ RUN chmod +x /app/download_model.sh
 # Télécharge le modèle au build
 RUN /app/download_model.sh
 
-EXPOSE 2700
+EXPOSE 8002
 
 CMD ["python", "main.py"]
