@@ -27,8 +27,8 @@ class App extends ConsumerWidget {
           final url = AppConfig.apiBaseUrl;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('URL backend utilisée : $url'),
-              duration: Duration(seconds: 6),
+              content: Text('LLM_SERVICE_URL utilisée : $url'),
+              duration: Duration(seconds: 8),
             ),
           );
         });
