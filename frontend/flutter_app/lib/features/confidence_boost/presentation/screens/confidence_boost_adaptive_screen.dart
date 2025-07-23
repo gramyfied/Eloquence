@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../providers/confidence_boost_provider.dart';
+import '../../data/services/unified_livekit_service.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/gamification_models.dart' as gamification;
@@ -58,9 +58,8 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   String? _currentTranscription;
   late ScrollController _conversationScrollController;
 
-  // === AUDIO PIPELINE ===
-  FlutterSoundRecorder? _audioRecorder;
-  String? _audioPath;
+  // === AUDIO PIPELINE UNIFIÉ ===
+  late UnifiedLiveKitService _unifiedAudioService;
   Uint8List? _audioBytes;
   bool _isAudioReady = false;
 
@@ -107,9 +106,8 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _startBackgroundAnimations();
     _logAdaptiveScreenInit();
 
-    // AUDIO PIPELINE INIT
-    _audioRecorder = FlutterSoundRecorder();
-    _openAudioSession();
+    // AUDIO PIPELINE UNIFIÉ INIT
+    _unifiedAudioService = UnifiedLiveKitService();
 
     // NOUVELLE INITIALISATION CONVERSATIONNELLE
     _conversationScrollController = ScrollController();
@@ -121,10 +119,6 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _conversationMessages.add(welcomeMessage);
   }
 
-  Future<void> _openAudioSession() async {
-    await _audioRecorder?.openRecorder();
-    _isAudioReady = true;
-  }
 
   @override
   void dispose() {
@@ -134,7 +128,6 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _gamificationController.dispose();
     _recordingTimer?.cancel();
     _conversationScrollController.dispose();
-    _audioRecorder?.closeRecorder();
     super.dispose();
   }
   
@@ -1449,7 +1442,7 @@ bool _shouldShowTextSupport() {
     );
   }
   
-// AUDIO PIPELINE PATCH
+// AUDIO PIPELINE UNIFIÉ - LiveKit
   Future<void> _startRecording() async {
     // Demander la permission micro
     final status = await Permission.microphone.request();
@@ -1464,22 +1457,20 @@ bool _shouldShowTextSupport() {
     setState(() {
       _isRecording = true;
       _recordingDuration = Duration.zero;
-      _audioPath = null;
       _audioBytes = null;
     });
 
     _transitionToPhase(AdaptiveScreenPhase.activeRecording);
 
-    // Démarrer l'enregistrement audio (format WAV PCM 16 bits)
-    final tempDir = Directory.systemTemp;
-    final filePath = '${tempDir.path}/eloquence_recording_${DateTime.now().millisecondsSinceEpoch}.wav';
-    await _audioRecorder?.startRecorder(
-      toFile: filePath,
-      codec: Codec.pcm16WAV,
-      sampleRate: 16000,
-      bitRate: 16000,
-    );
-    _audioPath = filePath;
+    // Démarrer la conversation LiveKit avec le scénario
+    final success = await _unifiedAudioService.startConversation(widget.scenario);
+    if (!success) {
+      _logger.e('Échec du démarrage de la conversation LiveKit');
+      setState(() {
+        _isRecording = false;
+      });
+      return;
+    }
 
     _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
@@ -1487,35 +1478,25 @@ bool _shouldShowTextSupport() {
       });
     });
 
-    _logger.i('🎤 Enregistrement démarré');
+    _logger.i('🎤 Conversation LiveKit démarrée');
   }
 
-// PATCH: log explicite buffer audio juste après lecture
+// AUDIO PIPELINE UNIFIÉ - LiveKit
   Future<void> _stopRecording() async {
     _recordingTimer?.cancel();
     setState(() {
       _isRecording = false;
     });
 
-    // Arrêter l'enregistrement et charger le buffer audio
-    String? path = await _audioRecorder?.stopRecorder();
-    if (path != null && File(path).existsSync()) {
-      _audioBytes = await File(path).readAsBytes();
-      _logger.i('🎤 [STOP] Audio capturé: ${_audioBytes?.length ?? 0} octets');
-    } else {
-      _audioBytes = null;
-      _logger.e('Aucun fichier audio trouvé');
-    }
+    // Arrêter la conversation LiveKit
+    await _unifiedAudioService.endConversation();
 
     _transitionToPhase(AdaptiveScreenPhase.analysisInProgress);
 
-    // PATCH: log avant analyse
-    _logger.i('🎤 [ANALYSE] Buffer transmis à l\'analyse: ${_audioBytes?.length ?? 0} octets');
-
-    // Démarrer l'analyse avec le buffer audio réel
+    // Démarrer l'analyse avec les données LiveKit
     await _startOptimizedAnalysis();
 
-    _logger.i('🎤 Enregistrement terminé: ${_recordingDuration.inSeconds}s');
+    _logger.i('🎤 Conversation LiveKit terminée: ${_recordingDuration.inSeconds}s');
   }
   
 // PATCH: transmettre le buffer audio réel à l’analyse

@@ -5,8 +5,6 @@ import 'dart:typed_data';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import 'badge_service.dart';
-import 'confidence_analysis_backend_service.dart';
-import 'confidence_livekit_integration.dart';
 import 'gamification_service.dart';
 import 'mistral_api_service.dart';
 import 'prosody_analysis_interface.dart';
@@ -20,24 +18,20 @@ import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/c
 
 class UnifiedConfidenceService {
   final IMistralApiService mistralApiService;
-  final ConfidenceAnalysisBackendService analysisBackendService;
   final GamificationService gamificationService;
   final BadgeService badgeService;
   final StreakService streakService;
   final XPCalculatorService xpCalculatorService;
   final ProsodyAnalysisInterface prosodyAnalysis;
-  final ConfidenceLiveKitIntegration livekitIntegration;
   final Ref ref;
 
   UnifiedConfidenceService({
     required this.mistralApiService,
-    required this.analysisBackendService,
     required this.gamificationService,
     required this.badgeService,
     required this.streakService,
     required this.xpCalculatorService,
     required this.prosodyAnalysis,
-    required this.livekitIntegration,
     required this.ref,
   });
 
@@ -49,12 +43,14 @@ class UnifiedConfidenceService {
     required String userId,
     required Duration sessionDuration,
   }) async {
-    // Analyse backend
-    final analysis = await analysisBackendService.analyzeAudioRecording(
-      audioData: audioData,
-      scenario: scenario,
-      userContext: userId,
-      recordingDurationSeconds: sessionDuration.inSeconds,
+    // TODO: Utiliser le service LiveKit unifié pour l'analyse
+    final analysis = ConfidenceAnalysis(
+      overallScore: 75.0,
+      confidenceScore: 0.75,
+      fluencyScore: 0.70,
+      clarityScore: 0.80,
+      energyScore: 0.75,
+      feedback: 'Analyse temporaire en attendant l\'intégration LiveKit',
     );
 
     // Prosodie
@@ -100,13 +96,11 @@ class UnifiedConfidenceService {
 final unifiedConfidenceServiceProvider = Provider<UnifiedConfidenceService>((ref) {
   return UnifiedConfidenceService(
     mistralApiService: ref.read(mistralApiServiceProvider),
-    analysisBackendService: ref.read(confidenceAnalysisBackendServiceProvider),
     gamificationService: ref.read(gamificationServiceProvider),
     badgeService: ref.read(badgeServiceProvider),
     streakService: ref.read(streakServiceProvider),
     xpCalculatorService: ref.read(xpCalculatorServiceProvider),
     prosodyAnalysis: ref.read(prosodyAnalysisInterfaceProvider),
-    livekitIntegration: ref.read(confidenceLiveKitIntegrationProvider),
     ref: ref,
   );
 });

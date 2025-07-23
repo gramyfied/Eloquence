@@ -1,0 +1,25 @@
+# === DÉPENDANCES CORE LIVEKIT ===
+livekit-api>=1.0.4
+livekit>=0.11.0
+
+# === DÉPENDANCES STANDARD PYTHON ===
+requests>=2.31.0
+aiohttp>=3.8.0
+
+# === TRAITEMENT AUDIO ===
+numpy>=1.24.0
+scipy>=1.10.0
+librosa>=0.10.0
+
+# === MODÈLES IA INTÉGRÉS ===
+# openai>=1.0.0  # Optionnel pour TTS
+# azure-cognitiveservices-speech>=1.30.0  # Optionnel pour Azure TTS
+
+# === UTILITAIRES ===
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+dataclasses-json>=0.6.0
+
+# === DÉVELOPPEMENT & DEBUG ===
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

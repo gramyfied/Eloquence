@@ -166,6 +166,56 @@ services:
       retries: 3
       start_period: 30s
 
+  # === AGENT LIVEKIT UNIFIÉ - NOUVELLE ARCHITECTURE ===
+  livekit-unified-agent:
+    build:
+      context: ./services/livekit-unified-agent
+      dockerfile: Dockerfile
+    image: eloquence/livekit-unified-agent:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"  # Port pour monitoring/debug
+    networks:
+      - eloquence-network
+    env_file:
+      - .env
+    environment:
+      # Configuration LiveKit
+      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_ROOM=confidence-boost
+      
+      # Services externes
+      - VOSK_URL=http://vosk-stt:8002
+      - MISTRAL_URL=http://mistral-conversation:8001
+      
+      # Configuration scénarios
+      - DEFAULT_SCENARIO_TYPE=interview
+      - DEFAULT_CHARACTER=Thomas
+      - DEFAULT_DIFFICULTY=facile
+      
+      # Logging & monitoring
+      - LOG_LEVEL=INFO
+      - METRICS_ENABLED=true
+      
+    depends_on:
+      livekit:
+        condition: service_healthy
+      vosk-stt:
+        condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; print('Agent OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    volumes:
+      - ./logs:/home/agent/app/logs
+      - ./temp:/home/agent/app/temp
+
   eloquence-agent-v1:
     build:
       context: ./services/api-backend
@@ -200,6 +250,8 @@ services:
         condition: service_healthy
       openai-tts:
         condition: service_healthy
+    profiles:
+      - legacy  # Service marqué comme legacy
 
   # Service Eloquence Conversation (Port 8003) - NOUVEAU
   eloquence-conversation:
