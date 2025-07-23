@@ -316,14 +316,19 @@ class ConfidenceBoostProvider with ChangeNotifier {
     Uint8List? audioData, // Données audio de l'enregistrement
   }) async {
     logger.i("🚀 MOBILE-OPTIMIZED: Parallel analysis system - Scenario: ${scenario.title}");
-    
+    if (audioData == null) {
+      logger.w("⚠️ Aucun buffer audio reçu (audioData == null)");
+    } else {
+      logger.i("📦 Buffer audio reçu: ${audioData.length} octets");
+    }
+
     // === INITIALISATION UX MOBILE ===
     _isAnalyzing = true;
     _isUsingMobileOptimization = true;
     _currentStage = 0;
     _currentStageDescription = '🚀 Initialisation mobile...';
     notifyListeners();
-    
+
     try {
       // Petite pause pour l'animation d'initialisation
       await Future.delayed(const Duration(milliseconds: 500));

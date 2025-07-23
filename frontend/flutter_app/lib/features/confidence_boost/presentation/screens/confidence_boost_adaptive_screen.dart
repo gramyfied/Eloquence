@@ -1,10 +1,15 @@
+// AUDIO PIPELINE PATCH
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/confidence_boost_provider.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart' as confidence_models;
@@ -40,6 +45,7 @@ class ConfidenceBoostAdaptiveScreen extends ConsumerStatefulWidget {
   ConsumerState<ConfidenceBoostAdaptiveScreen> createState() => _ConfidenceBoostAdaptiveScreenState();
 }
 
+// AUDIO PIPELINE PATCH
 class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostAdaptiveScreen>
     with TickerProviderStateMixin {
   
@@ -51,7 +57,13 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   bool _isUserSpeaking = false;
   String? _currentTranscription;
   late ScrollController _conversationScrollController;
-  
+
+  // === AUDIO PIPELINE ===
+  FlutterSoundRecorder? _audioRecorder;
+  String? _audioPath;
+  Uint8List? _audioBytes;
+  bool _isAudioReady = false;
+
   // CONVERSATION MANAGER INTÉGRATION SUPPRIMÉ
   
   // === CONTRÔLEURS D'ANIMATION OPTIMISÉS ===
@@ -95,6 +107,10 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _startBackgroundAnimations();
     _logAdaptiveScreenInit();
 
+    // AUDIO PIPELINE INIT
+    _audioRecorder = FlutterSoundRecorder();
+    _openAudioSession();
+
     // NOUVELLE INITIALISATION CONVERSATIONNELLE
     _conversationScrollController = ScrollController();
     final welcomeMessage = ConversationMessage(
@@ -103,6 +119,23 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
       metadata: {'character': _activeCharacter.name},
     );
     _conversationMessages.add(welcomeMessage);
+  }
+
+  Future<void> _openAudioSession() async {
+    await _audioRecorder?.openRecorder();
+    _isAudioReady = true;
+  }
+
+  @override
+  void dispose() {
+    _mainAnimationController.dispose();
+    _backgroundAnimationController.dispose();
+    _aiCharacterController.dispose();
+    _gamificationController.dispose();
+    _recordingTimer?.cancel();
+    _conversationScrollController.dispose();
+    _audioRecorder?.closeRecorder();
+    super.dispose();
   }
   
   void _initializeAnimations() {
@@ -1416,59 +1449,96 @@ bool _shouldShowTextSupport() {
     );
   }
   
-  void _startRecording() {
+// AUDIO PIPELINE PATCH
+  Future<void> _startRecording() async {
+    // Demander la permission micro
+    final status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      _logger.e('Permission micro refusée');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permission micro refusée')),
+      );
+      return;
+    }
+
     setState(() {
       _isRecording = true;
       _recordingDuration = Duration.zero;
+      _audioPath = null;
+      _audioBytes = null;
     });
-    
+
     _transitionToPhase(AdaptiveScreenPhase.activeRecording);
-    
+
+    // Démarrer l'enregistrement audio (format WAV PCM 16 bits)
+    final tempDir = Directory.systemTemp;
+    final filePath = '${tempDir.path}/eloquence_recording_${DateTime.now().millisecondsSinceEpoch}.wav';
+    await _audioRecorder?.startRecorder(
+      toFile: filePath,
+      codec: Codec.pcm16WAV,
+      sampleRate: 16000,
+      bitRate: 16000,
+    );
+    _audioPath = filePath;
+
     _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _recordingDuration = Duration(seconds: timer.tick);
       });
     });
-    
+
     _logger.i('🎤 Enregistrement démarré');
   }
-  
-  void _stopRecording() {
+
+// PATCH: log explicite buffer audio juste après lecture
+  Future<void> _stopRecording() async {
     _recordingTimer?.cancel();
     setState(() {
       _isRecording = false;
     });
-    
+
+    // Arrêter l'enregistrement et charger le buffer audio
+    String? path = await _audioRecorder?.stopRecorder();
+    if (path != null && File(path).existsSync()) {
+      _audioBytes = await File(path).readAsBytes();
+      _logger.i('🎤 [STOP] Audio capturé: ${_audioBytes?.length ?? 0} octets');
+    } else {
+      _audioBytes = null;
+      _logger.e('Aucun fichier audio trouvé');
+    }
+
     _transitionToPhase(AdaptiveScreenPhase.analysisInProgress);
-    
-    // Démarrer l'analyse avec les corrections optimisées
-    _startOptimizedAnalysis();
-    
+
+    // PATCH: log avant analyse
+    _logger.i('🎤 [ANALYSE] Buffer transmis à l\'analyse: ${_audioBytes?.length ?? 0} octets');
+
+    // Démarrer l'analyse avec le buffer audio réel
+    await _startOptimizedAnalysis();
+
     _logger.i('🎤 Enregistrement terminé: ${_recordingDuration.inSeconds}s');
   }
   
+// PATCH: transmettre le buffer audio réel à l’analyse
   Future<void> _startOptimizedAnalysis() async {
     final provider = ref.read(confidenceBoostProvider);
     final textSupport = provider.currentTextSupport;
-    
+
     if (textSupport == null) return;
-    
+
     try {
-      // Utiliser les nouvelles corrections optimisées
       await provider.analyzePerformance(
         scenario: widget.scenario,
         textSupport: textSupport,
         recordingDuration: _recordingDuration,
-        audioData: null, // Simulated for now
+        audioData: _audioBytes, // PATCH: buffer réel
       );
-      
+
       _transitionToPhase(AdaptiveScreenPhase.resultsAndGamification);
-      
-      // Animer la gamification si résultats disponibles
+
       if (provider.lastGamificationResult != null) {
         _animateGamificationEntry();
       }
-      
+
     } catch (e) {
       _logger.e('Erreur lors de l\'analyse: $e');
     }
@@ -1836,17 +1906,6 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     );
   }
   
-  @override
-  void dispose() {
-    _mainAnimationController.dispose();
-    _backgroundAnimationController.dispose();
-    _aiCharacterController.dispose();
-    _gamificationController.dispose();
-    _recordingTimer?.cancel();
-    _conversationScrollController.dispose();
-    
-    super.dispose();
-  }
 
   // Suppression des callbacks ConversationManager (obsolètes)
   // Suppression des méthodes : _initializeConversation, _handleConversationEvent, _handleTranscriptionUpdate, _handleMetricsUpdate, _handleAIMessage, _handleUserMessage, _handleConversationStateChange, _initializeRealTimeConversation, _startConversationalRecording, _stopConversationalRecording, et toutes les références à _conversationManager, _conversationEventsSubscription, _transcriptionSubscription, _metricsSubscription, _isConversationInitialized.
@@ -2128,9 +2187,10 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     );
   }
 
+// PATCH: bouton micro appelle la vraie méthode d’enregistrement audio
   Widget _buildMainMicrophoneButton() {
     return GestureDetector(
-      onTap: _isRecording ? _stopConversationalRecording : _startConversationalRecording,
+      onTap: _isRecording ? _stopRecording : _startRecording,
       child: Container(
         width: 80,
         height: 80,
