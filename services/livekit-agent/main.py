@@ -100,7 +100,7 @@ def create_mistral_llm():
     )
 
 async def entrypoint(ctx: JobContext):
-    """Point d'entrée principal de l'agent LiveKit officiel"""
+    """Point d'entrée principal de l'agent LiveKit conversationnel"""
     logger.info("🎯 DIAGNOSTIC: Fonction entrypoint appelée!")
     logger.info(f"🎯 DIAGNOSTIC: JobContext - Room: {ctx.room.name if ctx.room else 'None'}")
     
@@ -108,7 +108,7 @@ async def entrypoint(ctx: JobContext):
         await ctx.connect()
         logger.info("🎯 DIAGNOSTIC: Connexion ctx réussie")
         
-        # Configuration de l'agent selon les bonnes pratiques LiveKit
+        # Configuration de l'agent conversationnel
         agent = Agent(
             instructions="""Tu es Thomas, un coach en communication bienveillant et professionnel.
             Tu aides l'utilisateur dans des exercices de confiance en soi et d'expression orale.
@@ -119,12 +119,13 @@ async def entrypoint(ctx: JobContext):
             - Utilise un ton bienveillant et professionnel
             - Réponds en français
             - Adapte tes conseils au contexte de l'exercice
-            - Utilise les outils disponibles pour analyser la confiance de l'utilisateur""",
+            - Utilise les outils disponibles pour analyser la confiance de l'utilisateur
+            - Garde tes réponses courtes et engageantes (2-3 phrases max)""",
             tools=[generate_confidence_metrics, send_confidence_feedback],
         )
         logger.info("🎯 DIAGNOSTIC: Agent créé")
         
-        # Configuration de la session avec Vosk STT optimisé + OpenAI pour LLM/TTS
+        # Configuration de la session avec pipeline optimisé
         session = AgentSession(
             vad=silero.VAD.load(),  # Détection d'activité vocale
             stt=create_vosk_stt(),  # Speech-to-Text Vosk local (~0.5s)
@@ -133,22 +134,21 @@ async def entrypoint(ctx: JobContext):
         )
         logger.info("🎯 DIAGNOSTIC: AgentSession créée")
         
-        logger.info("🚀 Agent LiveKit Confidence Boost démarré avec l'architecture officielle")
+        logger.info("🚀 Agent LiveKit Confidence Boost démarré - Architecture conversationnelle")
         
         # Démarrer la session dans la room
         await session.start(agent=agent, room=ctx.room)
         logger.info("🎯 DIAGNOSTIC: Session.start() appelée avec succès")
         
-        # Message de bienvenue initial
-        await session.generate_reply(
-            instructions="Salue chaleureusement l'utilisateur en tant que Thomas, son coach IA. "
-                       "Explique que tu es là pour l'aider à améliorer sa confiance en expression orale. "
-                       "Mentionne que tu utilises une technologie de reconnaissance vocale ultra-rapide. "
-                       "Invite-le à commencer l'exercice quand il est prêt."
+        # Message de bienvenue initial automatique - LiveKit agents va le publier en audio
+        await session.say(
+            text="Bonjour ! Je suis Thomas, votre coach IA pour améliorer votre confiance en expression orale. "
+                 "Grâce à une reconnaissance vocale ultra-rapide, je peux vous donner des conseils personnalisés en temps réel. "
+                 "Dites-moi comment vous vous sentez aujourd'hui ou commencez simplement à parler !"
         )
-        logger.info("🎯 DIAGNOSTIC: Message de bienvenue généré")
+        logger.info("🎯 DIAGNOSTIC: Message de bienvenue publié en audio")
         
-        logger.info("✅ Session agent démarrée avec succès")
+        logger.info("✅ Session agent conversationnelle démarrée avec succès")
         
     except Exception as e:
         logger.error(f"❌ ERREUR dans entrypoint: {e}")

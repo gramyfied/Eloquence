@@ -75,13 +75,14 @@ class VoskSTT(stt.STT):
             
             return wav_bytes
     
-    async def recognize(
+    async def _recognize_impl(
         self,
         buffer: utils.AudioBuffer,
         *,
         language: Optional[str] = None,
+        conn_options: Optional[object] = None,
     ) -> stt.SpeechEvent:
-        """Reconnaissance vocale via le service Vosk"""
+        """Implémentation de la reconnaissance vocale requise par LiveKit agents 1.0.x"""
         
         start_time = asyncio.get_event_loop().time()
         
@@ -139,6 +140,16 @@ class VoskSTT(stt.STT):
                     stt.SpeechEventAlternative(text="", confidence=0.0)
                 ]
             )
+
+    async def recognize(
+        self,
+        buffer: utils.AudioBuffer,
+        *,
+        language: Optional[str] = None,
+        conn_options: Optional[object] = None,
+    ) -> stt.SpeechEvent:
+        """Reconnaissance vocale via le service Vosk (compatible livekit-agents 1.0.x)"""
+        return await self._recognize_impl(buffer, language=language, conn_options=conn_options)
     
     async def stream(self) -> "SpeechStream":
         """
