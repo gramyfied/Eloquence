@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'confidence_boost_adaptive_screen.dart'; // Importer le nouvel écran adaptatif
+import 'confidence_boost_rest_screen.dart'; // Importer le nouvel écran REST simplifié
 import '../../domain/entities/confidence_scenario.dart'; // Importer le modèle de scénario
 import '../../domain/entities/confidence_models.dart'; // Importer les types de scénario
 
@@ -25,7 +25,7 @@ class ConfidenceBoostScreen extends StatelessWidget {
       icon: '🚀',
     );
 
-    // Redirige vers l'écran adaptatif corrigé et stabilisé
-    return const ConfidenceBoostAdaptiveScreen(scenario: defaultScenario);
+    // Redirige vers l'écran REST simplifié
+    return const ConfidenceBoostRestScreen(scenario: defaultScenario);
   }
 }

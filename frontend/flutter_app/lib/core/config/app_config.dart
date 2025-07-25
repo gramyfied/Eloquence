@@ -8,10 +8,11 @@ class AppConfig {
   // Fonction utilitaire pour substituer localhost avec l'IP correcte en mode debug
   static String _replaceLocalhostWithDevIp(String url) {
     if (kDebugMode && url.contains('localhost')) {
-      // 10.0.2.2 est l'alias de localhost pour l'émulateur Android
-      // Pour iOS ou les appareils physiques, utilisez l'IP de votre machine de développement
-      final devIp = Platform.isAndroid ? '10.0.2.2' : dotenv.env['DEV_SERVER_IP'] ?? '192.168.1.44';
-      return url.replaceFirst('localhost', devIp);
+      // FIX: Utiliser l'IP machine hôte pour tous les cas car Docker expose sur 0.0.0.0
+      const devIp = '192.168.1.44';
+      final newUrl = url.replaceFirst('localhost', devIp);
+      debugPrint('🌐 URL remplacée: $url → $newUrl');
+      return newUrl;
     }
     return url;
   }
@@ -50,6 +51,18 @@ class AppConfig {
   static String get apiBaseUrl {
     final url = dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000'; // BACKEND_URL ou LLM_SERVICE_URL
     return isProduction ? "https://api.eloquence.app" : _replaceLocalhostWithDevIp(url);
+  }
+
+  // Nouveau service unifié eloquence-streaming-api
+  static String get eloquenceStreamingApiUrl {
+    final url = dotenv.env['ELOQUENCE_STREAMING_API_URL'] ?? 'http://localhost:8003';
+    // TEMPORARY FIX: Force IP machine hôte pour tous les cas
+    if (kDebugMode) {
+      const debugUrl = 'http://192.168.1.44:8003';
+      debugPrint('🔧 DEBUG: Force eloquenceStreamingApiUrl = $debugUrl (IP machine hôte)');
+      return debugUrl;
+    }
+    return isProduction ? "https://streaming.eloquence.app" : _replaceLocalhostWithDevIp(url);
   }
 
   static String get voskServiceUrl {

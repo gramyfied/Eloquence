@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/confidence_boost_provider.dart';
-import 'confidence_boost_adaptive_screen.dart';
+import 'confidence_boost_rest_screen.dart';
 
 class ConfidenceBoostMainScreen extends ConsumerWidget {
   const ConfidenceBoostMainScreen({Key? key}) : super(key: key);
@@ -27,7 +27,7 @@ class ConfidenceBoostMainScreen extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => ConfidenceBoostAdaptiveScreen(
+                      builder: (context) => ConfidenceBoostRestScreen(
                         scenario: scenario,
                       ),
                     ),

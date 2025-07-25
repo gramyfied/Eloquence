@@ -1,0 +1,9 @@
+# Agent LiveKit officiel pour Confidence Boost avec Vosk STT optimisé
+livekit-agents[openai,silero]~=1.0
+livekit-plugins-openai
+livekit-plugins-silero
+python-dotenv==1.0.0
+
+# Dépendances pour interface Vosk STT personnalisée
+aiohttp>=3.8.0
+numpy>=1.21.0

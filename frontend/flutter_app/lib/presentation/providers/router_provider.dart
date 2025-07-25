@@ -11,7 +11,7 @@ import '../../screens/exercise_active_screen.dart';
 import '../screens/main/main_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/scenario/scenario_screen.dart';
-import '../../features/confidence_boost/presentation/screens/confidence_boost_adaptive_screen.dart';
+import '../../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
 import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -78,34 +78,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           
-          // Route confidence_boost - NOUVELLE INTERFACE ADAPTATIVE
+          // Route confidence_boost - NOUVELLE APPROCHE LIVEKIT
           GoRoute(
             path: 'confidence_boost',
             builder: (BuildContext context, GoRouterState state) {
-              // Scénario par défaut optimisé pour l'interface conversationnelle
-              const defaultScenario = ConfidenceScenario(
-                id: 'confidence_boost_express',
-                title: 'Confidence Boost Express',
-                description: 'Gagnez en assurance en 3 minutes avec un sujet qui vous passionne',
-                prompt: 'Parlez d\'un sujet qui vous passionne pendant 2 minutes. Exprimez-vous avec confiance et authenticité.',
+              // Utilise le nouveau écran LiveKit (remplace WebSocket)
+              final defaultScenario = ConfidenceScenario(
+                id: 'default',
+                title: 'Conversation Confiance',
+                description: 'Exercice de conversation pour améliorer votre confiance en public',
+                prompt: 'Exprimez-vous naturellement et avec confiance sur un sujet qui vous intéresse',
                 type: ConfidenceScenarioType.presentation,
-                durationSeconds: 120,
-                difficulty: 'Facile',
-                icon: '🚀',
-                tips: [
-                  'Choisissez un sujet qui vous anime vraiment',
-                  'Respirez profondément avant de commencer',
-                  'Regardez droit devant vous',
-                  'Laissez votre passion transparaître',
-                ],
-                keywords: [
-                  'passion',
-                  'confiance',
-                  'authenticité',
-                  'expression',
-                ],
+                durationSeconds: 600,
+                difficulty: 'beginner',
+                icon: '🎤',
+                keywords: ['confiance', 'expression', 'communication'],
+                tips: ['Parlez clairement', 'Restez naturel', 'Prenez votre temps'],
               );
-              return const ConfidenceBoostAdaptiveScreen(scenario: defaultScenario);
+              return ConfidenceBoostEntry.livekitScreen(defaultScenario);
             },
           ),
           
@@ -122,31 +112,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (BuildContext context, GoRouterState state) {
               final exerciseId = state.pathParameters['id']!;
               
-              // CORRECTION CRITIQUE : Rediriger confidence_boost vers la nouvelle interface
+              // CORRECTION CRITIQUE : Rediriger confidence_boost vers LiveKit
               if (exerciseId == 'confidence_boost') {
-                const defaultScenario = ConfidenceScenario(
-                  id: 'confidence_boost_express',
-                  title: 'Confidence Boost Express',
-                  description: 'Gagnez en assurance en 3 minutes avec un sujet qui vous passionne',
-                  prompt: 'Parlez d\'un sujet qui vous passionne pendant 2 minutes. Exprimez-vous avec confiance et authenticité.',
+                final defaultScenario = ConfidenceScenario(
+                  id: 'confidence_boost',
+                  title: 'Confidence Boost',
+                  description: 'Exercice pour améliorer votre confiance en expression orale',
+                  prompt: 'Parlez avec assurance et confiance sur un sujet de votre choix',
                   type: ConfidenceScenarioType.presentation,
-                  durationSeconds: 120,
-                  difficulty: 'Facile',
-                  icon: '🚀',
-                  tips: [
-                    'Choisissez un sujet qui vous anime vraiment',
-                    'Respirez profondément avant de commencer',
-                    'Regardez droit devant vous',
-                    'Laissez votre passion transparaître',
-                  ],
-                  keywords: [
-                    'passion',
-                    'confiance',
-                    'authenticité',
-                    'expression',
-                  ],
+                  durationSeconds: 600,
+                  difficulty: 'beginner',
+                  icon: '💪',
+                  keywords: ['confiance', 'assurance', 'expression'],
+                  tips: ['Parlez avec assurance', 'Gardez le contact visuel', 'Structurez vos idées'],
                 );
-                return const ConfidenceBoostAdaptiveScreen(scenario: defaultScenario);
+                return ConfidenceBoostEntry.livekitScreen(defaultScenario);
               }
               return ExerciseActiveScreen(exerciseId: exerciseId);
             },

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import '../config/app_config.dart';
 
 /// Service audio universel basé sur LiveKit pour tous les exercices Eloquence
 /// 
@@ -74,9 +75,9 @@ class UniversalLiveKitAudioService {
       // 3. Configurer les listeners
       _setupRoomListeners();
       
-      // 4. Se connecter à LiveKit
+      // 4. Se connecter à LiveKit avec URL configurée
       await _room!.connect(
-        'ws://localhost:7880',
+        AppConfig.livekitUrl,
         token,
       );
       
@@ -227,33 +228,52 @@ class UniversalLiveKitAudioService {
     }
   }
 
-  /// Obtenir token LiveKit depuis le backend
+  /// Obtenir token LiveKit depuis le service de tokens
   Future<String?> _getLiveKitToken(
     String exerciseType,
     String userId,
     Map<String, dynamic>? config,
   ) async {
     try {
+      // Utiliser l'URL correcte du service de tokens LiveKit
+      final tokenServiceUrl = '${AppConfig.livekitTokenUrl}/generate-token';
+      _logger.i('🎫 Demande token vers: $tokenServiceUrl');
+      
       final response = await http.post(
-        Uri.parse('http://localhost:8003/api/livekit/token'),
+        Uri.parse(tokenServiceUrl),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'exercise_type': exerciseType,
-          'user_id': userId,
-          'config': config ?? {},
-          'timestamp': DateTime.now().toIso8601String(),
+          'room_name': 'confidence_boost_${exerciseType}_${DateTime.now().millisecondsSinceEpoch}',
+          'participant_name': 'user_$userId',
+          'participant_identity': userId,
+          'grants': {
+            'roomJoin': true,
+            'canPublish': true,
+            'canSubscribe': true,
+            'canPublishData': true,
+            'canUpdateOwnMetadata': true,
+          },
+          'metadata': {
+            'exercise_type': exerciseType,
+            'user_id': userId,
+            'timestamp': DateTime.now().toIso8601String(),
+            ...?config,
+          },
+          'validity_hours': 2, // Token valide 2 heures
         }),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final token = data['token'] as String?;
+        final roomName = data['room_name'] as String?;
+        final expiresAt = data['expires_at'] as String?;
         
         if (token != null) {
-          _logger.i('🎫 Token LiveKit obtenu');
+          _logger.i('✅ Token LiveKit obtenu pour room: $roomName (expire: $expiresAt)');
           return token;
         } else {
           throw Exception('Token manquant dans la réponse');
