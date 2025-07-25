@@ -161,19 +161,35 @@ class ConfidenceLiveKitService {
       }
     });
 
-    // Écoute des participants et de leurs données
-    _room!.addListener(() async {
+    // 🔧 FIX CRITIQUE: Événements LiveKit corrects pour Flutter
+    
+    // Événement: participant connecté (polling périodique pour détecter Thomas)
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_room == null) {
+        timer.cancel();
+        return;
+      }
+      
       for (final participant in _room!.remoteParticipants.values) {
-        // Écouter les données de l'agent IA
-        participant.addListener(() {
-          _handleParticipantData(participant);
-        });
-
-        // Écouter l'audio de l'agent IA (TTS) via les tracks audios
+        _logger.d('🔍 Checking participant: ${participant.identity}');
+        
+        // Vérifier si on a de nouveaux tracks audio
         for (final publication in participant.audioTrackPublications) {
-          if (publication.track != null && publication.track is RemoteAudioTrack) {
-            _remoteAudioTrack = publication.track as RemoteAudioTrack;
-            _logger.i('🔊 Audio IA reçu et connecté');
+          _logger.d('🔍 Audio publication: subscribed=${publication.subscribed}, track=${publication.track != null}');
+          
+          if (publication.subscribed && publication.track != null) {
+            final track = publication.track as RemoteAudioTrack;
+            
+            if (_remoteAudioTrack != track) {
+              _logger.i('🎵 NOUVEAU track audio détecté de ${participant.identity}');
+              _logger.i('🔊 Track audio trouvé, tentative de démarrage...');
+              
+              _remoteAudioTrack = track;
+              _remoteAudioTrack!.start();
+              
+              _logger.i('🔊 ✅ Audio IA démarré automatiquement');
+              _logger.i('🔊 🔉 THOMAS DEVRAIT MAINTENANT ÊTRE AUDIBLE !');
+            }
           }
         }
       }

@@ -11,11 +11,13 @@ import 'package:logger/logger.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../providers/confidence_boost_provider.dart';
 import '../../data/services/unified_livekit_service.dart';
+import '../../data/services/confidence_livekit_service.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart' as confidence_models;
 import '../../domain/entities/gamification_models.dart' as gamification;
 import '../../domain/entities/confidence_session.dart';
 import '../../domain/entities/ai_character_models.dart' as ai_models;
+import '../../domain/entities/conversation_models.dart';
 import '../widgets/scenario_generation_animation.dart';
 import '../widgets/confidence_results_view.dart';
 import '../widgets/conversation_chat_widget.dart';
@@ -63,7 +65,12 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
   Uint8List? _audioBytes;
   bool _isAudioReady = false;
 
-  // CONVERSATION MANAGER INTÉGRATION SUPPRIMÉ
+  // === LIVEKIT SERVICE RÉACTIVÉ ===
+  ConfidenceLiveKitService? _livekitService;
+  StreamSubscription? _conversationSubscription;
+  StreamSubscription? _transcriptionSubscription;
+  bool _isConversationInitialized = false;
+  String? _currentSessionId;
   
   // === CONTRÔLEURS D'ANIMATION OPTIMISÉS ===
   late AnimationController _mainAnimationController;
@@ -109,6 +116,9 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     // AUDIO PIPELINE UNIFIÉ INIT
     _unifiedAudioService = UnifiedLiveKitService();
 
+    // === LIVEKIT SERVICE RÉACTIVÉ ===
+    _livekitService = ConfidenceLiveKitService();
+
     // NOUVELLE INITIALISATION CONVERSATIONNELLE
     _conversationScrollController = ScrollController();
     final welcomeMessage = ConversationMessage(
@@ -117,6 +127,9 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
       metadata: {'character': _activeCharacter.name},
     );
     _conversationMessages.add(welcomeMessage);
+
+    // Initialiser la conversation temps réel
+    _initializeRealTimeConversation();
   }
 
 
@@ -128,6 +141,12 @@ class _ConfidenceBoostAdaptiveScreenState extends ConsumerState<ConfidenceBoostA
     _gamificationController.dispose();
     _recordingTimer?.cancel();
     _conversationScrollController.dispose();
+    
+    // === NETTOYAGE LIVEKIT SERVICE ===
+    _conversationSubscription?.cancel();
+    _transcriptionSubscription?.cancel();
+    _livekitService?.dispose();
+    
     super.dispose();
   }
   
@@ -1462,15 +1481,16 @@ bool _shouldShowTextSupport() {
 
     _transitionToPhase(AdaptiveScreenPhase.activeRecording);
 
-    // Démarrer la conversation LiveKit avec le scénario
-    final success = await _unifiedAudioService.startConversation(widget.scenario);
-    if (!success) {
-      _logger.e('Échec du démarrage de la conversation LiveKit');
+    // Vérifier que la conversation est initialisée
+    if (!_isConversationInitialized || _livekitService == null) {
+      _logger.e('❌ Service de conversation non initialisé');
       setState(() {
         _isRecording = false;
       });
       return;
     }
+
+    _logger.i('🎤 Démarrage enregistrement avec EloquenceConversationService');
 
     _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
@@ -1488,15 +1508,22 @@ bool _shouldShowTextSupport() {
       _isRecording = false;
     });
 
-    // Arrêter la conversation LiveKit
-    await _unifiedAudioService.endConversation();
+    // Terminer la session de conversation
+    if (_currentSessionId != null && _livekitService != null) {
+      try {
+        await _livekitService!.endSession();
+        _logger.i('📊 Session LiveKit terminée');
+      } catch (e) {
+        _logger.w('⚠️ Erreur fin de session: $e');
+      }
+    }
 
     _transitionToPhase(AdaptiveScreenPhase.analysisInProgress);
 
-    // Démarrer l'analyse avec les données LiveKit
+    // Démarrer l'analyse avec les données collectées
     await _startOptimizedAnalysis();
 
-    _logger.i('🎤 Conversation LiveKit terminée: ${_recordingDuration.inSeconds}s');
+    _logger.i('🎤 Conversation Eloquence terminée: ${_recordingDuration.inSeconds}s');
   }
   
 // PATCH: transmettre le buffer audio réel à l’analyse
@@ -2078,33 +2105,47 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     _logger.i('🛑 Arrêt écoute conversationnelle');
   }
 
-  /// Initialise la conversation temps réel avec ConversationManager
+  /// Initialise la conversation temps réel avec ConfidenceLiveKitService
   Future<void> _initializeRealTimeConversation() async {
-    // (logique conversationnelle supprimée)
-    return;
+    if (_livekitService == null) {
+      _logger.e('❌ LiveKitService non initialisé');
+      return;
+    }
     
     try {
-      // Obtenir les vraies clés LiveKit depuis l'API backend
-      final response = await http.get(
-        Uri.parse('http://localhost:8000/api/livekit/token'),
-        headers: {'Content-Type': 'application/json'},
+      _logger.i('🚀 Initialisation conversation LiveKit...');
+      
+      // Démarrer la session confidence boost
+      final success = await _livekitService!.startConfidenceBoostSession(
+        scenario: widget.scenario,
+        userId: 'current_user', // TODO: Récupérer l'ID utilisateur réel
       );
       
-      String livekitUrl = 'ws://192.168.1.44:7880';
-      String livekitToken = 'temp_token';
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        livekitUrl = data['url'] ?? livekitUrl;
-        livekitToken = data['token'] ?? livekitToken;
-        _logger.i('✅ Clés LiveKit obtenues depuis backend');
-      } else {
-        _logger.w('⚠️ Utilisation clés LiveKit par défaut');
+      if (!success) {
+        throw Exception('Échec du démarrage de la session LiveKit');
       }
       
-      // (logique conversationnelle supprimée)
+      _logger.i('✅ Session LiveKit créée avec succès');
       
-      // (logique conversationnelle supprimée)
+      // Stocker l'ID de session
+      _currentSessionId = _livekitService!.sessionId;
+      
+      // Écouter les streams LiveKit
+      _conversationSubscription = _livekitService!.conversationStream.listen(
+        (message) => _handleLiveKitConversationMessage(message),
+        onError: _handleConversationError,
+      );
+      
+      _transcriptionSubscription = _livekitService!.transcriptionStream.listen(
+        (transcription) => _handleLiveKitTranscription(transcription),
+        onError: _handleConversationError,
+      );
+      
+      setState(() {
+        _isConversationInitialized = true;
+      });
+      
+      _logger.i('🎯 Conversation LiveKit initialisée avec succès');
       
     } catch (e) {
       _logger.e('❌ Erreur initialisation conversation: $e');
@@ -2125,6 +2166,57 @@ Marie sera là pour vous accompagner pendant votre performance !''';
     _scrollToBottom();
   }
 
+  /// Gère les messages de conversation reçus du stream LiveKit
+  void _handleLiveKitConversationMessage(confidence_models.ConversationMessage message) {
+    _logger.d('📨 Message LiveKit reçu: ${message.content}');
+    
+    // Convertir le message LiveKit vers le format de l'interface
+    final uiMessage = ConversationMessage(
+      text: message.content,
+      role: message.isUser ? ConversationRole.user : ConversationRole.assistant,
+      metadata: {
+        'id': message.id,
+        'timestamp': message.timestamp.toIso8601String(),
+        if (message.metrics != null) 'metrics': {
+          'confidenceLevel': message.metrics!.confidenceLevel,
+          'voiceClarity': message.metrics!.voiceClarity,
+          'speakingPace': message.metrics!.speakingPace,
+          'energyLevel': message.metrics!.energyLevel,
+          'timestamp': message.metrics!.timestamp.toIso8601String(),
+        },
+      },
+    );
+    
+    setState(() {
+      _conversationMessages.add(uiMessage);
+      if (message.isUser) {
+        _isUserSpeaking = false;
+        _currentTranscription = null;
+      } else {
+        _isAISpeaking = false;
+      }
+    });
+    
+    _scrollToBottom();
+  }
+  
+  /// Gère les transcriptions reçues du stream LiveKit
+  void _handleLiveKitTranscription(String transcription) {
+    _logger.d('📝 Transcription LiveKit: $transcription');
+    
+    setState(() {
+      _currentTranscription = transcription;
+      _isUserSpeaking = true;
+    });
+    
+    _scrollToBottom();
+  }
+
+
+  
+  
+  
+  
 
   void _handleConversationError(Object e) {
     _logger.e("Erreur de conversation: $e");
