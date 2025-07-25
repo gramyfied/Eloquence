@@ -14,25 +14,6 @@ services:
     volumes:
       - redis-data:/data
 
-  livekit:
-    image: livekit/livekit-server:latest
-    command: --config /livekit.yaml
-    restart: unless-stopped
-    ports:
-      - "7880:7880"
-    networks:
-      - eloquence-network
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "7880"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-
   vosk-stt:
     build:
       context: ./services/vosk-stt-analysis
@@ -40,7 +21,7 @@ services:
     image: eloquence/vosk-stt:latest
     restart: unless-stopped
     ports:
-      - "2700:8002"
+      - "8002:8002"
     networks:
       - eloquence-network
     volumes:
@@ -56,25 +37,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-
-  openai-tts:
-    build:
-      context: ./services/api-backend/openai-tts
-      dockerfile: Dockerfile
-    image: eloquence/openai-tts:latest
-    restart: unless-stopped
-    ports:
-      - "5002:5002"
-    networks:
-      - eloquence-network
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   mistral-conversation:
     build:
@@ -98,47 +60,34 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  api-backend:
-    build:
-      context: ./services/api-backend
-      dockerfile: Dockerfile
-    image: eloquence/api-backend:latest
+  
+  # === LIVEKIT SERVICES (Architecture Moderne) ===
+  livekit-server:
+    image: livekit/livekit-server:latest
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "7880:7880"    # WebSocket
+      - "7881:7881"    # TCP fallback
+      - "40000-40100:40000-40100/udp"  # RTC traffic
     networks:
       - eloquence-network
-    env_file:
-      - .env
-    environment:
-      - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_URL_EXTERNAL=ws://192.168.1.44:7880
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-      - VOSK_STT_URL=http://vosk-stt:8002
-      - OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
-      - REDIS_URL=redis://redis:6379/0
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - SCALEWAY_MISTRAL_URL=${SCALEWAY_MISTRAL_URL}
-      - MISTRAL_MODEL=${MISTRAL_MODEL}
     depends_on:
-      livekit:
-        condition: service_healthy
       redis:
         condition: service_healthy
-      vosk-stt:
-        condition: service_healthy
-      openai-tts:
-        condition: service_healthy
-      mistral-conversation:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7880/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 20s
+    environment:
+      - "LIVEKIT_KEYS=devkey: devsecret123456789abcdef0123456789abcdef"
+      - LIVEKIT_LOG_LEVEL=info
+      - LIVEKIT_RTC_TCP_PORT=7881
+      - LIVEKIT_RTC_PORT_RANGE_START=40000
+      - LIVEKIT_RTC_PORT_RANGE_END=40100
+      - LIVEKIT_REDIS_HOST=redis
+      - LIVEKIT_REDIS_PORT=6379
 
   livekit-token-service:
     build:
@@ -153,146 +102,57 @@ services:
     env_file:
       - .env
     environment:
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - LIVEKIT_URL=ws://livekit-server:7880
     depends_on:
-      livekit:
+      livekit-server:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 20s
 
-  # === AGENT LIVEKIT UNIFIÉ - NOUVELLE ARCHITECTURE ===
-  livekit-unified-agent:
+  livekit-agent:
     build:
-      context: ./services/livekit-unified-agent
+      context: ./services/livekit-agent
       dockerfile: Dockerfile
-    image: eloquence/livekit-unified-agent:latest
+    image: eloquence/livekit-agent:latest
     restart: unless-stopped
-    ports:
-      - "8081:8080"  # Port pour monitoring/debug
     networks:
       - eloquence-network
     env_file:
       - .env
     environment:
-      # Configuration LiveKit
-      - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-      - LIVEKIT_ROOM=confidence-boost
-      
-      # Services externes
-      - VOSK_URL=http://vosk-stt:8002
-      - MISTRAL_URL=http://mistral-conversation:8001
-      
-      # Configuration scénarios
-      - DEFAULT_SCENARIO_TYPE=interview
-      - DEFAULT_CHARACTER=Thomas
-      - DEFAULT_DIFFICULTY=facile
-      
-      # Logging & monitoring
-      - LOG_LEVEL=INFO
-      - METRICS_ENABLED=true
-      
-    depends_on:
-      livekit:
-        condition: service_healthy
-      vosk-stt:
-        condition: service_healthy
-      mistral-conversation:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import asyncio; print('Agent OK')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
-    volumes:
-      - ./logs:/home/agent/app/logs
-      - ./temp:/home/agent/app/temp
-
-  eloquence-agent-v1:
-    build:
-      context: ./services/api-backend
-      dockerfile: Dockerfile.agent.dev
-    image: eloquence/agent-v1:latest
-    command: python -u services/real_time_voice_agent_force_audio_fixed.py dev
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    environment:
-      - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-      - VOSK_STT_URL=http://vosk-stt:8002
-      - OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
-      # Variables Mistral manquantes ajoutées pour corriger 401 Unauthorized
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - LIVEKIT_ROOM=confidence_boost_default
+      - VOSK_SERVICE_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=${SCALEWAY_MISTRAL_URL}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - SCALEWAY_MISTRAL_URL=${SCALEWAY_MISTRAL_URL}
-      - MISTRAL_MODEL=${MISTRAL_MODEL}
-    networks:
-      - eloquence-network
     depends_on:
-      livekit:
+      livekit-server:
         condition: service_healthy
       livekit-token-service:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      vosk-stt:
-        condition: service_healthy
-      openai-tts:
-        condition: service_healthy
-    profiles:
-      - legacy  # Service marqué comme legacy
-
-  # Service Eloquence Conversation (Port 8003) - NOUVEAU
-  eloquence-conversation:
-    build:
-      context: ./eloquence-livekit-system
-      dockerfile: Dockerfile
-    image: eloquence/conversation-service:latest
-    restart: unless-stopped
-    ports:
-      - "8003:8003"
-    networks:
-      - eloquence-network
-    env_file:
-      - .env
-    environment:
-      - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-      - VOSK_SERVICE_URL=http://vosk-stt:8002
-      - MISTRAL_SERVICE_URL=http://mistral-conversation:8001
-    depends_on:
-      livekit:
-        condition: service_healthy
-      vosk-stt:
-        condition: service_healthy
       mistral-conversation:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      vosk-stt:
+        condition: service_healthy
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
 networks:
   eloquence-network:
     driver: bridge
 
 volumes:
-  livekit-data:
-    driver: local
   redis-data:
     driver: local
   vosk-models:

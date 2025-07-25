@@ -42,10 +42,14 @@ void main() async {
     final llmServiceUrl = dotenv.env['LLM_SERVICE_URL'];
     final whisperUrl = dotenv.env['WHISPER_STT_URL'];
     final mobileMode = dotenv.env['MOBILE_MODE'];
+    final eloquenceStreamingApiUrl = dotenv.env['ELOQUENCE_STREAMING_API_URL'];
+    final devServerIp = dotenv.env['DEV_SERVER_IP'];
     log.info("🔍 DEBUG Variables d'environnement:");
     log.info("  - LLM_SERVICE_URL: $llmServiceUrl");
     log.info("  - WHISPER_STT_URL: $whisperUrl");
     log.info("  - MOBILE_MODE: $mobileMode");
+    log.info("  - ELOQUENCE_STREAMING_API_URL: $eloquenceStreamingApiUrl");
+    log.info("  - DEV_SERVER_IP: $devServerIp");
     log.info("  - Total variables chargées: ${dotenv.env.length}");
     
     // --- Gestion Hive ---

@@ -17,6 +17,10 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import vosk
 import librosa
@@ -24,6 +28,7 @@ import soundfile as sf
 from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
+from dataclasses import dataclass # Ajout de cette ligne
 
 # Configuration des logs avec encodage UTF-8
 log_dir = Path('/app/logs')
@@ -139,18 +144,43 @@ class ProsodyAnalysis(BaseModel):
     pause_ratio: float
     voice_quality: float
 
-class AnalysisResult(BaseModel):
+from dataclasses import dataclass
+from typing import Dict, Any
+
+@dataclass
+class AnalysisResult:
     transcription: TranscriptionResult
     prosody: ProsodyAnalysis
     confidence_score: float
     fluency_score: float
     clarity_score: float
     energy_score: float
-    overall_score: float
     processing_time: float
     strengths: List[str]
     improvements: List[str]
     feedback: str
+    
+    # overall_score sera calculé automatiquement
+    overall_score: float = 0.0 # Initialisation pour éviter les erreurs de dataclass
+    
+    def __post_init__(self):
+        # Calculer overall_score automatiquement
+        # Note: 'scores' n'existe plus directement dans AnalysisResult,
+        # mais la logique d'origine utilisait 'confidence_score', 'fluency_score', etc.
+        # Je vais adapter la logique de calcul ici en utilisant ces champs.
+        
+        # Pour simuler le comportement original (30% conf, 25% fluidité, 25% clarté, 20% énergie)
+        # Assurez-vous que ces champs existent lors de l'instanciation de AnalysisResult
+        calculated_overall_score = (
+            self.confidence_score * 0.3 +
+            self.fluency_score * 0.25 +
+            self.clarity_score * 0.25 +
+            self.energy_score * 0.2
+        )
+        self.overall_score = calculated_overall_score * 100 # Multiplier par 100 pour être en pourcentage
+
+# Re-importer BaseModel si nécessaire après la conversion de AnalysisResult en dataclass
+from pydantic import BaseModel # Assurez-vous que BaseModel est toujours importé
 
 @app.get("/health")
 async def health_check():
@@ -381,9 +411,13 @@ async def analyze_speech(
                     duration=duration
                 ),
                 prosody=ProsodyAnalysis(**prosody_result),
-                **scores,
-                overall_score=scores['overall_score'] * 100,
-                processing_time=processing_time,
+                # Les scores sont déjà directement passés/calculés en interne.
+                # overall_score est calculé dans __post_init__ de AnalysisResult
+                confidence_score=scores['confidence_score'],
+                fluency_score=scores['fluency_score'],
+                clarity_score=scores['clarity_score'],
+                energy_score=scores['energy_score'],
+                processing_time=processing_time, # processing_time est toujours un champ direct
                 strengths=strengths,
                 improvements=improvements,
                 feedback=feedback

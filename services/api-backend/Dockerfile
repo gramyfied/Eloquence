@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copie des fichiers de requirements et installation des dépendances Python
 WORKDIR /tmp
+RUN pip install --no-cache-dir asgiref>=3.6.0
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -56,7 +57,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY app.py .
 COPY api ./api
 COPY services ./services
-COPY data ./data
 COPY wsgi.py .
 
 # Définition de l'utilisateur non-root et changement des permissions
