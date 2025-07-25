@@ -27,7 +27,8 @@ import android.media.AudioAttributes
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL_NATIVE_CHECK = "com.example.eloquence_2_0/native_check"
-    private val CHANNEL_AUDIO_DIAGNOSTIC = "eloquence/audio" 
+    private val CHANNEL_AUDIO_DIAGNOSTIC = "eloquence/audio"
+    private val CHANNEL_AUDIO_NATIVE = "eloquence.audio/native"
 
     private lateinit var audioManager: AudioManager
     private lateinit var notificationManager: NotificationManager 
@@ -92,6 +93,21 @@ class MainActivity: FlutterActivity() {
                     }
                     else -> result.notImplemented()
                 }
+            }
+        }
+
+        // Channel pour les méthodes audio spécifiques à Eloquence
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_AUDIO_NATIVE).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "configureAudioForSpeech" -> {
+                    configureAudioForSpeech()
+                    result.success(true)
+                }
+                "setAudioToSpeaker" -> {
+                    setAudioToSpeaker()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
             }
         }
     }
@@ -401,6 +417,66 @@ class MainActivity: FlutterActivity() {
     private fun getAudioConfiguration(): Map<String, Any> {
         val audioConfig = mutableMapOf<String, Any>()
         return audioConfig
+    }
+
+    // Méthodes spécifiques pour Eloquence audio
+    private fun configureAudioForSpeech() {
+        try {
+            // Configuration pour la communication vocale
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            audioManager.isSpeakerphoneOn = true
+            
+            // Définir le volume à un niveau optimal
+            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val optimalVolume = (maxVolume * 0.8).toInt()
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, optimalVolume, 0)
+            
+            // Demander le focus audio pour la communication
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    .setWillPauseWhenDucked(false)
+                    .build()
+                audioManager.requestAudioFocus(focusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE
+                )
+            }
+            
+            Log.d("MainActivity", "Audio configuré pour la parole - Mode: ${audioManager.mode}, Speaker: ${audioManager.isSpeakerphoneOn}")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Erreur configuration audio pour la parole", e)
+        }
+    }
+    
+    private fun setAudioToSpeaker() {
+        try {
+            audioManager.isSpeakerphoneOn = true
+            
+            // Forcer le routage vers le haut-parleur principal
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                val speaker = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                if (speaker != null) {
+                    // Note: setPreferredDevice n'est pas disponible directement sur AudioManager
+                    // mais on peut utiliser setSpeakerphoneOn qui a le même effet
+                    audioManager.isSpeakerphoneOn = true
+                }
+            }
+            
+            Log.d("MainActivity", "Audio routé vers le haut-parleur - isSpeakerphoneOn: ${audioManager.isSpeakerphoneOn}")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Erreur routage audio vers haut-parleur", e)
+        }
     }
     //endregion
 

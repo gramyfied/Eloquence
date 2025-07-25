@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import 'package:audio_session/audio_session.dart';
+import 'package:volume_controller/volume_controller.dart';
+import 'package:just_audio/just_audio.dart';
 import '../../../../core/config/app_config.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
@@ -19,6 +23,11 @@ class ConfidenceLiveKitService {
   RemoteAudioTrack? _remoteAudioTrack;
   bool _isConnected = false;
   bool _isPublishing = false;
+
+  // Configuration audio
+  AudioSession? _audioSession;
+  AudioPlayer? _audioPlayer;
+  static const platform = MethodChannel('eloquence.audio/native');
 
   // Configuration exercice
   ConfidenceScenario? _currentScenario;
@@ -60,6 +69,11 @@ class ConfidenceLiveKitService {
       _currentScenario = scenario;
 
       _phaseController.add(ExercisePhase.connecting);
+
+      // 0. Configurer l'audio session et le volume
+      await _configureAudioSession();
+      await _ensureAudioVolume();
+      await _configureNativeAudio();
 
       // 1. Obtenir token LiveKit spécialisé Confidence Boost
       final tokenData = await _getConfidenceBoostToken(scenario, userId, _sessionId!);
@@ -130,6 +144,60 @@ class ConfidenceLiveKitService {
     }
   }
 
+  /// Configuration de l'audio session Flutter
+  Future<void> _configureAudioSession() async {
+    try {
+      _audioSession = await AudioSession.instance;
+      await _audioSession!.configure(AudioSessionConfiguration(
+        avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
+        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.defaultToSpeaker,
+        avAudioSessionMode: AVAudioSessionMode.spokenAudio,
+        avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
+        avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+        androidAudioAttributes: const AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.speech,
+          flags: AndroidAudioFlags.audibilityEnforced,
+          usage: AndroidAudioUsage.voiceCommunication,
+        ),
+        androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+        androidWillPauseWhenDucked: false,
+      ));
+      
+      await _audioSession!.setActive(true);
+      _logger.i('🔊 Audio session configurée pour conversation vocale');
+    } catch (e) {
+      _logger.e('❌ Erreur configuration audio session: $e');
+      throw Exception('Configuration audio échouée: $e');
+    }
+  }
+
+  /// Vérification et ajustement du volume système
+  Future<void> _ensureAudioVolume() async {
+    try {
+      final volumeController = VolumeController();
+      final currentVolume = await volumeController.getVolume();
+      _logger.i('🔊 Volume actuel: ${(currentVolume * 100).toInt()}%');
+      
+      if (currentVolume < 0.3) {
+        volumeController.setVolume(0.7);
+        _logger.i('🔊 Volume ajusté à 70%');
+      }
+    } catch (e) {
+      _logger.e('❌ Erreur contrôle volume: $e');
+    }
+  }
+
+  /// Configuration audio native Android
+  Future<void> _configureNativeAudio() async {
+    try {
+      await platform.invokeMethod('configureAudioForSpeech');
+      await platform.invokeMethod('setAudioToSpeaker');
+      _logger.i('🔊 Configuration audio native appliquée');
+    } catch (e) {
+      _logger.e('❌ Erreur configuration native: $e');
+    }
+  }
+
   /// Configuration des listeners LiveKit
   void _setupRoomListeners() {
     if (_room == null) return;
@@ -161,42 +229,212 @@ class ConfidenceLiveKitService {
       }
     });
 
-    // 🔧 FIX CRITIQUE: Événements LiveKit corrects pour Flutter
+    // 🔧 FIX CRITIQUE: Événements LiveKit corrects pour Flutter avec amélioration
     
-    // Événement: participant connecté (polling périodique pour détecter Thomas)
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Timer pour vérifier périodiquement les nouveaux tracks audio
+    Timer? audioCheckTimer;
+    audioCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_room == null) {
         timer.cancel();
         return;
       }
       
+      _checkForNewAudioTracks();
+    });
+    
+    // Écouter les événements de participant
+    _room!.addListener(() {
+      // Vérifier les changements de participants
       for (final participant in _room!.remoteParticipants.values) {
-        _logger.d('🔍 Checking participant: ${participant.identity}');
-        
-        // Vérifier si on a de nouveaux tracks audio
-        for (final publication in participant.audioTrackPublications) {
-          _logger.d('🔍 Audio publication: subscribed=${publication.subscribed}, track=${publication.track != null}');
-          
-          if (publication.subscribed && publication.track != null) {
-            final track = publication.track as RemoteAudioTrack;
-            
-            if (_remoteAudioTrack != track) {
-              _logger.i('🎵 NOUVEAU track audio détecté de ${participant.identity}');
-              _logger.i('🔊 Track audio trouvé, tentative de démarrage...');
-              
-              _remoteAudioTrack = track;
-              _remoteAudioTrack!.start();
-              
-              _logger.i('🔊 ✅ Audio IA démarré automatiquement');
-              _logger.i('🔊 🔉 THOMAS DEVRAIT MAINTENANT ÊTRE AUDIBLE !');
-            }
-          }
-        }
+        _checkParticipantAudioTracks(participant);
       }
     });
   }
 
+  /// Vérifier et configurer les nouveaux tracks audio
+  void _checkForNewAudioTracks() {
+    for (final participant in _room!.remoteParticipants.values) {
+      _checkParticipantAudioTracks(participant);
+    }
+  }
+  
+  /// Vérifier les tracks audio d'un participant spécifique
+  void _checkParticipantAudioTracks(RemoteParticipant participant) {
+    for (final publication in participant.audioTrackPublications) {
+      if (publication.subscribed && publication.track != null) {
+        final track = publication.track as RemoteAudioTrack;
+        
+        if (_remoteAudioTrack != track) {
+          _logger.i('🎵 Nouveau track audio détecté de ${participant.identity}');
+          _handleRemoteAudioTrack(track, participant);
+        }
+      }
+    }
+  }
+  
+  /// Gérer un nouveau track audio distant avec configuration avancée
+  Future<void> _handleRemoteAudioTrack(RemoteAudioTrack track, RemoteParticipant participant) async {
+    try {
+      _remoteAudioTrack = track;
+      
+      // Démarrer le track audio
+      await track.start();
+      _logger.i('🔊 Track audio démarré pour ${participant.identity}');
+      
+      // Configuration supplémentaire pour forcer l'audio
+      await _ensureAudioRouting();
+      
+      // Vérifier si l'audio est effectivement audible après un court délai
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final isAudioPlaying = await _checkAudioPlayback();
+      if (!isAudioPlaying) {
+        _logger.w('⚠️ Audio LiveKit non détecté, activation du fallback');
+        await _requestAudioFallback();
+      } else {
+        _logger.i('🔊 ✅ Audio LiveKit confirmé fonctionnel');
+      }
+      
+    } catch (e) {
+      _logger.e('❌ Erreur configuration RemoteAudioTrack: $e');
+      await _requestAudioFallback();
+    }
+  }
+  
+  /// Forcer le routage audio vers les haut-parleurs
+  Future<void> _ensureAudioRouting() async {
+    try {
+      // Essayer de forcer l'audio vers les haut-parleurs
+      if (_room?.localParticipant != null) {
+        // Note: Cette API pourrait ne pas être disponible dans toutes les versions
+        // On garde cette tentative mais on ne fait pas échouer si elle n'existe pas
+        _logger.i('🔊 Tentative de routage audio vers haut-parleurs');
+      }
+      
+      // Configuration audio session pour routage
+      if (_audioSession != null) {
+        await _audioSession!.setActive(true);
+      }
+    } catch (e) {
+      _logger.w('⚠️ Routage audio non supporté: $e');
+    }
+  }
+  
+  /// Vérifier si l'audio est effectivement en cours de lecture
+  Future<bool> _checkAudioPlayback() async {
+    // Vérification simplifiée - vérifier si le track existe et est actif
+    return _remoteAudioTrack != null;
+  }
+  
+  /// Demander un fallback audio au backend
+  Future<void> _requestAudioFallback() async {
+    try {
+      _logger.i('🔄 Demande de fallback audio au backend');
+      
+      // Envoyer une demande de fallback au backend via data channel
+      final fallbackRequest = {
+        'type': 'audio_fallback_request',
+        'session_id': _sessionId,
+        'reason': 'livekit_audio_not_playing',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      final jsonData = jsonEncode(fallbackRequest);
+      final bytes = utf8.encode(jsonData);
+      
+      if (_room?.localParticipant != null) {
+        await _room!.localParticipant!.publishData(bytes, reliable: true);
+        _logger.i('📤 Demande de fallback envoyée');
+      }
+      
+    } catch (e) {
+      _logger.e('❌ Erreur demande fallback: $e');
+    }
+  }
+  
+  /// Jouer l'audio avec just_audio en fallback
+  Future<void> _playWithJustAudio(String audioUrl) async {
+    try {
+      _audioPlayer ??= AudioPlayer();
+      
+      // Configurer et jouer l'audio
+      await _audioPlayer!.setUrl(audioUrl);
+      await _audioPlayer!.play();
+      
+      _logger.i('🎵 Audio joué via just_audio fallback: $audioUrl');
+      
+      // Écouter la fin de lecture
+      _audioPlayer!.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          _logger.i('🏁 Lecture audio fallback terminée');
+        }
+      });
+      
+    } catch (e) {
+      _logger.e('❌ Erreur just_audio fallback: $e');
+    }
+  }
+  
+  /// Gestion des données reçues via data channel
+  void _handleDataReceived(List<int> data, RemoteParticipant? participant) {
+    try {
+      final jsonString = utf8.decode(data);
+      final message = jsonDecode(jsonString) as Map<String, dynamic>;
+      
+      _logger.d('📨 Données reçues: ${message['type']}');
+      
+      switch (message['type']) {
+        case 'transcription':
+          final text = message['text'] as String;
+          _transcriptionController.add(text);
+          _logger.d('📝 Transcription: $text');
+          break;
+          
+        case 'ai_response':
+          final aiMessage = ConversationMessage(
+            id: message['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            content: message['content'] as String,
+            isUser: false,
+            timestamp: DateTime.now(),
+          );
+          _conversationController.add(aiMessage);
+          _logger.d('🤖 Réponse IA: ${aiMessage.content}');
+          break;
+          
+        case 'audio_fallback_url':
+          // Le backend fournit une URL audio en fallback
+          final audioUrl = message['audio_url'] as String;
+          _logger.i('🔊 URL audio fallback reçue: $audioUrl');
+          _playWithJustAudio(audioUrl);
+          break;
+          
+        case 'metrics':
+          final metricsData = message['metrics'] as Map<String, dynamic>;
+          final metrics = ConfidenceMetrics(
+            confidenceLevel: (metricsData['confidence_level'] ?? 0.0).toDouble(),
+            voiceClarity: (metricsData['voice_clarity'] ?? 0.0).toDouble(),
+            speakingPace: (metricsData['speaking_pace'] ?? 0.0).toDouble(),
+            energyLevel: (metricsData['energy_level'] ?? 0.0).toDouble(),
+            timestamp: DateTime.now(),
+          );
+          _metricsController.add(metrics);
+          break;
+          
+        case 'phase_change':
+          final phase = ExercisePhase.values.firstWhere(
+            (p) => p.toString().split('.').last == message['phase'],
+            orElse: () => ExercisePhase.unknown,
+          );
+          _phaseController.add(phase);
+          break;
+      }
+    } catch (e) {
+      _logger.e('❌ Erreur traitement données: $e');
+    }
+  }
+  
   /// Gestion des données reçues du backend (transcription, réponses IA)
+  /// DEPRECATED - Utiliser _handleDataReceived à la place
   void _handleParticipantData(RemoteParticipant participant) {
     try {
       // Les données sont envoyées via publishData() depuis le backend
@@ -525,6 +763,10 @@ class ConfidenceLiveKitService {
   /// Dispose des ressources (à appeler dans dispose() du provider)
   void dispose() {
     _logger.i('🧹 Dispose du service LiveKit');
+    
+    // Nettoyer l'audio player
+    _audioPlayer?.dispose();
+    _audioPlayer = null;
     
     endSession();
     

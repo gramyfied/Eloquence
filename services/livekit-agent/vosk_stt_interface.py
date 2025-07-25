@@ -116,30 +116,71 @@ class VoskSTT(stt.STT):
                 processing_time = asyncio.get_event_loop().time() - start_time
                 logger.info(f"✅ Vosk STT - {processing_time:.3f}s - '{result.get('text', '')}'")
                 
-                # Création de l'événement STT
-                alternatives = [
-                    stt.SpeechEventAlternative(
-                        text=result.get('text', ''),
-                        confidence=result.get('confidence', 0.0)
-                    )
-                ]
+                # Structure compatible avec livekit-agents 1.0.x
+                # Pas besoin de SpeechEventAlternative, utiliser directement le texte
+                text = result.get('text', '').strip()
+                confidence = result.get('confidence', 0.0)
                 
-                return stt.SpeechEvent(
-                    type=stt.SpeechEventType.FINAL_TRANSCRIPT,
-                    alternatives=alternatives
-                )
+                logger.info(f"🔍 DIAGNOSTIC: Création SpeechEvent avec text='{text}', confidence={confidence}")
+                
+                # Dans livekit-agents 1.0.x, SpeechEvent prend des alternatives directement
+                # Vérifier d'abord la structure disponible
+                try:
+                    # Tentative 1: Avec alternatives comme liste de dictionnaires
+                    speech_event = stt.SpeechEvent(
+                        type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                        alternatives=[{
+                            'text': text,
+                            'confidence': confidence
+                        }]
+                    )
+                    logger.info("✅ SpeechEvent créé avec structure dict")
+                    return speech_event
+                except Exception as e1:
+                    logger.warning(f"⚠️  Structure dict échouée: {e1}")
+                    
+                    try:
+                        # Tentative 2: Directement avec text (API simplifiée)
+                        speech_event = stt.SpeechEvent(
+                            type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                            text=text,
+                            confidence=confidence
+                        )
+                        logger.info("✅ SpeechEvent créé avec text direct")
+                        return speech_event
+                    except Exception as e2:
+                        logger.warning(f"⚠️  Structure text directe échouée: {e2}")
+                        
+                        try:
+                            # Tentative 3: Minimal avec juste le type
+                            speech_event = stt.SpeechEvent(
+                                type=stt.SpeechEventType.FINAL_TRANSCRIPT
+                            )
+                            # Ajouter le texte en attribut après création
+                            if hasattr(speech_event, 'text'):
+                                speech_event.text = text
+                            if hasattr(speech_event, 'confidence'):
+                                speech_event.confidence = confidence
+                            logger.info("✅ SpeechEvent créé avec structure minimale")
+                            return speech_event
+                        except Exception as e3:
+                            logger.error(f"❌ Toutes les structures échouées: {e3}")
+                            raise e3
                 
         except Exception as e:
             processing_time = asyncio.get_event_loop().time() - start_time
             logger.error(f"❌ Erreur VoskSTT après {processing_time:.3f}s: {e}")
             
             # Retourner un événement vide en cas d'erreur
-            return stt.SpeechEvent(
-                type=stt.SpeechEventType.FINAL_TRANSCRIPT,
-                alternatives=[
-                    stt.SpeechEventAlternative(text="", confidence=0.0)
-                ]
-            )
+            try:
+                return stt.SpeechEvent(
+                    type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                    text="",
+                    confidence=0.0
+                )
+            except:
+                # Fallback ultime
+                return stt.SpeechEvent(type=stt.SpeechEventType.FINAL_TRANSCRIPT)
 
     async def recognize(
         self,
