@@ -65,6 +65,12 @@ class AppConfig {
     return isProduction ? "https://streaming.eloquence.app" : _replaceLocalhostWithDevIp(url);
   }
 
+  // API des exercices vocaux
+  static String get exercisesApiUrl {
+    final url = dotenv.env['EXERCISES_API_URL'] ?? 'http://localhost:8005';
+    return isProduction ? "https://exercises.eloquence.app" : _replaceLocalhostWithDevIp(url);
+  }
+
   static String get voskServiceUrl {
     final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:2700';
     return isProduction ? "https://your-prod-server.com/vosk" : _replaceLocalhostWithDevIp(url);

@@ -148,6 +148,36 @@ services:
         delay: 5s
         max_attempts: 3
 
+  eloquence-exercises-api:
+    build:
+      context: ./services/eloquence-exercises-api
+      dockerfile: Dockerfile
+    image: eloquence/exercises-api:latest
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    networks:
+      - eloquence-network
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - TOKEN_SERVICE_URL=http://livekit-token-service:8004
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_healthy
+      livekit-token-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
 networks:
   eloquence-network:
     driver: bridge
