@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import '../../models/orator_model.dart';
 import '../../services/orator_service.dart';
@@ -81,17 +82,17 @@ class NavigationState extends ChangeNotifier {
 
       updateCarouselState(newCarouselState);
       
-      // Navigation réelle si context fourni
+      // Navigation GoRouter si context fourni
       if (context != null) {
-        _log.info('🚀 Performing Flutter navigation to: $route');
+        _log.info('🚀 Performing GoRouter navigation to: $route');
         try {
-          Navigator.pushNamed(context, route, arguments: arguments);
-          _log.info('✅ Navigation successful to: $route');
+          context.go(route);
+          _log.info('✅ GoRouter navigation successful to: $route');
         } catch (e) {
-          _log.severe('❌ Navigation failed to: $route - Error: $e');
+          _log.severe('❌ GoRouter navigation failed to: $route - Error: $e');
         }
       } else {
-        _log.info('⏸️ Navigation state updated but no context provided for Flutter navigation');
+        _log.info('⏸️ Navigation state updated but no context provided for GoRouter navigation');
       }
       
       notifyListeners();

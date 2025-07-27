@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:logger/logger.dart';
+import '../../../../core/config/mobile_timeout_constants.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
 import '../../domain/entities/ai_character_models.dart';
-import 'vosk_analysis_service.dart';
 
 /// Service de fallback robuste multi-niveaux
 /// 
@@ -18,10 +18,10 @@ class FallbackService {
   static const String _tag = 'FallbackService';
   final Logger _logger = Logger();
   
-  // Configuration des niveaux de fallback
+  // Configuration des niveaux de fallback (alignée avec MobileTimeoutConstants)
   static const int _maxRetries = 3;
-  static const Duration _baseRetryDelay = Duration(seconds: 1);
-  static const Duration _maxRetryDelay = Duration(seconds: 8);
+  static const Duration _baseRetryDelay = MobileTimeoutConstants.initialRetryDelay;
+  static const Duration _maxRetryDelay = MobileTimeoutConstants.maxRetryDelay;
   
   // État du service
   FallbackLevel _currentLevel = FallbackLevel.normal;
@@ -190,27 +190,21 @@ class FallbackService {
     Uint8List audioData, 
     ConfidenceScenario scenario,
   ) async {
-    // Simuler un délai d'analyse
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Simuler un délai d'analyse optimisé mobile
+    await Future.delayed(Duration(milliseconds: MobileTimeoutConstants.initialRetryDelay.inMilliseconds));
     
     // Créer une analyse basique mais fonctionnelle
     return AnalysisResult(
-      overallConfidenceScore: 75,
-      otherMetrics: {
-        'transcription': _generateBasicTranscription(audioData.length),
-        'clarity': 0.7,
-        'fluency': 0.75,
-        'pace': 0.8,
-        'volume': 0.85,
-        'suggestions': [
-          'Continue à pratiquer pour améliorer votre aisance',
-          'Variez votre rythme de parole',
-          'Maintenez le contact visuel avec votre audience'
-        ],
-        'keywordUsage': _extractBasicKeywords(scenario),
-        'timestamp': DateTime.now(),
-        'isFromFallback': true,
-      },
+      confidenceScore: 0.75,
+      clarityScore: 0.7,
+      fluencyScore: 0.75,
+      transcription: _generateBasicTranscription(audioData.length),
+      keyInsights: [
+        'Continue à pratiquer pour améliorer votre aisance',
+        'Variez votre rythme de parole',
+        'Maintenez le contact visuel avec votre audience'
+      ],
+      timestamp: DateTime.now(),
     );
   }
 
@@ -427,21 +421,15 @@ class FallbackService {
   /// Crée un résultat d'analyse basique
   AnalysisResult _createBasicAnalysisResult(Uint8List audioData, ConfidenceScenario scenario) {
     return AnalysisResult(
-      overallConfidenceScore: 60,
-      otherMetrics: {
-        'transcription': _generateBasicTranscription(audioData.length),
-        'clarity': 0.6,
-        'fluency': 0.6,
-        'pace': 0.7,
-        'volume': 0.8,
-        'suggestions': [
-          'Service temporairement limité. Continuez votre excellent travail !',
-          'Les fonctionnalités avancées seront bientôt rétablies.'
-        ],
-        'keywordUsage': _extractBasicKeywords(scenario),
-        'timestamp': DateTime.now(),
-        'isFromFallback': true,
-      },
+      confidenceScore: 0.6,
+      clarityScore: 0.6,
+      fluencyScore: 0.6,
+      transcription: _generateBasicTranscription(audioData.length),
+      keyInsights: [
+        'Service temporairement limité. Continuez votre excellent travail !',
+        'Les fonctionnalités avancées seront bientôt rétablies.'
+      ],
+      timestamp: DateTime.now(),
     );
   }
 }

@@ -11,16 +11,18 @@ import logging
 from datetime import datetime, timedelta
 import logging # Ajouter l'import de logging ici
 import httpx # Ajout de l'import httpx
+import json # Ajout de l'import json pour la migration Vosk
  
 # Configuration du logging pour le diagnostic
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("BACKEND_DIAGNOSTIC")
 
-# Import du service agent
-from services.livekit_agent_service import agent_service
+# Note: services LiveKit supprimés pour approche REST + Vosk pure
 
 app = Flask(__name__)
 CORS(app) # Active CORS pour toutes les routes
+
+# Note: blueprint LiveKit supprimé pour approche REST + Vosk
 
 # Configuration Celery
 app.config['CELERY_BROKER_URL'] = os.getenv('REDIS_URL', 'redis://redis:6379/0')
@@ -323,14 +325,9 @@ def create_session():
         # Ajouter l'identité unique aux données de session avant de démarrer l'agent
         session_data['agent_identity'] = agent_identity
         
-        agent_connected = agent_service.start_agent_for_session(session_data)
-        
-        if agent_connected:
-            logger.info(f"✅ AGENT CONNECTÉ avec succès pour session {session_data['session_id']} (identité: {agent_identity})")
-            session_data['agent_connected'] = True
-        else:
-            logger.warning(f"⚠️ AGENT NON CONNECTÉ pour session {session_data['session_id']} (identité: {agent_identity})")
-            session_data['agent_connected'] = False
+        # Note: Connexion agent désactivée pour approche REST + Vosk
+        logger.info(f"🔧 Session REST + Vosk créée sans agent LiveKit")
+        session_data['agent_connected'] = False
         
         # Enregistrer la session dans le registre
         with session_lock:
@@ -495,30 +492,118 @@ def get_diagnostic_logs():
 @app.route('/api/confidence-analysis', methods=['POST'])
 async def analyze_confidence():
     """
-    Proxy pour l'analyse de confiance vocale vers Whisper Realtime
+    Analyse de confiance vocale avec VOSK + Mistral (corrigé)
     """
-    logger.info("🎯 Requête reçue sur /api/confidence-analysis - transfert vers whisper-realtime")
+    logger.info("🎯 Requête reçue sur /api/confidence-analysis - transfert vers vosk-stt + mistral")
+    
     if 'audio' not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
 
     audio_file = request.files['audio']
+    session_id = request.form.get('session_id', f"session_{int(time.time())}")
+    scenario = request.form.get('scenario', 'confidence_boost')
     
-    # Utiliser httpx pour forwarder le fichier audio
     try:
+        # ÉTAPE 1: Transcription avec Vosk
         async with httpx.AsyncClient() as client:
             files = {'audio': (audio_file.filename, audio_file.read(), audio_file.mimetype)}
-            response = await client.post("http://whisper-realtime:8006/evaluate/final", files=files, timeout=60) # Augmenter le timeout pour l'analyse
-            response.raise_for_status() # Lève une exception pour les codes 4xx/5xx
-
-        logger.info(f"✅ Analyse envoyée à whisper-realtime. Status: {response.status_code}")
-        return jsonify(response.json()), response.status_code
+            data = {
+                'session_id': session_id,
+                'scenario': scenario,
+                'language': 'fr'
+            }
+            
+            logger.info(f"🔵 Envoi vers Vosk STT: {session_id}")
+            vosk_response = await client.post(
+                "http://vosk-stt:8002/analyze",
+                files=files,
+                data=data,
+                timeout=30
+            )
+            vosk_response.raise_for_status()
+            vosk_result = vosk_response.json()
+            
+            transcription = vosk_result.get("transcription", "")
+            logger.info(f"✅ Transcription Vosk: {transcription[:100]}...")
+            
+            if not transcription.strip():
+                return jsonify({
+                    "error": "Aucune transcription détectée",
+                    "transcription": "",
+                    "ai_response": "Je n'ai pas pu comprendre votre audio. Pouvez-vous répéter ?",
+                    "confidence_score": 0.0
+                }), 200
+        
+        # ÉTAPE 2: Génération réponse IA avec Mistral
+        async with httpx.AsyncClient() as client:
+            mistral_payload = {
+                "model": "mistral-nemo-instruct-2407",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": f"""Tu es Marie, coach en confiance vocale pour l'exercice '{scenario}'.
+                        Analyse cette transcription et donne un feedback constructif et encourageant en français.
+                        Sois bienveillante, précise et motivante. Limite ta réponse à 2-3 phrases."""
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Voici ma réponse à analyser: '{transcription}'"
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 200
+            }
+            
+            logger.info(f"🔵 Envoi vers Mistral: {session_id}")
+            mistral_response = await client.post(
+                "http://mistral-conversation:8001/v1/chat/completions",
+                json=mistral_payload,
+                timeout=30
+            )
+            mistral_response.raise_for_status()
+            mistral_result = mistral_response.json()
+            
+            ai_response = mistral_result["choices"][0]["message"]["content"]
+            logger.info(f"✅ Réponse Mistral: {ai_response[:100]}...")
+        
+        # ÉTAPE 3: Calcul score de confiance basique
+        confidence_score = min(0.9, len(transcription.split()) / 10.0)
+        
+        # ÉTAPE 4: Réponse formatée pour Flutter
+        result = {
+            "transcription": transcription,
+            "ai_response": ai_response,
+            "confidence_score": confidence_score,
+            "session_id": session_id,
+            "scenario": scenario,
+            "metrics": {
+                "clarity": vosk_result.get("scores", {}).get("clarity", confidence_score),
+                "fluency": vosk_result.get("scores", {}).get("fluency", confidence_score),
+                "confidence": confidence_score,
+                "pace": vosk_result.get("scores", {}).get("pace", 0.7)
+            },
+            "timestamp": time.time()
+        }
+        
+        logger.info(f"✅ Analyse complète terminée pour {session_id}")
+        return jsonify(result), 200
 
     except httpx.RequestError as e:
-        logger.error(f"❌ Erreur lors de l'envoi à whisper-realtime: {e}")
-        return jsonify({"error": f"Backend communication error: {str(e)}"}), 500
+        logger.error(f"❌ Erreur réseau: {e}")
+        return jsonify({
+            "error": f"Erreur de communication: {str(e)}",
+            "transcription": "",
+            "ai_response": "Désolé, je rencontre un problème technique. Réessayez dans quelques instants.",
+            "confidence_score": 0.0
+        }), 500
     except Exception as e:
-        logger.error(f"❌ Erreur inattendue dans /api/confidence-analysis: {e}")
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        logger.error(f"❌ Erreur inattendue: {e}")
+        return jsonify({
+            "error": f"Erreur interne: {str(e)}",
+            "transcription": "",
+            "ai_response": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+            "confidence_score": 0.0
+        }), 500
 
 @app.route('/api/sessions/active', methods=['GET'])
 def get_active_sessions():
@@ -558,15 +643,14 @@ def get_agents_status():
     DIAGNOSTIC: Endpoint pour consulter l'état des agents
     """
     try:
-        agents_count = agent_service.get_active_agents_count()
-        
+        # Note: Service agent désactivé pour approche REST + Vosk
         agents_info = {
-            "active_agents_count": agents_count,
+            "active_agents_count": 0,
             "timestamp": datetime.utcnow().isoformat(),
-            "service_status": "running"
+            "service_status": "disabled_rest_mode"
         }
         
-        logger.info(f"🤖 Agents actifs consultés: {agents_count} agents")
+        logger.info("🔧 Service agent désactivé - Mode REST + Vosk")
         return jsonify(agents_info), 200
         
     except Exception as e:

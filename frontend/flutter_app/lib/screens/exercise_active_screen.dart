@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/layered_scaffold.dart';
@@ -20,10 +21,7 @@ class ExerciseActiveScreenState extends ConsumerState<ExerciseActiveScreen> {
     if (widget.exerciseId == 'confidence_boost') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/confidence_boost',
-          );
+          context.go('/confidence_boost');
         }
       });
     }
@@ -48,7 +46,7 @@ class ExerciseActiveScreenState extends ConsumerState<ExerciseActiveScreen> {
       showNavigation: false,
       onCarouselTap: () {
         navigationNotifier.endExercise();
-        Navigator.pop(context);
+        context.pop();
       },
       content: Center(
         child: Column(
@@ -70,7 +68,7 @@ class ExerciseActiveScreenState extends ConsumerState<ExerciseActiveScreen> {
               ),
               onPressed: () {
                 navigationNotifier.endExercise();
-                Navigator.pop(context);
+                context.pop();
               },
               child: const Text("Terminer l'exercice"),
             )

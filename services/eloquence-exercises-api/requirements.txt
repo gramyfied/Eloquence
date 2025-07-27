@@ -1,0 +1,18 @@
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.23.2
+
+# Data Validation & Models
+pydantic==2.4.2
+
+# Database & Caching
+redis==5.0.1
+
+# HTTP Client
+httpx==0.25.0
+
+# Audio Processing & Analytics
+numpy==1.24.3
+
+# Additional Dependencies
+python-multipart==0.0.6
