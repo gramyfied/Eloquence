@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 import '../../domain/entities/app_user.dart';
 import '../providers/auth_provider.dart';
@@ -84,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _logger.i('✅ MODE DÉVELOPPEUR: Utilisateur connecté - ${devUser.displayName}');
     
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/home');
+      context.go('/home');
     }
   }
 
@@ -109,7 +110,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (authState.user != null) {
         _logger.i('✅ LoginScreen: Connexion réussie - ${authState.user!.email}');
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
+          context.go('/home');
         }
       }
     } catch (e) {
@@ -383,7 +384,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextButton(
                       onPressed: () {
                         _logger.i('🔄 Navigation vers inscription');
-                        Navigator.of(context).pushNamed('/signup');
+                        context.go('/signup');
                       },
                       child: Text(
                         'S\'inscrire',

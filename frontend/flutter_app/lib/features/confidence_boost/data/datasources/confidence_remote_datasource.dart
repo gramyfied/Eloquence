@@ -49,7 +49,6 @@ class ConfidenceRemoteDataSourceImpl implements ConfidenceRemoteDataSource {
   }) async {
     try {
       // Utiliser l'API backend pour analyser l'audio
-      // Cette partie utilise les services existants (Whisper + Mistral)
       
       // Pour l'instant, retourner une analyse simulée
       // TODO: Implémenter l'appel réel à l'API d'analyse

@@ -13,7 +13,7 @@ class HomeScreen extends ConsumerWidget {
 
     return LayeredScaffold(
       carouselState: carouselState,
-      showNavigation: true,
+      showNavigation: false, // Désactiver car déjà gérée par MainScreen
       onCarouselTap: () {
         // Le carrousel est déjà interactif en mode full
       },

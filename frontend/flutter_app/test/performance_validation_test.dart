@@ -14,7 +14,7 @@ import 'test_setup.dart';
 /// Objectifs :
 /// - Latence totale < 3 secondes
 /// - Cache Mistral < 100ms pour les hits
-/// - Streaming Whisper < 2s par chunk
+/// - Streaming Vosk < 2s par chunk
 /// - Pool de connexions HTTP fonctionnel
 void main() {
   setUpAll(() async {

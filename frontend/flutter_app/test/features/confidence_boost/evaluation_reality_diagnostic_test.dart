@@ -74,7 +74,7 @@ void main() {
       }
     });
 
-    test('🖥️ DIAGNOSTIC 2: Backend Whisper + Mistral - Connectivité Locale', () async {
+    test('🖥️ DIAGNOSTIC 2: Backend Vosk + Mistral - Connectivité Locale', () async {
       debugPrint('\n🔍 [DIAGNOSTIC] Test connectivité Backend localhost...');
       
       final backendUrl = dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000';
@@ -128,10 +128,10 @@ void main() {
       debugPrint('\n🔍 [DIAGNOSTIC] Résumé état des services...');
       
       debugPrint('📋 [ANALYSE] Configuration détectée:');
-      debugPrint('   🔧 Backend Whisper+Mistral: ${dotenv.env['LLM_SERVICE_URL']}');
+      debugPrint('   🔧 Backend Vosk+Mistral: ${dotenv.env['LLM_SERVICE_URL']}');
       debugPrint('   🤖 API Mistral Scaleway: ${dotenv.env['MISTRAL_ENABLED'] == "true" ? "ACTIVÉ" : "DÉSACTIVÉ"}');
       debugPrint('   🎭 LiveKit WebRTC: ${dotenv.env['LIVEKIT_URL']}');
-      debugPrint('   🗣️ Whisper STT: ${dotenv.env['WHISPER_STT_URL']}');
+      debugPrint('   🗣️ Vosk STT: ${dotenv.env['VOSK_STT_URL']}');
       debugPrint('   🔊 OpenAI TTS: ${dotenv.env['OPENAI_TTS_URL']}');
       
       debugPrint('\n🎯 [CONCLUSION] Système d\'évaluation:');

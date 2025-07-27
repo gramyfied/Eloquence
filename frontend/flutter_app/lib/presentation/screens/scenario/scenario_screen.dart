@@ -9,6 +9,7 @@ class ScenarioScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const LayeredScaffold(
       carouselState: CarouselVisibilityState.medium,
+      showNavigation: false, // Désactiver car déjà gérée par MainScreen
       content: Center(
         child: Text(
           'Écran des Scénarios',

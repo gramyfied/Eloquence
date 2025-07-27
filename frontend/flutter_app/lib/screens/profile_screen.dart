@@ -9,6 +9,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const LayeredScaffold(
       carouselState: CarouselVisibilityState.subtle,
+      showNavigation: false, // Désactiver car déjà gérée par MainScreen
       content: Center(
         child: Text(
           'Écran de Profil',

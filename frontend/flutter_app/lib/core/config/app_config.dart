@@ -8,10 +8,11 @@ class AppConfig {
   // Fonction utilitaire pour substituer localhost avec l'IP correcte en mode debug
   static String _replaceLocalhostWithDevIp(String url) {
     if (kDebugMode && url.contains('localhost')) {
-      // 10.0.2.2 est l'alias de localhost pour l'émulateur Android
-      // Pour iOS ou les appareils physiques, utilisez l'IP de votre machine de développement
-      final devIp = Platform.isAndroid ? '10.0.2.2' : dotenv.env['DEV_SERVER_IP'] ?? '192.168.1.44';
-      return url.replaceFirst('localhost', devIp);
+      // FIX: Utiliser l'IP machine hôte pour tous les cas car Docker expose sur 0.0.0.0
+      const devIp = '192.168.1.44';
+      final newUrl = url.replaceFirst('localhost', devIp);
+      debugPrint('🌐 URL remplacée: $url → $newUrl');
+      return newUrl;
     }
     return url;
   }
@@ -52,15 +53,33 @@ class AppConfig {
     return isProduction ? "https://api.eloquence.app" : _replaceLocalhostWithDevIp(url);
   }
 
+  // Nouveau service unifié eloquence-streaming-api
+  static String get eloquenceStreamingApiUrl {
+    final url = dotenv.env['ELOQUENCE_STREAMING_API_URL'] ?? 'http://localhost:8003';
+    // TEMPORARY FIX: Force IP machine hôte pour tous les cas
+    if (kDebugMode) {
+      const debugUrl = 'http://192.168.1.44:8003';
+      debugPrint('🔧 DEBUG: Force eloquenceStreamingApiUrl = $debugUrl (IP machine hôte)');
+      return debugUrl;
+    }
+    return isProduction ? "https://streaming.eloquence.app" : _replaceLocalhostWithDevIp(url);
+  }
+
+  // API des exercices vocaux
+  static String get exercisesApiUrl {
+    final url = dotenv.env['EXERCISES_API_URL'] ?? 'http://localhost:8005';
+    return isProduction ? "https://exercises.eloquence.app" : _replaceLocalhostWithDevIp(url);
+  }
+
   static String get voskServiceUrl {
-    final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:8003';
+    final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:2700';
     return isProduction ? "https://your-prod-server.com/vosk" : _replaceLocalhostWithDevIp(url);
   }
   
   static String get mistralBaseUrl {
-    // Utiliser MISTRAL_BASE_URL s'il est spécifié, sinon fallback
-    final url = dotenv.env['MISTRAL_BASE_URL'] ?? 'http://localhost:8000/mistral';
-    return isProduction ? "https://api.mistral.ai/v1/chat/completions" : _replaceLocalhostWithDevIp(url);
+    // URL Scaleway Mistral avec ID unique
+    final url = dotenv.env['MISTRAL_BASE_URL'] ?? 'https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1';
+    return isProduction ? "https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1" : url;
   }
 
   static String get redisUrl {

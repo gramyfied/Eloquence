@@ -130,6 +130,21 @@ class AdaptiveDialogue {
   }
 }
 
+/// Modèle pour la réponse de l'IA
+class AIResponse {
+  final String text;
+  final double confidenceScore;
+  final String feedback;
+  final String? audioUrl;
+
+  AIResponse({
+    required this.text,
+    required this.confidenceScore,
+    required this.feedback,
+    this.audioUrl,
+  });
+}
+
 // Modèle pour les recommandations IA
 class AIRecommendation {
   final String title;
