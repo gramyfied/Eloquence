@@ -60,6 +60,7 @@ class _VirelangueRouletteScreenState
 
   @override
   void dispose() {
+    _sessionInitialized = false; // Réinitialisé pour permettre une nouvelle session propre
     _rotationController.dispose();
     super.dispose();
   }
