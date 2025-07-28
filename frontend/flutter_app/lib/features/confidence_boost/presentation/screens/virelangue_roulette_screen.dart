@@ -6,6 +6,7 @@ import '../../domain/entities/virelangue_models.dart';
 import '../providers/virelangue_exercise_provider.dart';
 import '../widgets/animated_microphone_button.dart';
 import '../widgets/virelangue_wheel.dart';
+import '../widgets/spinning_wheel_60fps.dart';
 import '../widgets/virelangue_result_panel.dart';
 import '../theme/virelangue_roulette_theme.dart';
 
@@ -28,6 +29,9 @@ class _VirelangueRouletteScreenState
   // S'assurer que la session est démarrée une seule fois.
   bool _sessionInitialized = false;
   bool _isWheelSpinning = false;
+  
+  // Clé globale pour contrôler la roue 60fps
+  final GlobalKey<SpinningWheel60fpsState> _wheelKey = GlobalKey<SpinningWheel60fpsState>();
 
   @override
   void initState() {
@@ -60,7 +64,7 @@ class _VirelangueRouletteScreenState
     super.dispose();
   }
 
-  /// Fait tourner la roue avec animation et sélectionne un virelangue
+  /// Fait tourner la roue avec animation 60fps et sélectionne un virelangue
   Future<void> _spinWheelAndSelectVirelangue(VirelangueExerciseNotifier notifier) async {
     if (_isWheelSpinning) return;
     
@@ -68,15 +72,16 @@ class _VirelangueRouletteScreenState
       _isWheelSpinning = true;
     });
     
-    // Démarrer l'animation de rotation
-    _rotationController.reset();
-    _rotationController.forward();
+    // Déclencher l'animation de la roulette 60fps
+    _wheelKey.currentState?.startSpin();
     
-    // Attendre un petit délai puis sélectionner le virelangue
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Attendre un délai réaliste puis sélectionner le virelangue
+    await Future.delayed(const Duration(milliseconds: 2000)); // Délai pour l'animation 60fps
     
     // Sélectionner un nouveau virelangue (logique du provider)
     await notifier.spinWheelForNewVirelangue();
+    
+    // L'état _isWheelSpinning sera mis à false par onSpinComplete
   }
   
   @override
@@ -202,19 +207,17 @@ class _VirelangueRouletteScreenState
           
           SizedBox(height: availableHeight * 0.03), // 3% de l'espace disponible
           
-          // Roue centrale avec animation
-          AnimatedBuilder(
-            animation: _rotationAnimation,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _rotationAnimation.value * 2 * 3.14159,
-                child: VirelangueWheel(
-                  virelangues: state.availableVirelangues,
-                  selectedVirelangue: state.currentVirelangue,
-                  rotationAnimation: _rotationController,
-                  size: (availableHeight * 0.32).clamp(180.0, 260.0), // Réduit la taille
-                ),
-              );
+          // Roue centrale avec animation 60fps
+          SpinningWheel60fps(
+            key: _wheelKey,
+            virelangues: state.availableVirelangues,
+            targetVirelangue: state.currentVirelangue,
+            autoSpin: false, // Ne démarre jamais automatiquement
+            size: (availableHeight * 0.32).clamp(180.0, 260.0),
+            onSpinComplete: () {
+              setState(() {
+                _isWheelSpinning = false;
+              });
             },
           ),
           
@@ -390,7 +393,7 @@ class _VirelangueRouletteScreenState
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(22),
-                  onTap: () => notifier.spinWheelForNewVirelangue(),
+                  onTap: () => _spinWheelAndSelectVirelangue(notifier),
                   child: Center(
                     child: Text(
                       'Nouveau tour',
