@@ -20,7 +20,7 @@ import '../../data/services/virelangue_service.dart';
 /// - Agir comme un médiateur (ViewModel) entre l'UI et les services métier.
 /// - Démarrer, arrêter l'enregistrement et déclencher l'analyse.
 /// - Contenir la logique de l'UI (ex: états de chargement, erreurs, etc.).
-final virelangueExerciseProvider = StateNotifierProvider.autoDispose<VirelangueExerciseNotifier, VirelangueExerciseState>((ref) {
+final virelangueExerciseProvider = StateNotifierProvider<VirelangueExerciseNotifier, VirelangueExerciseState>((ref) {
   return VirelangueExerciseNotifier(
     virelangueService: ref.watch(virelangueServiceProvider),
     universalAudioService: ref.watch(universalAudioExerciseServiceProvider),
