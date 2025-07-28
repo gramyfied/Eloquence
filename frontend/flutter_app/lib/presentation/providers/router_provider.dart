@@ -14,14 +14,18 @@ import '../screens/scenario/scenario_screen.dart';
 import '../../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
 import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
+import '../../features/confidence_boost/presentation/screens/virelangue_roulette_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/widgets/auth_wrapper.dart';
 
+// Définir une GlobalKey pour le navigateur racine, après les imports
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Provider pour le routeur unifié de l'application selon les meilleures pratiques GoRouter
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    navigatorKey: NavigatorService.navigatorKey,
+    navigatorKey: rootNavigatorKey, // Utiliser la clé globale
     initialLocation: '/',
     routes: <RouteBase>[
       // Route racine avec AuthWrapper
@@ -30,6 +34,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (BuildContext context, GoRouterState state) {
           return const AuthWrapper();
         },
+        // Routes enfants de la route racine (peuvent utiliser rootNavigatorKey)
         routes: <RouteBase>[
           // Routes d'authentification
           GoRoute(
@@ -48,6 +53,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Route principale avec navigation intégrée
           ShellRoute(
             builder: (BuildContext context, GoRouterState state, Widget child) {
+              // Ceci encapsule les routes de navigation principales
               return MainScreen(child: child);
             },
             routes: <RouteBase>[
@@ -81,6 +87,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Route confidence_boost - NOUVELLE APPROCHE LIVEKIT
           GoRoute(
             path: 'confidence_boost',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
             builder: (BuildContext context, GoRouterState state) {
               // Utilise le nouveau écran LiveKit (remplace WebSocket)
               final defaultScenario = ConfidenceScenario(
@@ -99,9 +106,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           
+          // Route virelangue_roulette - NOUVELLE ROULETTE MAGIQUE
+          GoRoute(
+            path: 'virelangue_roulette',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
+            builder: (BuildContext context, GoRouterState state) {
+              return const VirelangueRouletteScreen();
+            },
+          ),
+          
           // Routes paramétrées
           GoRoute(
             path: 'exercise_detail/:id',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
             builder: (BuildContext context, GoRouterState state) {
               final exerciseId = state.pathParameters['id']!;
               return ExerciseDetailScreen(exerciseId: exerciseId);
@@ -109,6 +126,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'exercise_active/:id',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
             builder: (BuildContext context, GoRouterState state) {
               final exerciseId = state.pathParameters['id']!;
               
@@ -127,6 +145,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                   tips: ['Parlez avec assurance', 'Gardez le contact visuel', 'Structurez vos idées'],
                 );
                 return ConfidenceBoostEntry.livekitScreen(defaultScenario);
+              }
+              
+              // NOUVEAU : Rediriger virelangue_roulette vers l'écran virelangue
+              if (exerciseId == 'virelangue_roulette') {
+                return const VirelangueRouletteScreen();
               }
               return ExerciseActiveScreen(exerciseId: exerciseId);
             },

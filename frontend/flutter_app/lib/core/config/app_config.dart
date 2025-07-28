@@ -55,11 +55,11 @@ class AppConfig {
 
   // Nouveau service unifié eloquence-streaming-api
   static String get eloquenceStreamingApiUrl {
-    final url = dotenv.env['ELOQUENCE_STREAMING_API_URL'] ?? 'http://localhost:8003';
-    // TEMPORARY FIX: Force IP machine hôte pour tous les cas
+    final url = dotenv.env['ELOQUENCE_STREAMING_API_URL'] ?? 'http://localhost:8005';
+    // FIXED: Utiliser le bon port 8005 pour eloquence-exercises-api
     if (kDebugMode) {
-      const debugUrl = 'http://192.168.1.44:8003';
-      debugPrint('🔧 DEBUG: Force eloquenceStreamingApiUrl = $debugUrl (IP machine hôte)');
+      const debugUrl = 'http://192.168.1.44:8005';
+      debugPrint('🔧 DEBUG: Force eloquenceStreamingApiUrl = $debugUrl (API exercices port 8005)');
       return debugUrl;
     }
     return isProduction ? "https://streaming.eloquence.app" : _replaceLocalhostWithDevIp(url);

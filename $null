@@ -1,0 +1,5 @@
+Error response from daemon: No such image: eloquence-vosk-stt-1:latest
+Error response from daemon: invalid reference format
+Error response from daemon: No such image: docker-compose:latest
+Error response from daemon: No such image: build:latest
+Error response from daemon: No such image: vosk-stt:latest

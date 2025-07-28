@@ -52,6 +52,31 @@ TOKEN_SERVICE_URL = os.getenv("TOKEN_SERVICE_URL", "http://livekit-token-service
 # Configuration du service Vosk
 VOSK_SERVICE_URL = os.getenv("VOSK_SERVICE_URL", "http://vosk-stt:8002")
 
+# Configuration HTTPX optimisée selon la documentation
+httpx_timeout = httpx.Timeout(
+    connect=10.0,  # Timeout de connexion
+    read=60.0,     # Timeout de lecture
+    write=30.0,    # Timeout d'écriture
+    pool=5.0       # Timeout pour obtenir une connexion du pool
+)
+
+httpx_limits = httpx.Limits(
+    max_keepalive_connections=5,
+    max_connections=10,
+    keepalive_expiry=5.0
+)
+
+httpx_transport = httpx.HTTPTransport(
+    retries=2,  # Retry automatique en cas d'échec
+    limits=httpx_limits
+)
+
+# Transport asynchrone (pour AsyncClient)
+httpx_async_transport = httpx.AsyncHTTPTransport(
+    retries=2,  # Retry automatique en cas d'échec
+    limits=httpx_limits
+)
+
 # Préfixes Redis
 EXERCISE_PREFIX = "eloquence:exercise:"
 SESSION_PREFIX = "eloquence:session:"
@@ -274,11 +299,13 @@ async def create_session(session_config: Dict[str, Any]):
         
         logger.info(f"🔍 Token request: {token_request}")
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(
+            timeout=httpx_timeout,
+            transport=httpx_async_transport
+        ) as client:
             token_response = await client.post(
                 token_url,
-                json=token_request,
-                timeout=10.0
+                json=token_request
             )
             
             if token_response.status_code != 200:
@@ -490,13 +517,34 @@ async def analyze_voice(
         }
         
         # Appeler le service Vosk
-        async with httpx.AsyncClient() as client:
-            vosk_response = await client.post(
-                f"{VOSK_SERVICE_URL}/analyze",
-                files=files,
-                data=data,
-                timeout=30.0
-            )
+        async with httpx.AsyncClient(
+            timeout=httpx_timeout,
+            transport=httpx_async_transport
+        ) as client:
+            try:
+                vosk_response = await client.post(
+                    f"{VOSK_SERVICE_URL}/analyze",
+                    files=files,
+                    data=data
+                )
+            except httpx.ConnectError as e:
+                logger.error(f"❌ Erreur de connexion vers Vosk ({VOSK_SERVICE_URL}): {e}")
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Service Vosk non disponible: {str(e)}"
+                )
+            except httpx.TimeoutException as e:
+                logger.error(f"❌ Timeout connexion Vosk: {e}")
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Timeout service Vosk: {str(e)}"
+                )
+            except httpx.RequestError as e:
+                logger.error(f"❌ Erreur requête Vosk: {e}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Erreur communication Vosk: {str(e)}"
+                )
             
             if vosk_response.status_code != 200:
                 raise HTTPException(
@@ -574,13 +622,34 @@ async def analyze_voice_detailed(
         }
         
         # Appeler le service Vosk pour l'analyse complète
-        async with httpx.AsyncClient() as client:
-            vosk_response = await client.post(
-                f"{VOSK_SERVICE_URL}/analyze",
-                files=files,
-                data=data,
-                timeout=45.0
-            )
+        async with httpx.AsyncClient(
+            timeout=httpx_timeout,
+            transport=httpx_async_transport
+        ) as client:
+            try:
+                vosk_response = await client.post(
+                    f"{VOSK_SERVICE_URL}/analyze",
+                    files=files,
+                    data=data
+                )
+            except httpx.ConnectError as e:
+                logger.error(f"❌ Erreur de connexion vers Vosk (détaillée): {e}")
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Service Vosk non disponible: {str(e)}"
+                )
+            except httpx.TimeoutException as e:
+                logger.error(f"❌ Timeout connexion Vosk (détaillée): {e}")
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Timeout service Vosk: {str(e)}"
+                )
+            except httpx.RequestError as e:
+                logger.error(f"❌ Erreur requête Vosk (détaillée): {e}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Erreur communication Vosk: {str(e)}"
+                )
             
             if vosk_response.status_code != 200:
                 raise HTTPException(
@@ -716,6 +785,273 @@ def _calculate_hesitation_rate(vosk_result: Dict[str, Any]) -> float:
     hesitation_rate = min(1.0, pause_ratio / 0.3)
     return hesitation_rate
 
+@app.post("/analyze-virelangue")
+async def analyze_virelangue_pronunciation(
+    audio: UploadFile = File(...),
+    target_text: str = Form(...),
+    target_sounds: str = Form(...),
+    session_id: Optional[str] = Form(None),
+    analysis_focus: str = Form("pronunciation_accuracy"),
+    enable_phoneme_analysis: str = Form("true"),
+    enable_fluency_metrics: str = Form("true")
+):
+    """
+    Endpoint spécialisé pour l'analyse de virelangues avec évaluation de prononciation
+    """
+    logger.info(f"🎭 Analyse virelangue reçue - texte cible: {target_text}")
+    
+    try:
+        # Générer un session_id si non fourni
+        if not session_id:
+            session_id = f"virelangue_{uuid.uuid4().hex[:8]}"
+        
+        # Parser les sons ciblés (envoyés en JSON string)
+        try:
+            target_sounds_list = json.loads(target_sounds) if isinstance(target_sounds, str) else target_sounds
+        except json.JSONDecodeError:
+            target_sounds_list = [target_sounds] if target_sounds else []
+        
+        logger.info(f"🔊 Sons ciblés: {target_sounds_list}")
+        
+        # Préparer les données pour l'envoi vers Vosk
+        audio_content = await audio.read()
+        
+        # Créer les données multipart pour Vosk
+        files = {"audio": (audio.filename, audio_content, audio.content_type)}
+        data = {
+            "scenario_type": "virelangue",
+            "scenario_context": f"Analyse virelangue: {target_text}"
+        }
+        
+        # Appeler le service Vosk
+        async with httpx.AsyncClient(
+            timeout=httpx_timeout,
+            transport=httpx_async_transport
+        ) as client:
+            try:
+                logger.info(f"🔗 Tentative connexion vers Vosk: {VOSK_SERVICE_URL}/analyze")
+                vosk_response = await client.post(
+                    f"{VOSK_SERVICE_URL}/analyze",
+                    files=files,
+                    data=data
+                )
+                logger.info(f"✅ Connexion Vosk réussie, status: {vosk_response.status_code}")
+            except httpx.ConnectError as e:
+                logger.error(f"❌ Erreur de connexion vers Vosk (virelangue): {e}")
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Service Vosk non disponible: {str(e)}"
+                )
+            except httpx.TimeoutException as e:
+                logger.error(f"❌ Timeout connexion Vosk (virelangue): {e}")
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Timeout service Vosk: {str(e)}"
+                )
+            except httpx.RequestError as e:
+                logger.error(f"❌ Erreur requête Vosk (virelangue): {e}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Erreur communication Vosk: {str(e)}"
+                )
+            
+            if vosk_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Erreur service Vosk: {vosk_response.text}"
+                )
+            
+            vosk_result = vosk_response.json()
+        
+        # Calculer score de prononciation spécifique aux virelangues
+        transcribed_text = vosk_result.get("transcription", {}).get("text", "")
+        pronunciation_score = _calculate_virelangue_pronunciation_score(
+            target_text, transcribed_text, vosk_result.get("confidence_score", 0.0)
+        )
+        
+        # Analyser les sons difficiles
+        sound_analysis = _analyze_target_sounds(transcribed_text, target_sounds_list, vosk_result)
+        
+        # Construire la réponse spécialisée pour virelangues
+        analysis_result = {
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat(),
+            "target_text": target_text,
+            "transcribed_text": transcribed_text,
+            "target_sounds": target_sounds_list,
+            "overall_score": pronunciation_score,
+            "pronunciation_accuracy": pronunciation_score,
+            "detailed_scores": {
+                "accuracy": pronunciation_score,
+                "clarity": vosk_result.get("clarity_score", 0.0),
+                "fluency": vosk_result.get("fluency_score", 0.0),
+                "confidence": vosk_result.get("confidence_score", 0.0),
+                "sound_precision": sound_analysis.get("precision_score", 0.0)
+            },
+            "sound_analysis": sound_analysis,
+            "prosody_analysis": vosk_result.get("prosody", {}),
+            "feedback": _generate_virelangue_feedback(pronunciation_score, sound_analysis),
+            "strengths": _extract_virelangue_strengths(pronunciation_score, sound_analysis),
+            "improvements": _extract_virelangue_improvements(pronunciation_score, sound_analysis),
+            "phoneme_details": vosk_result.get("transcription", {}).get("words", []),
+            "processing_time": vosk_result.get("processing_time", 0.0),
+            "exercise_type": "virelangue",
+            "difficulty_assessment": _assess_virelangue_difficulty(target_text, pronunciation_score)
+        }
+        
+        # Sauvegarder le résultat dans Redis
+        if session_id and redis_client:
+            analysis_key = f"eloquence:virelangue_analysis:{session_id}"
+            redis_client.set(analysis_key, json.dumps(analysis_result))
+            redis_client.expire(analysis_key, 86400)  # Expire après 24h
+        
+        logger.info(f"✅ Analyse virelangue réussie - Score: {pronunciation_score:.2f}")
+        return analysis_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de l'analyse virelangue: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur d'analyse virelangue: {str(e)}"
+        )
+
+def _calculate_virelangue_pronunciation_score(target_text: str, transcribed_text: str, base_confidence: float) -> float:
+    """Calcule un score de prononciation spécifique aux virelangues"""
+    try:
+        target_words = target_text.lower().replace(",", "").replace("?", "").replace("!", "").split()
+        transcribed_words = transcribed_text.lower().replace(",", "").replace("?", "").replace("!", "").split()
+        
+        if not target_words:
+            return base_confidence
+        
+        # Calculer la similarité mot par mot
+        correct_words = 0
+        for target_word in target_words:
+            # Chercher le mot le plus proche dans la transcription
+            best_match = 0.0
+            for transcribed_word in transcribed_words:
+                # Similarité simple basée sur les caractères communs
+                similarity = _calculate_word_similarity(target_word, transcribed_word)
+                best_match = max(best_match, similarity)
+            
+            if best_match > 0.7:  # Seuil de correspondance
+                correct_words += 1
+        
+        word_accuracy = correct_words / len(target_words)
+        
+        # Combiner avec la confiance Vosk
+        final_score = (word_accuracy * 0.7) + (base_confidence * 0.3)
+        return min(1.0, max(0.0, final_score))
+        
+    except Exception:
+        return base_confidence
+
+def _calculate_word_similarity(word1: str, word2: str) -> float:
+    """Calcule la similarité entre deux mots"""
+    if word1 == word2:
+        return 1.0
+    
+    # Calculer la distance de Levenshtein simplifiée
+    len1, len2 = len(word1), len(word2)
+    if len1 == 0 or len2 == 0:
+        return 0.0
+    
+    # Compter les caractères communs
+    common_chars = 0
+    for char in word1:
+        if char in word2:
+            common_chars += 1
+    
+    similarity = common_chars / max(len1, len2)
+    return similarity
+
+def _analyze_target_sounds(transcribed_text: str, target_sounds: List[str], vosk_result: Dict) -> Dict[str, Any]:
+    """Analyse la prononciation des sons ciblés"""
+    if not target_sounds:
+        return {"precision_score": 0.8, "sound_details": []}
+    
+    sound_details = []
+    total_precision = 0.0
+    
+    for sound in target_sounds:
+        sound_count_target = transcribed_text.lower().count(sound.lower())
+        precision = min(1.0, sound_count_target / max(1, len(target_sounds)))
+        
+        sound_details.append({
+            "sound": sound,
+            "detected_count": sound_count_target,
+            "precision": precision,
+            "feedback": f"Son '{sound}' détecté {sound_count_target} fois"
+        })
+        
+        total_precision += precision
+    
+    avg_precision = total_precision / len(target_sounds) if target_sounds else 0.8
+    
+    return {
+        "precision_score": avg_precision,
+        "sound_details": sound_details,
+        "overall_sound_quality": "bon" if avg_precision > 0.7 else "à améliorer"
+    }
+
+def _generate_virelangue_feedback(pronunciation_score: float, sound_analysis: Dict) -> str:
+    """Génère un feedback spécialisé pour les virelangues"""
+    if pronunciation_score >= 0.8:
+        return "Excellente prononciation du virelangue ! Votre articulation est claire et précise."
+    elif pronunciation_score >= 0.6:
+        return "Bonne tentative ! Continuez à travailler sur l'articulation des sons difficiles."
+    else:
+        return "Prenez votre temps pour bien articuler chaque son. Répétez lentement puis accélérez progressivement."
+
+def _extract_virelangue_strengths(pronunciation_score: float, sound_analysis: Dict) -> List[str]:
+    """Extrait les points forts de la prononciation"""
+    strengths = []
+    
+    if pronunciation_score >= 0.7:
+        strengths.append("Bonne articulation générale")
+    
+    precision_score = sound_analysis.get("precision_score", 0.0)
+    if precision_score >= 0.8:
+        strengths.append("Excellente maîtrise des sons ciblés")
+    elif precision_score >= 0.6:
+        strengths.append("Bonne reconnaissance des sons difficiles")
+    
+    if not strengths:
+        strengths.append("Courage dans la tentative de prononciation")
+    
+    return strengths
+
+def _extract_virelangue_improvements(pronunciation_score: float, sound_analysis: Dict) -> List[str]:
+    """Extrait les axes d'amélioration"""
+    improvements = []
+    
+    if pronunciation_score < 0.6:
+        improvements.append("Améliorer l'articulation générale")
+    
+    precision_score = sound_analysis.get("precision_score", 0.0)
+    if precision_score < 0.7:
+        improvements.append("Travailler spécifiquement les sons difficiles")
+    
+    if pronunciation_score < 0.8:
+        improvements.append("Ralentir le débit pour une meilleure précision")
+    
+    return improvements
+
+def _assess_virelangue_difficulty(target_text: str, pronunciation_score: float) -> str:
+    """Évalue la difficulté du virelangue basée sur le texte et la performance"""
+    text_length = len(target_text)
+    
+    if text_length > 60 and pronunciation_score < 0.5:
+        return "expert"
+    elif text_length > 40 and pronunciation_score < 0.7:
+        return "difficile"
+    elif text_length > 25:
+        return "intermédiaire"
+    else:
+        return "facile"
+
 @app.get("/api/statistics")
 async def get_statistics():
     """Récupère les statistiques générales"""
@@ -781,13 +1117,19 @@ async def process_audio_chunk_realtime(session_id: str, audio_data: str, chunk_i
         }
         
         # Appeler Vosk (correction: utiliser endpoint /analyze)
-        async with httpx.AsyncClient() as client:
-            vosk_response = await client.post(
-                f"{VOSK_SERVICE_URL}/analyze",  # Endpoint correct pour Vosk
-                files=files,
-                data=data,
-                timeout=5.0  # Timeout plus court pour le temps réel
-            )
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=2.0),
+            transport=httpx_async_transport
+        ) as client:
+            try:
+                vosk_response = await client.post(
+                    f"{VOSK_SERVICE_URL}/analyze",  # Endpoint correct pour Vosk
+                    files=files,
+                    data=data
+                )
+            except (httpx.ConnectError, httpx.TimeoutException, httpx.RequestError) as e:
+                logger.warning(f"⚠️ Erreur Vosk chunk {chunk_id}: {e}")
+                return None
             
             if vosk_response.status_code == 200:
                 return vosk_response.json()

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:eloquence_2_0/presentation/providers/router_provider.dart'; // Import pour rootNavigatorKey
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
+import '../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
 
 class ExercisesScreen extends ConsumerWidget {
   const ExercisesScreen({Key? key}) : super(key: key);
@@ -76,6 +78,16 @@ class ExercisesScreen extends ConsumerWidget {
                       _buildExerciseCard(
                         context,
                         ref,
+                        'Roulette des Virelangues Magiques',
+                        'Exercice gamifié avec collection de gemmes cosmétiques et récompenses variables',
+                        Icons.casino,
+                        EloquenceColors.cyan,
+                        'virelangue_roulette',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
                         'Pitch Perfect',
                         'Maîtrisez l\'art du pitch en 90 secondes',
                         Icons.rocket_launch,
@@ -134,6 +146,10 @@ class ExercisesScreen extends ConsumerWidget {
             if (exerciseId == 'confidence_boost') {
               debugPrint('Navigating to confidence boost conversational interface');
               context.go('/confidence_boost');
+            } else if (exerciseId == 'virelangue_roulette') {
+              // Navigation spéciale pour la roulette des virelangues, en utilisant le navigateur racine
+              debugPrint('Navigating to virelangue roulette using root navigator');
+              context.go('/virelangue_roulette', extra: {});
             } else {
               // Navigation normale vers exercise_detail avec l'ID
               debugPrint('Navigating to exercise detail with ID: $exerciseId');

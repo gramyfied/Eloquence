@@ -29,16 +29,19 @@ class MainActivity: FlutterActivity() {
     private val CHANNEL_NATIVE_CHECK = "com.example.eloquence_2_0/native_check"
     private val CHANNEL_AUDIO_DIAGNOSTIC = "eloquence/audio"
     private val CHANNEL_AUDIO_NATIVE = "eloquence.audio/native"
+    private val CHANNEL_EMERGENCY_AUDIO = "com.eloquence.emergency_audio"
 
     private lateinit var audioManager: AudioManager
-    private lateinit var notificationManager: NotificationManager 
+    private lateinit var notificationManager: NotificationManager
     private var headsetPlugReceiver: BroadcastReceiver? = null
+    private lateinit var emergencyAudioManager: EmergencyAudioManager
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager 
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        emergencyAudioManager = EmergencyAudioManager(this)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NATIVE_CHECK).setMethodCallHandler { call, result ->
             if (call.method == "checkNativeLibraries") {
@@ -108,6 +111,54 @@ class MainActivity: FlutterActivity() {
                     result.success(true)
                 }
                 else -> result.notImplemented()
+            }
+        }
+
+        // 🚨 CANAL EMERGENCY AUDIO - CONTOURNEMENT BLOCAGES ANDROID
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_EMERGENCY_AUDIO).setMethodCallHandler { call, result ->
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    when (call.method) {
+                        "forcePermission" -> {
+                            val args = call.arguments as? Map<String, Any?>
+                            val permission = args?.get("permission") as? String ?: ""
+                            val forceResult = emergencyAudioManager.forcePermission(permission)
+                            result.success(forceResult)
+                        }
+                        "configurePlatform" -> {
+                            val args = call.arguments as? Map<String, Any?> ?: emptyMap()
+                            // Convertir Map<String, Any?> vers Map<String, Any> en filtrant les valeurs null
+                            val safeArgs = args.filterValues { it != null }.mapValues { it.value!! }
+                            val configResult = emergencyAudioManager.configurePlatform(safeArgs)
+                            result.success(configResult)
+                        }
+                        "testEmergencyAccess" -> {
+                            val args = call.arguments as? Map<String, Any?>
+                            val duration = args?.get("duration") as? Int ?: 1000
+                            val testResult = emergencyAudioManager.testEmergencyAccess(duration)
+                            result.success(testResult)
+                        }
+                        "startRecording" -> {
+                            val args = call.arguments as? Map<String, Any?>
+                            val outputPath = args?.get("outputPath") as? String ?: ""
+                            val maxDuration = args?.get("maxDuration") as? Int ?: 30000
+                            val startResult = emergencyAudioManager.startRecording(outputPath, maxDuration)
+                            result.success(startResult)
+                        }
+                        "stopRecording" -> {
+                            val stopResult = emergencyAudioManager.stopRecording()
+                            result.success(stopResult)
+                        }
+                        "getDiagnosticInfo" -> {
+                            val diagnosticInfo = emergencyAudioManager.getDiagnosticInfo()
+                            result.success(diagnosticInfo)
+                        }
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "🚨 Erreur emergency audio: ${e.message}", e)
+                    result.error("EMERGENCY_ERROR", e.message, null)
+                }
             }
         }
     }

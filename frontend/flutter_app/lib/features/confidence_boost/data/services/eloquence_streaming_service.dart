@@ -62,7 +62,7 @@ class EloquenceConversationState {
 
 /// Service principal pour l'intégration avec eloquence-streaming-api
 class EloquenceStreamingService {
-  static const Duration _timeout = Duration(seconds: 30);
+  static const Duration _timeout = Duration(seconds: 45);
   WebSocketChannel? _wsChannel;
   final StreamController<EloquenceConversationMessage> _messageController =
       StreamController<EloquenceConversationMessage>.broadcast();
