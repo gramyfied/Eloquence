@@ -10,6 +10,8 @@ import 'presentation/app.dart'; // Import App au lieu de AuthWrapper
 // Imports des modèles Hive
 import 'features/confidence_boost/domain/entities/gamification_models.dart';
 import 'features/confidence_boost/domain/entities/confidence_scenario.dart';
+import 'features/confidence_boost/domain/entities/virelangue_models.dart'; // Import pour les modèles de virelangues
+import 'features/confidence_boost/data/services/virelangue_reward_system.dart'; // Import pour PityTimerState et RewardHistory
 import 'features/confidence_boost/data/services/mistral_cache_service.dart'; // Import pour MistralCacheService
 
 import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart'; // Import pour override
@@ -131,7 +133,37 @@ void _registerHiveAdapters(Logger log) {
       Hive.registerAdapter(BadgeAdapter());
       log.info("✅ BadgeAdapter registered (typeId: 24)");
     }
-    log.info("🎯 Tous les TypeAdapters Hive enregistrés avec succès.");
+    
+    // === ADAPTERS VIRELANGUES (typeId: 30-36) ===
+    if (!Hive.isAdapterRegistered(30)) {
+      Hive.registerAdapter(GemTypeAdapter());
+      log.info("✅ GemTypeAdapter registered (typeId: 30)");
+    }
+    if (!Hive.isAdapterRegistered(31)) {
+      Hive.registerAdapter(VirelangueAdapter());
+      log.info("✅ VirelangueAdapter registered (typeId: 31)");
+    }
+    if (!Hive.isAdapterRegistered(32)) {
+      Hive.registerAdapter(GemCollectionAdapter());
+      log.info("✅ GemCollectionAdapter registered (typeId: 32)");
+    }
+    if (!Hive.isAdapterRegistered(33)) {
+      Hive.registerAdapter(VirelangueDifficultyAdapter());
+      log.info("✅ VirelangueDifficultyAdapter registered (typeId: 33)");
+    }
+    if (!Hive.isAdapterRegistered(35)) {
+      Hive.registerAdapter(VirelangueStatsAdapter());
+      log.info("✅ VirelangueStatsAdapter registered (typeId: 35)");
+    }
+    if (!Hive.isAdapterRegistered(36)) {
+      Hive.registerAdapter(VirelangueUserProgressAdapter());
+      log.info("✅ VirelangueUserProgressAdapter registered (typeId: 36)");
+    }
+    
+    // TODO: Ajouter PityTimerStateAdapter et RewardHistoryAdapter (typeId: 34, 37+)
+    // quand les directives 'part' seront ajoutées aux fichiers sources
+    
+    log.info("🎯 Tous les TypeAdapters Hive enregistrés avec succès (incluant virelangues).");
   } catch (e) {
     log.severe("❌ [HIVE_REGISTER_ERROR] Erreur lors de l'enregistrement des TypeAdapters: $e");
     // Remonter l'erreur pour un crash explicite en développement si nécessaire

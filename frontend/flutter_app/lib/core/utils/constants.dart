@@ -8,7 +8,7 @@ class AppConstants {
   static const String defaultEloquenceConversationUrl = 'http://localhost:8003';
   
   // Timeouts
-  static const Duration defaultTimeout = Duration(seconds: 30);
+  static const Duration defaultTimeout = Duration(seconds: 45);
   static const Duration longTimeout = Duration(minutes: 2);
   static const Duration shortTimeout = Duration(seconds: 10);
   
@@ -121,8 +121,8 @@ class ConfidenceBoostConstants {
 class NetworkConstants {
   // Timeouts spécifiques
   static const Duration connectionTimeout = Duration(seconds: 15);
-  static const Duration receiveTimeout = Duration(seconds: 30);
-  static const Duration sendTimeout = Duration(seconds: 15);
+  static const Duration receiveTimeout = Duration(seconds: 45);
+  static const Duration sendTimeout = Duration(seconds: 20);
   
   // Retry configuration
   static const int maxNetworkRetries = 3;

@@ -113,6 +113,147 @@ class ConfidenceAnalysisAdapter extends TypeAdapter<ConfidenceAnalysis> {
           typeId == other.typeId;
 }
 
+class ConfidenceMetricsAdapter extends TypeAdapter<ConfidenceMetrics> {
+  @override
+  final int typeId = 14;
+
+  @override
+  ConfidenceMetrics read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return ConfidenceMetrics(
+      confidenceLevel: fields[0] as double,
+      voiceClarity: fields[1] as double,
+      speakingPace: fields[2] as double,
+      energyLevel: fields[3] as double,
+      timestamp: fields[4] as DateTime,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, ConfidenceMetrics obj) {
+    writer
+      ..writeByte(5)
+      ..writeByte(0)
+      ..write(obj.confidenceLevel)
+      ..writeByte(1)
+      ..write(obj.voiceClarity)
+      ..writeByte(2)
+      ..write(obj.speakingPace)
+      ..writeByte(3)
+      ..write(obj.energyLevel)
+      ..writeByte(4)
+      ..write(obj.timestamp);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConfidenceMetricsAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class ConversationMessageAdapter extends TypeAdapter<ConversationMessage> {
+  @override
+  final int typeId = 15;
+
+  @override
+  ConversationMessage read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return ConversationMessage(
+      id: fields[0] as String,
+      content: fields[1] as String,
+      isUser: fields[2] as bool,
+      timestamp: fields[3] as DateTime,
+      metrics: fields[4] as ConfidenceMetrics?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, ConversationMessage obj) {
+    writer
+      ..writeByte(5)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.content)
+      ..writeByte(2)
+      ..write(obj.isUser)
+      ..writeByte(3)
+      ..write(obj.timestamp)
+      ..writeByte(4)
+      ..write(obj.metrics);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConversationMessageAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class AnalysisResultAdapter extends TypeAdapter<AnalysisResult> {
+  @override
+  final int typeId = 16;
+
+  @override
+  AnalysisResult read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return AnalysisResult(
+      confidenceScore: fields[0] as double,
+      clarityScore: fields[1] as double,
+      fluencyScore: fields[2] as double,
+      transcription: fields[3] as String,
+      keyInsights: (fields[4] as List).cast<String>(),
+      timestamp: fields[5] as DateTime,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, AnalysisResult obj) {
+    writer
+      ..writeByte(6)
+      ..writeByte(0)
+      ..write(obj.confidenceScore)
+      ..writeByte(1)
+      ..write(obj.clarityScore)
+      ..writeByte(2)
+      ..write(obj.fluencyScore)
+      ..writeByte(3)
+      ..write(obj.transcription)
+      ..writeByte(4)
+      ..write(obj.keyInsights)
+      ..writeByte(5)
+      ..write(obj.timestamp);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalysisResultAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class SupportTypeAdapter extends TypeAdapter<SupportType> {
   @override
   final int typeId = 10;

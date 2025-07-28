@@ -80,6 +80,23 @@ class UnifiedLoggerService {
     _logToConsole('FATAL', message);
   }
 
+  // === MÉTHODES D'INSTANCE ===
+  
+  /// Log info (informations générales) - version d'instance
+  void logInfo(String message, [dynamic error, StackTrace? stackTrace]) {
+    UnifiedLoggerService.info(message, error, stackTrace);
+  }
+
+  /// Log warning (avertissements) - version d'instance
+  void logWarning(String message, [dynamic error, StackTrace? stackTrace]) {
+    UnifiedLoggerService.warning(message, error, stackTrace);
+  }
+
+  /// Log error (erreurs) - version d'instance
+  void logError(String message, {dynamic error, StackTrace? stackTrace}) {
+    UnifiedLoggerService.error(message, error, stackTrace);
+  }
+
   /// Log de performance (mesure du temps entre deux points)
   void performance(String tag, String operation, {bool start = false, bool end = false}) {
     if (_currentLevel <= _levelDebug) {

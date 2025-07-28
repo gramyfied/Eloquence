@@ -4,6 +4,7 @@ import 'confidence_boost_rest_screen.dart';
 import 'confidence_boost_adaptive_screen.dart';
 import 'universal_exercise_screen.dart';
 import 'confidence_boost_livekit_screen.dart';
+import 'virelangue_roulette_screen.dart';
 import '../../data/services/universal_audio_exercise_service.dart';
 import '../providers/universal_exercise_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,6 +41,11 @@ class ConfidenceBoostEntry {
   /// 🌟 API UNIVERSELLE - Lancer exercice universel avec configuration custom
   static Widget customExercise(AudioExerciseConfig config) {
     return _UniversalExerciseLauncher.withConfig(config: config);
+  }
+  
+  /// 🎲 ROULETTE DES VIRELANGUES MAGIQUES - Nouvel exercice gamifié
+  static Widget virelangueRoulette() {
+    return const VirelangueRouletteScreen();
   }
   
   /// 📱 ÉCRAN DE CHOIX MODE (Pour tests)
@@ -196,6 +202,22 @@ class _ConfidenceBoostChoiceScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => ConfidenceBoostEntry.universalExercise('job_interview'),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Mode Roulette des Virelangues
+            _buildModeCard(
+              context: context,
+              title: '🎲 Roulette des Virelangues Magiques',
+              description: 'Exercice gamifié avec collection de gemmes\nSystème de récompenses variables',
+              isRecommended: true,
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ConfidenceBoostEntry.virelangueRoulette(),
                 ),
               ),
             ),

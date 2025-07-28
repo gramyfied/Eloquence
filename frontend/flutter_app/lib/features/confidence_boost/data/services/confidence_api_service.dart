@@ -10,7 +10,7 @@ import '../../domain/entities/confidence_scenario.dart';
 /// Service API REST simple pour l'exercice Boost Confidence
 /// Utilise les endpoints existants du backend Flask (port 8000)
 class ConfidenceApiService {
-  static const Duration _timeout = Duration(seconds: 30);
+  static const Duration _timeout = Duration(seconds: 45);
   
   /// Récupère la liste des scénarios disponibles depuis l'API backend
   Future<List<ApiScenario>> getScenarios({String language = 'fr'}) async {

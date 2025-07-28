@@ -24,16 +24,18 @@ class MainScreen extends ConsumerWidget {
               child,
 
               // Main Navigation Bar below content avec padding Android
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: MediaQuery.of(context).padding.bottom,
-                child: MainNavigation(
-                  onNavigationChanged: (newRoute) {
-                    ref.read(navigationStateProvider.notifier).navigateTo(newRoute, context);
-                  },
+              // Masquer si sur la route virelangue_roulette
+              if (ref.watch(navigationStateProvider).currentRoute != '/virelangue_roulette')
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: MediaQuery.of(context).padding.bottom,
+                  child: MainNavigation(
+                    onNavigationChanged: (newRoute) {
+                      ref.read(navigationStateProvider.notifier).navigateTo(newRoute, context);
+                    },
+                  ),
                 ),
-              ),
             ],
           ),
         ),

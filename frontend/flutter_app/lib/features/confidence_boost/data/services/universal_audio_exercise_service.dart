@@ -169,7 +169,8 @@ class AudioExerciseEvaluation {
 
 /// Service universel pour exercices audio bidirectionnels avec évaluation
 class UniversalAudioExerciseService {
-  static const Duration _timeout = Duration(seconds: 30);
+  static const Duration _timeout = Duration(seconds: 45);
+  static const Duration _virelangueTimeout = Duration(seconds: 60);
   WebSocketChannel? _wsChannel;
   
   // Streams pour les différents types d'événements
@@ -416,6 +417,188 @@ class UniversalAudioExerciseService {
     }
   }
 
+  /// Analyse spécifique pour virelangues avec évaluation détaillée
+  Future<Map<String, dynamic>> analyzeVirelanguePronunciation({
+    required String sessionId,
+    required Uint8List audioData,
+    required String virelangueText,
+    required List<String> targetSounds,
+    String? fileName,
+  }) async {
+    try {
+      debugPrint('🎭 Analyse virelangue pour session: $sessionId');
+      debugPrint('🎯 Texte cible: $virelangueText');
+      debugPrint('🔊 Sons ciblés: ${targetSounds.join(', ')}');
+      
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/analyze-virelangue'),
+      );
+      
+      // Headers spécifiques aux virelangues
+      request.headers.addAll({
+        'Content-Type': 'multipart/form-data',
+        'X-Session-ID': sessionId,
+        'X-Analysis-Type': 'virelangue',
+      });
+      
+      // Fichier audio
+      final audioFileName = fileName ?? 'virelangue_${DateTime.now().millisecondsSinceEpoch}.wav';
+      request.files.add(http.MultipartFile.fromBytes(
+        'audio',
+        audioData,
+        filename: audioFileName,
+      ));
+      
+      // Paramètres spécifiques aux virelangues
+      request.fields.addAll({
+        'target_text': virelangueText,
+        'target_sounds': jsonEncode(targetSounds),
+        'analysis_focus': 'pronunciation_accuracy',
+        'enable_phoneme_analysis': 'true',
+        'enable_fluency_metrics': 'true',
+      });
+      
+      // Envoyer la requête avec timeout spécial pour virelangues
+      final streamedResponse = await request.send().timeout(_virelangueTimeout);
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Analyse virelangue terminée - Score: ${data['overall_score']}');
+        return data;
+      } else {
+        throw Exception('Erreur analyse virelangue ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur analyse virelangue: $e');
+      rethrow;
+    }
+  }
+
+  /// Demande la génération d'un virelangue personnalisé
+  Future<Map<String, dynamic>> generateCustomVirelangue({
+    required String sessionId,
+    required List<String> targetSounds,
+    String difficulty = 'medium',
+    String? theme,
+  }) async {
+    try {
+      debugPrint('🤖 Génération virelangue personnalisé pour session: $sessionId');
+      debugPrint('🎯 Sons ciblés: ${targetSounds.join(', ')}');
+      
+      final response = await http.post(
+        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/generate-virelangue'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId,
+        },
+        body: jsonEncode({
+          'target_sounds': targetSounds,
+          'difficulty': difficulty,
+          'theme': theme,
+          'language': 'fr',
+          'max_length': 50, // Limite de caractères
+          'style': 'ludique',
+        }),
+      ).timeout(_virelangueTimeout);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Virelangue généré: ${data['text']}');
+        return data;
+      } else {
+        throw Exception('Erreur génération virelangue ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur génération virelangue: $e');
+      rethrow;
+    }
+  }
+
+  /// Calcule et envoie les récompenses de gemmes
+  Future<Map<String, dynamic>> calculateGemRewards({
+    required String sessionId,
+    required double pronunciationScore,
+    required int currentCombo,
+    required String difficulty,
+    bool isSpecialEvent = false,
+  }) async {
+    try {
+      debugPrint('💎 Calcul récompenses gemmes pour session: $sessionId');
+      debugPrint('📊 Score: $pronunciationScore, Combo: $currentCombo');
+      
+      final response = await http.post(
+        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/calculate-gem-rewards'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId,
+        },
+        body: jsonEncode({
+          'pronunciation_score': pronunciationScore,
+          'current_combo': currentCombo,
+          'difficulty': difficulty,
+          'is_special_event': isSpecialEvent,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      ).timeout(_timeout);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Récompenses calculées: ${data['gems_earned']} gemmes');
+        return data;
+      } else {
+        throw Exception('Erreur calcul récompenses ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur calcul récompenses: $e');
+      rethrow;
+    }
+  }
+
+  /// Obtient la liste des virelangues disponibles
+  Future<List<Map<String, dynamic>>> getAvailableVirelangues({
+    String? difficulty,
+    List<String>? targetSounds,
+    int limit = 8,
+  }) async {
+    try {
+      debugPrint('📋 Récupération virelangues disponibles');
+      
+      final queryParams = <String, String>{
+        'limit': limit.toString(),
+      };
+      
+      if (difficulty != null) {
+        queryParams['difficulty'] = difficulty;
+      }
+      
+      if (targetSounds != null && targetSounds.isNotEmpty) {
+        queryParams['target_sounds'] = targetSounds.join(',');
+      }
+      
+      final uri = Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/virelangues')
+          .replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(_timeout);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final virelangues = List<Map<String, dynamic>>.from(data['virelangues']);
+        debugPrint('✅ ${virelangues.length} virelangues récupérés');
+        return virelangues;
+      } else {
+        throw Exception('Erreur récupération virelangues ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur récupération virelangues: $e');
+      rethrow;
+    }
+  }
+
   /// Envoie un message texte
   Future<void> sendTextMessage(String content) async {
     if (_wsChannel?.sink != null) {
@@ -530,6 +713,15 @@ class UniversalAudioExerciseService {
   }
 }
 
+/// Types d'exercices audio disponibles
+enum AudioExerciseType {
+  jobInterview,
+  publicSpeaking,
+  casualConversation,
+  debate,
+  virelangueRoulette, // Nouveau type pour les virelangues
+}
+
 /// Exemples de configurations d'exercices prédéfinis
 class AudioExerciseTemplates {
   /// Exercice d'entretien d'embauche
@@ -542,6 +734,7 @@ class AudioExerciseTemplates {
     customSettings: {
       'difficulty': 'intermediate',
       'focus_areas': ['confidence', 'articulation', 'response_quality'],
+      'exercise_type': 'job_interview',
     },
   );
 
@@ -555,6 +748,7 @@ class AudioExerciseTemplates {
     customSettings: {
       'difficulty': 'advanced',
       'focus_areas': ['voice_projection', 'engagement', 'clarity'],
+      'exercise_type': 'public_speaking',
     },
   );
 
@@ -568,6 +762,7 @@ class AudioExerciseTemplates {
     customSettings: {
       'difficulty': 'beginner',
       'focus_areas': ['fluency', 'naturalness', 'listening'],
+      'exercise_type': 'casual_conversation',
     },
   );
 
@@ -581,8 +776,61 @@ class AudioExerciseTemplates {
     customSettings: {
       'difficulty': 'expert',
       'focus_areas': ['argumentation', 'persuasion', 'counter_arguments'],
+      'exercise_type': 'debate',
     },
   );
+
+  /// Exercice de virelangues magiques
+  static AudioExerciseConfig get virelangueRoulette => const AudioExerciseConfig(
+    exerciseId: 'virelangue_roulette',
+    title: 'Roulette des Virelangues Magiques',
+    description: 'Perfectionnez votre prononciation avec des virelangues ludiques et collectez des gemmes',
+    scenario: 'virelangue_training',
+    maxDuration: Duration(minutes: 10),
+    enableRealTimeEvaluation: true,
+    enableTTS: false, // Pas besoin de TTS pour les virelangues
+    enableSTT: true,
+    customSettings: {
+      'difficulty': 'adaptive',
+      'focus_areas': ['pronunciation', 'articulation', 'phoneme_accuracy'],
+      'exercise_type': 'virelangue_roulette',
+      'enable_gem_rewards': true,
+      'enable_combo_system': true,
+      'max_virelangues_per_session': 8,
+      'target_accuracy': 0.75,
+      'gem_multiplier': 1.0,
+    },
+  );
+
+  /// Créer une configuration personnalisée pour les virelangues
+  static AudioExerciseConfig createVirelangueConfig({
+    List<String>? targetSounds,
+    String difficulty = 'adaptive',
+    bool enableCustomGeneration = true,
+    double gemMultiplier = 1.0,
+    int maxVirelangues = 8,
+  }) {
+    return AudioExerciseConfig(
+      exerciseId: 'virelangue_custom_${DateTime.now().millisecondsSinceEpoch}',
+      title: 'Virelangues Personnalisés',
+      description: 'Entraînement ciblé sur vos difficultés spécifiques',
+      scenario: 'virelangue_custom',
+      maxDuration: Duration(minutes: maxVirelangues * 2), // 2 min par virelangue
+      enableRealTimeEvaluation: true,
+      enableTTS: false,
+      enableSTT: true,
+      customSettings: {
+        'difficulty': difficulty,
+        'focus_areas': ['pronunciation', 'articulation'],
+        'exercise_type': 'virelangue_roulette',
+        'target_sounds': targetSounds,
+        'enable_custom_generation': enableCustomGeneration,
+        'enable_gem_rewards': true,
+        'gem_multiplier': gemMultiplier,
+        'max_virelangues_per_session': maxVirelangues,
+      },
+    );
+  }
 
   /// Liste de tous les templates
   static List<AudioExerciseConfig> get all => [
@@ -590,5 +838,22 @@ class AudioExerciseTemplates {
     publicSpeaking,
     casualConversation,
     debate,
+    virelangueRoulette,
   ];
+
+  /// Obtenir un template par type
+  static AudioExerciseConfig getByType(AudioExerciseType type) {
+    switch (type) {
+      case AudioExerciseType.jobInterview:
+        return jobInterview;
+      case AudioExerciseType.publicSpeaking:
+        return publicSpeaking;
+      case AudioExerciseType.casualConversation:
+        return casualConversation;
+      case AudioExerciseType.debate:
+        return debate;
+      case AudioExerciseType.virelangueRoulette:
+        return virelangueRoulette;
+    }
+  }
 }

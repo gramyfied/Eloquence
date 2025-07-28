@@ -164,6 +164,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - LIVEKIT_URL=ws://livekit-server:7880
       - TOKEN_SERVICE_URL=http://livekit-token-service:8004
+      - VOSK_SERVICE_URL=http://vosk-stt:8002
     depends_on:
       redis:
         condition: service_healthy

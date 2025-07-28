@@ -1,11 +1,17 @@
 FROM python:3.11-slim
 
-# Installation des dépendances système
+# Installation des dépendances système incluant ffmpeg avec codecs complets
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     curl \
     dos2unix \
+    ffmpeg \
+    libavcodec-extra \
+    libsndfile1 \
+    libsndfile1-dev \
+    libasound2-dev \
+    portaudio19-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
