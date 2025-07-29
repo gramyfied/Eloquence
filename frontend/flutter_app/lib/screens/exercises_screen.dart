@@ -88,6 +88,16 @@ class ExercisesScreen extends ConsumerWidget {
                       _buildExerciseCard(
                         context,
                         ref,
+                        'Souffle de Dragon : Équilibre Professionnel-Ludique 🐉',
+                        'Exercice de respiration guidée gamifié avec progression Dragon et achievements',
+                        Icons.air,
+                        const Color(0xFF8B5CF6), // Violet Dragon
+                        'dragon_breath',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
                         'Pitch Perfect',
                         'Maîtrisez l\'art du pitch en 90 secondes',
                         Icons.rocket_launch,
@@ -150,6 +160,10 @@ class ExercisesScreen extends ConsumerWidget {
               // Navigation spéciale pour la roulette des virelangues, en utilisant le navigateur racine
               debugPrint('Navigating to virelangue roulette using root navigator');
               context.go('/virelangue_roulette', extra: {});
+            } else if (exerciseId == 'dragon_breath') {
+              // Navigation spéciale pour l'exercice Souffle de Dragon
+              debugPrint('Navigating to dragon breath exercise using root navigator');
+              context.go('/dragon_breath', extra: {});
             } else {
               // Navigation normale vers exercise_detail avec l'ID
               debugPrint('Navigating to exercise detail with ID: $exerciseId');

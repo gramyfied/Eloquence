@@ -296,8 +296,7 @@ void main() {
                     sessionContext: _createTestSessionContext(),
                   ),
                   GamifiedResultsWidget(
-                    gamificationResult: _createTestGamificationResult(),
-                    userProfile: _createTestUserProfile(),
+                    earnedXP: 150,
                   ),
                 ],
               ),
