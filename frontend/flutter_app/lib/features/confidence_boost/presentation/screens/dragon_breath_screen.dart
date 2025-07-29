@@ -554,10 +554,6 @@ class _DragonBreathScreenState extends ConsumerState<DragonBreathScreen>
       decoration: BoxDecoration(
         color: EloquenceTheme.glassBackground,
         borderRadius: BorderRadius.circular(compactMode ? 10 : 14),
-        border: Border.all(
-          color: EloquenceTheme.glassBorder,
-          width: 1,
-        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
