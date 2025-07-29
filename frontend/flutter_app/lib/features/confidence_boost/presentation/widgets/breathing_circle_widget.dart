@@ -402,10 +402,6 @@ class _BreathingCircleWidgetState extends State<BreathingCircleWidget>
                 ],
                 stops: const [0.0, 0.7, 1.0],
               ),
-              border: Border.all(
-                color: _getCurrentPhaseColor(),
-                width: 2,
-              ),
             ),
           ),
         );
