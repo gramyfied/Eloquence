@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../../../main.dart'; // Import pour le completer
 import '../../domain/entities/dragon_breath_models.dart';
 
 /// Provider pour l'exercice Souffle de Dragon
@@ -16,60 +17,75 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
   DateTime? _sessionStartTime;
   DateTime? _phaseStartTime;
   List<double> _cycleTimings = [];
+  bool _isDisposed = false;
   
   // Constantes pour les clés Hive
   static const String _progressBoxName = 'dragon_progress';
   static const String _sessionsBoxName = 'dragon_sessions';
   static const String _achievementsBoxName = 'dragon_achievements';
 
-  DragonBreathNotifier() : super(BreathingExerciseState.initial(userId: 'user_eloquence')) {
-    _initializeHive();
-    _loadUserProgress();
-  }
+  DragonBreathNotifier() : super(BreathingExerciseState.initial());
 
   @override
   void dispose() {
+    _isDisposed = true;
     _exerciseTimer?.cancel();
     _phaseTimer?.cancel();
     super.dispose();
   }
 
-  /// Initialise les boxes Hive
+  /// Initialise le provider, y compris les boxes Hive et les données utilisateur.
+  Future<void> initialize() async {
+    // ---- VERROU DE SÉCURITÉ ----
+    // Attendre que l'initialisation de Hive dans main.dart soit terminée.
+    await hiveInitializationCompleter.future;
+    // -------------------------
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _initializeHive();
+      await _loadUserProgress();
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: 'Erreur fatale: ${e.toString()}', isLoading: false);
+    }
+  }
+
+  /// Initialise les boxes Hive de manière sécurisée
   Future<void> _initializeHive() async {
     try {
-      if (!Hive.isBoxOpen(_progressBoxName)) {
-        await Hive.openBox<DragonProgress>(_progressBoxName);
-      }
-      if (!Hive.isBoxOpen(_sessionsBoxName)) {
-        await Hive.openBox<BreathingSession>(_sessionsBoxName);
-      }
-      if (!Hive.isBoxOpen(_achievementsBoxName)) {
-        await Hive.openBox<DragonAchievement>(_achievementsBoxName);
-      }
+      if (!Hive.isBoxOpen(_progressBoxName)) await Hive.openBox<DragonProgress>(_progressBoxName);
+      if (!Hive.isBoxOpen(_sessionsBoxName)) await Hive.openBox<BreathingSession>(_sessionsBoxName);
+      if (!Hive.isBoxOpen(_achievementsBoxName)) await Hive.openBox<DragonAchievement>(_achievementsBoxName);
     } catch (e) {
       print('❌ Erreur initialisation Hive Dragon: $e');
+      // Propage l'erreur pour la gérer dans l'état global
+      throw Exception('Impossible d\'ouvrir les bases de données locales.');
     }
   }
 
   /// Charge la progression de l'utilisateur
   Future<void> _loadUserProgress() async {
-    try {
-      final progressBox = Hive.box<DragonProgress>(_progressBoxName);
-      DragonProgress? progress = progressBox.get(state.userProgress.userId);
-      
-      if (progress == null) {
-        progress = DragonProgress(userId: state.userProgress.userId);
-        await progressBox.put(progress.userId, progress);
-      }
-      
-      state = state.copyWith(userProgress: progress);
-    } catch (e) {
-      print('❌ Erreur chargement progression Dragon: $e');
+    const userId = 'user_eloquence'; // ID utilisateur fixe pour l'instant
+    if (!Hive.isBoxOpen(_progressBoxName)) {
+      throw HiveError('La box de progression n\'est pas ouverte.');
     }
+    final progressBox = Hive.box<DragonProgress>(_progressBoxName);
+    DragonProgress? progress = progressBox.get(userId);
+
+    if (progress == null) {
+      progress = DragonProgress(userId: userId);
+      await progressBox.put(progress.userId, progress);
+    }
+
+    state = state.copyWith(userProgress: progress, isLoading: false);
   }
 
   /// Démarre un nouvel exercice
   Future<void> startExercise({BreathingExercise? customExercise}) async {
+    if (state.userProgress == null) {
+      state = state.copyWith(error: "Impossible de démarrer, les données utilisateur ne sont pas chargées.");
+      return;
+    }
     try {
       final exercise = customExercise ?? BreathingExercise.defaultExercise();
       final sessionId = 'dragon_${DateTime.now().millisecondsSinceEpoch}';
@@ -86,6 +102,7 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
         isActive: true,
         isPaused: false,
         error: null,
+        clearError: true,
         motivationalMessages: ['🐉 Préparez-vous à libérer votre puissance intérieure !'],
       );
       
@@ -104,7 +121,7 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     _phaseStartTime = DateTime.now();
     
     _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
+      if (_isDisposed) {
         timer.cancel();
         return;
       }
@@ -145,7 +162,7 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     );
     
     _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
+      if (_isDisposed) {
         timer.cancel();
         return;
       }
@@ -178,7 +195,7 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     );
     
     _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
+      if (_isDisposed) {
         timer.cancel();
         return;
       }
@@ -206,7 +223,7 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     );
     
     _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
+      if (_isDisposed) {
         timer.cancel();
         return;
       }
@@ -234,7 +251,7 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     );
     
     _phaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
+      if (_isDisposed) {
         timer.cancel();
         return;
       }
@@ -281,45 +298,62 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     // Créer la session
     final session = BreathingSession(
       id: state.sessionId,
-      userId: state.userProgress.userId,
+      userId: state.userProgress!.userId,
       exerciseId: state.exercise.id,
       startTime: _sessionStartTime!,
     );
     
     session.complete(metrics);
     
-    // Vérifier les achievements
+    // Vérifier les achievements débloqués
     final newAchievements = await _checkAchievements(session);
-    session.unlockedAchievements.addAll(newAchievements);
     
-    // Mettre à jour la progression
-    final updatedProgress = DragonProgress(
-      userId: state.userProgress.userId,
-      currentLevel: state.userProgress.currentLevel,
-      totalSessions: state.userProgress.totalSessions,
-      totalXP: state.userProgress.totalXP,
-      currentStreak: state.userProgress.currentStreak,
-      longestStreak: state.userProgress.longestStreak,
-      averageQuality: state.userProgress.averageQuality,
-      bestQuality: state.userProgress.bestQuality,
-      totalPracticeTime: state.userProgress.totalPracticeTime,
-      lastSessionDate: state.userProgress.lastSessionDate,
-      achievements: List.from(state.userProgress.achievements),
-      statistics: Map.from(state.userProgress.statistics),
+    // Créer une nouvelle session avec les achievements débloqués
+    final completedSession = BreathingSession(
+      id: session.id,
+      userId: session.userId,
+      exerciseId: session.exerciseId,
+      startTime: session.startTime,
+      unlockedAchievements: newAchievements,
     );
     
-    updatedProgress.updateWithSession(session);
+    // Compléter la session avec les métriques
+    completedSession.complete(session.metrics!);
     
-    // Sauvegarder
-    await _saveSession(session);
+    // Mettre à jour la progression avec la session terminée
+    final updatedProgress = DragonProgress(
+      userId: state.userProgress!.userId,
+      currentLevel: state.userProgress!.currentLevel,
+      totalSessions: state.userProgress!.totalSessions,
+      totalXP: state.userProgress!.totalXP,
+      currentStreak: state.userProgress!.currentStreak,
+      longestStreak: state.userProgress!.longestStreak,
+      averageQuality: state.userProgress!.averageQuality,
+      bestQuality: state.userProgress!.bestQuality,
+      totalPracticeTime: state.userProgress!.totalPracticeTime,
+      lastSessionDate: state.userProgress!.lastSessionDate,
+      achievements: List<DragonAchievement>.from(state.userProgress!.achievements),
+      statistics: Map<String, dynamic>.from(state.userProgress!.statistics),
+    );
+    
+    // Mettre à jour avec la session (ceci calcule l'XP automatiquement)
+    updatedProgress.updateWithSession(completedSession);
+    
+    // Sauvegarder la session et la progression
+    await _saveSession(completedSession);
     await _saveProgress(updatedProgress);
+    
+    // Afficher les XP gagnés dans les logs pour debug
+    print('🎯 XP gagnés: ${completedSession.xpGained}');
+    print('🎯 XP total: ${updatedProgress.totalXP}');
+    print('🎯 Achievements débloqués: ${completedSession.unlockedAchievements.length}');
     
     state = state.copyWith(
       currentPhase: BreathingPhase.completed,
       isActive: false,
       currentMetrics: metrics,
       userProgress: updatedProgress,
-      motivationalMessages: [session.motivationalMessage],
+      motivationalMessages: [completedSession.motivationalMessage],
     );
     
     _exerciseTimer?.cancel();
@@ -368,9 +402,23 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     
     for (final achievement in allAchievements) {
       if (_shouldUnlockAchievement(achievement, session)) {
-        achievement.isUnlocked = true;
-        achievement.unlockedAt = DateTime.now();
-        newAchievements.add(achievement);
+        // Créer une nouvelle instance au lieu de modifier l'objet statique
+        final unlockedAchievement = DragonAchievement(
+          id: achievement.id,
+          name: achievement.name,
+          description: achievement.description,
+          emoji: achievement.emoji,
+          requiredLevel: achievement.requiredLevel,
+          requiredSessions: achievement.requiredSessions,
+          requiredQuality: achievement.requiredQuality,
+          xpReward: achievement.xpReward,
+          isUnlocked: true,
+          unlockedAt: DateTime.now(),
+          category: achievement.category,
+          currentValue: achievement.currentValue,
+          targetValue: achievement.targetValue,
+        );
+        newAchievements.add(unlockedAchievement);
       }
     }
     
@@ -379,19 +427,19 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
 
   /// Détermine si un achievement doit être débloqué
   bool _shouldUnlockAchievement(DragonAchievement achievement, BreathingSession session) {
-    if (achievement.isUnlocked) return false;
+    if (achievement.isUnlocked || state.userProgress == null) return false;
     
     switch (achievement.id) {
       case 'first_flame':
-        return state.userProgress.totalSessions == 0; // Première session
+        return state.userProgress!.totalSessions == 0; // Première session
       case 'breath_master':
         return session.metrics != null && session.metrics!.qualityScore >= 0.9;
       case 'precision_master':
         return session.metrics != null && session.metrics!.consistency >= 0.9;
       case 'royal_series':
-        return state.userProgress.currentStreak >= 7;
+        return state.userProgress!.currentStreak >= 7;
       case 'legendary_dragon':
-        return state.userProgress.totalSessions >= 30;
+        return state.userProgress!.totalSessions >= 30;
       default:
         return false;
     }
@@ -540,8 +588,10 @@ class DragonBreathNotifier extends StateNotifier<BreathingExerciseState> {
     _phaseTimer?.cancel();
     
     state = BreathingExerciseState.initial(
-      userId: state.userProgress.userId,
       exercise: state.exercise,
-    ).copyWith(userProgress: state.userProgress);
+    ).copyWith(
+      userProgress: state.userProgress,
+      isLoading: false, // On ne recharge pas
+    );
   }
 }

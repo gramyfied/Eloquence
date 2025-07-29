@@ -47,8 +47,8 @@ class EnergyParticle {
     x = math.cos(angle) * distance;
     y = math.sin(angle) * distance;
     
-    // Variation d'opacité
-    opacity = 0.3 + (math.sin(DateTime.now().millisecondsSinceEpoch * 0.01 + angle) * 0.4);
+    // Variation d'opacité plus stable
+    opacity = (0.3 + (math.sin(angle + distance * 0.01) * 0.4)).clamp(0.0, 1.0);
   }
 
   void reset(double containerSize) {
@@ -75,25 +75,30 @@ class EnergyParticlesPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!isActive) return;
+    if (!isActive || size.width <= 0 || size.height <= 0) return;
 
     final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()..style = PaintingStyle.fill;
 
     for (final particle in particles) {
-      paint.color = phaseColor.withOpacity(particle.opacity);
+      if (particle.opacity <= 0 || particle.size <= 0) continue;
+      
+      final opacity = particle.opacity.clamp(0.0, 1.0);
+      paint.color = phaseColor.withOpacity(opacity);
       
       final position = Offset(
-        center.dx + particle.x,
-        center.dy + particle.y,
+        (center.dx + particle.x).clamp(0, size.width),
+        (center.dy + particle.y).clamp(0, size.height),
       );
 
+      final safeSize = particle.size.clamp(0.1, size.width / 4);
+      
       // Dessiner la particule comme un petit cercle avec effet de lueur
-      canvas.drawCircle(position, particle.size, paint);
+      canvas.drawCircle(position, safeSize, paint);
       
       // Effet de lueur
-      paint.color = phaseColor.withOpacity(particle.opacity * 0.3);
-      canvas.drawCircle(position, particle.size * 2, paint);
+      paint.color = phaseColor.withOpacity(opacity * 0.3);
+      canvas.drawCircle(position, safeSize * 2, paint);
     }
   }
 
@@ -115,14 +120,17 @@ class ProgressRingsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0 || strokeWidth <= 0) return;
+    
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - strokeWidth;
+    final safeStrokeWidth = strokeWidth.clamp(1.0, size.width / 10);
+    final radius = (size.width / 2 - safeStrokeWidth).clamp(safeStrokeWidth, size.width / 2);
 
     // Anneau de fond
     final backgroundPaint = Paint()
       ..color = Colors.white.withOpacity(0.1)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
+      ..strokeWidth = safeStrokeWidth;
 
     canvas.drawCircle(center, radius, backgroundPaint);
 
@@ -130,17 +138,21 @@ class ProgressRingsPainter extends CustomPainter {
     final progressPaint = Paint()
       ..color = phaseColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
+      ..strokeWidth = safeStrokeWidth
       ..strokeCap = StrokeCap.round;
 
-    final sweepAngle = 2 * math.pi * phaseProgress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2, // Commencer en haut
-      sweepAngle,
-      false,
-      progressPaint,
-    );
+    final progress = phaseProgress.clamp(0.0, 1.0);
+    final sweepAngle = 2 * math.pi * progress;
+    
+    if (sweepAngle > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, // Commencer en haut
+        sweepAngle,
+        false,
+        progressPaint,
+      );
+    }
   }
 
   @override
@@ -290,16 +302,17 @@ class _BreathingCircleWidgetState extends State<BreathingCircleWidget>
   }
 
   double _getCircleScale() {
+    final progress = widget.phaseProgress.clamp(0.0, 1.0);
     switch (widget.currentPhase) {
       case BreathingPhase.inspiration:
         // Le cercle grandit pendant l'inspiration
-        return 0.5 + (widget.phaseProgress * 0.5);
+        return (0.5 + (progress * 0.5)).clamp(0.1, 2.0);
       case BreathingPhase.expiration:
         // Le cercle rétrécit pendant l'expiration
-        return 1.0 - (widget.phaseProgress * 0.5);
+        return (1.0 - (progress * 0.5)).clamp(0.1, 2.0);
       case BreathingPhase.retention:
-        // Le cercle reste stable mais pulse légèrement
-        return 1.0 + (math.sin(DateTime.now().millisecond * 0.01) * 0.1);
+        // Le cercle reste stable
+        return 1.0;
       default:
         return 0.7;
     }
@@ -440,22 +453,30 @@ class _BreathingCircleWidgetState extends State<BreathingCircleWidget>
 
   Widget _buildPhaseInstructions() {
     return Positioned(
-      bottom: -widget.size * 0.15,
+      bottom: widget.size * 0.05, // Position POSITIVE pour être visible
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: EloquenceTheme.navy.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
+          color: EloquenceTheme.navy.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: _getCurrentPhaseColor().withOpacity(0.3),
-            width: 1,
+            color: _getCurrentPhaseColor().withOpacity(0.6),
+            width: 2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: _getCurrentPhaseColor().withOpacity(0.3),
+              blurRadius: 15,
+              spreadRadius: 2,
+            ),
+          ],
         ),
         child: Text(
           widget.currentPhase.instruction,
-          style: EloquenceTheme.bodyMedium.copyWith(
+          style: EloquenceTheme.bodyLarge.copyWith(
             color: _getCurrentPhaseColor(),
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
           textAlign: TextAlign.center,
         ),
