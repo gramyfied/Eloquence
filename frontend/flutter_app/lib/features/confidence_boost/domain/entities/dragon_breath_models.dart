@@ -503,11 +503,11 @@ class BreathingSession extends HiveObject {
     required this.startTime,
     this.endTime,
     this.metrics,
-    this.unlockedAchievements = const [],
+    List<DragonAchievement>? unlockedAchievements,
     this.xpGained = 0,
     this.isCompleted = false,
     this.motivationalMessage = '',
-  });
+  }) : unlockedAchievements = unlockedAchievements ?? <DragonAchievement>[];
 
   /// Durée de la session
   Duration get duration => (endTime ?? DateTime.now()).difference(startTime);
@@ -603,11 +603,12 @@ class DragonProgress extends HiveObject {
     this.bestQuality = 0.0,
     Duration? totalPracticeTime,
     DateTime? lastSessionDate,
-    this.achievements = const [],
+    List<DragonAchievement>? achievements,
     Map<String, dynamic>? statistics,
   }) : totalPracticeTime = totalPracticeTime ?? Duration.zero,
        lastSessionDate = lastSessionDate ?? DateTime.now(),
-       statistics = statistics ?? {};
+       achievements = achievements ?? <DragonAchievement>[],
+       statistics = statistics ?? <String, dynamic>{};
 
   /// Met à jour la progression après une session
   void updateWithSession(BreathingSession session) {
@@ -640,8 +641,14 @@ class DragonProgress extends HiveObject {
     // Mise à jour du niveau
     _updateLevel();
     
-    // Ajout des achievements débloqués
-    achievements.addAll(session.unlockedAchievements);
+    // Ajout des achievements débloqués (créer une nouvelle liste modifiable)
+    final currentAchievements = List<DragonAchievement>.from(achievements);
+    for (final newAchievement in session.unlockedAchievements) {
+      if (!currentAchievements.any((a) => a.id == newAchievement.id)) {
+        currentAchievements.add(newAchievement);
+      }
+    }
+    achievements = currentAchievements;
   }
 
   void _updateLevel() {
@@ -701,7 +708,7 @@ class BreathingExerciseState {
   final bool isPaused;
   final BreathingMetrics? currentMetrics;
   final List<String> motivationalMessages;
-  final DragonProgress userProgress;
+  final DragonProgress? userProgress; // Peut être nul pendant le chargement
   final bool isLoading;
   final String? error;
 
@@ -715,13 +722,12 @@ class BreathingExerciseState {
     required this.isPaused,
     this.currentMetrics,
     this.motivationalMessages = const [],
-    required this.userProgress,
-    this.isLoading = false,
+    this.userProgress,
+    this.isLoading = true, // Initialisation commence en chargement
     this.error,
   });
 
   factory BreathingExerciseState.initial({
-    required String userId,
     BreathingExercise? exercise,
   }) {
     final defaultExercise = exercise ?? BreathingExercise.defaultExercise();
@@ -734,8 +740,8 @@ class BreathingExerciseState {
       remainingSeconds: 0,
       isActive: false,
       isPaused: false,
-      userProgress: DragonProgress(userId: userId),
-      isLoading: false,
+      userProgress: null, // Null au début
+      isLoading: true, // On commence en chargement
     );
   }
 
@@ -752,6 +758,7 @@ class BreathingExerciseState {
     DragonProgress? userProgress,
     bool? isLoading,
     String? error,
+    bool? clearError,
   }) {
     return BreathingExerciseState(
       sessionId: sessionId ?? this.sessionId,
@@ -765,7 +772,7 @@ class BreathingExerciseState {
       motivationalMessages: motivationalMessages ?? this.motivationalMessages,
       userProgress: userProgress ?? this.userProgress,
       isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
+      error: clearError == true ? null : error ?? this.error,
     );
   }
 

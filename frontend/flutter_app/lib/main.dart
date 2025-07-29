@@ -2,79 +2,77 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
-import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
-import 'package:hive_flutter/hive_flutter.dart'; // Import Hive
-import 'core/config/supabase_config.dart'; // Import Supabase Config
-import 'presentation/app.dart'; // Import App au lieu de AuthWrapper
-// Imports des modèles Hive
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'dart:async'; // Import pour Completer
+
+import 'core/config/supabase_config.dart';
+import 'presentation/app.dart';
 import 'features/confidence_boost/domain/entities/gamification_models.dart';
 import 'features/confidence_boost/domain/entities/confidence_scenario.dart';
-import 'features/confidence_boost/domain/entities/virelangue_models.dart'; // Import pour les modèles de virelangues
-import 'features/confidence_boost/data/services/virelangue_reward_system.dart'; // Import pour PityTimerState et RewardHistory
-import 'features/confidence_boost/data/services/mistral_cache_service.dart'; // Import pour MistralCacheService
+import 'features/confidence_boost/domain/entities/virelangue_models.dart';
+import 'features/confidence_boost/data/services/virelangue_reward_system.dart';
+import 'features/confidence_boost/data/services/mistral_cache_service.dart';
+import 'features/confidence_boost/domain/entities/dragon_breath_models.dart';
+import 'core/utils/hive_adapters.dart';
 
-import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart'; // Import pour override
+import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
+
+// Création d'un Completer pour s'assurer que Hive est prêt.
+final hiveInitializationCompleter = Completer<void>();
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Configure logging
-  Logger.root.level = Level.ALL; // Set the root logger level
-  Logger.root.onRecord.listen((record) {
-    // For this refactoring, we remove direct prints to clean up the code.
-    // The IDE's debug console will still show logs.
-    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
-    if (record.error != null) {
-      debugPrint('Error: ${record.error}');
-    }
-    if (record.stackTrace != null) {
-      debugPrint('StackTrace: ${record.stackTrace}');
-    }
-  });
-
   final log = Logger('main');
+  
+  // Isoler l'initialisation dans un runZonedGuarded pour attraper toutes les erreurs.
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Configuration du logging
+    Logger.root.level = Level.ALL;
+    Logger.root.onRecord.listen((record) {
+      debugPrint('[${record.level.name}] ${record.time}: ${record.message}');
+      if (record.error != null) {
+        debugPrint('Error: ${record.error}');
+      }
+      if (record.stackTrace != null) {
+        debugPrint('StackTrace: ${record.stackTrace}');
+      }
+    });
 
-  try {
-    usePathUrlStrategy(); // Use path-based URLs for web
+    log.info("============== NOUVELLE SESSION DE DÉMARRAGE ==============");
+    
+    usePathUrlStrategy();
     await dotenv.load(fileName: ".env");
-    log.info(".env file loaded successfully");
-    
-    // 🔍 DEBUG : Vérifier le chargement des variables critiques
-    final llmServiceUrl = dotenv.env['LLM_SERVICE_URL'];
-    final whisperUrl = dotenv.env['WHISPER_STT_URL'];
-    final mobileMode = dotenv.env['MOBILE_MODE'];
-    final eloquenceStreamingApiUrl = dotenv.env['ELOQUENCE_STREAMING_API_URL'];
-    final devServerIp = dotenv.env['DEV_SERVER_IP'];
-    log.info("🔍 DEBUG Variables d'environnement:");
-    log.info("  - LLM_SERVICE_URL: $llmServiceUrl");
-    log.info("  - WHISPER_STT_URL: $whisperUrl");
-    log.info("  - MOBILE_MODE: $mobileMode");
-    log.info("  - ELOQUENCE_STREAMING_API_URL: $eloquenceStreamingApiUrl");
-    log.info("  - DEV_SERVER_IP: $devServerIp");
-    log.info("  - Total variables chargées: ${dotenv.env.length}");
-    
-    // --- Gestion Hive ---
+    log.info("✅ 1. .env file loaded.");
+
+    // --- GESTION HIVE STRICTE ---
+    log.info("▶️ 2. Initialisation de Hive...");
     await Hive.initFlutter();
-    log.info("Hive initialized successfully");
+    log.info("✅ 2.1. Hive.initFlutter() terminé.");
 
-    await _resetHiveBoxes(log); // Nettoyage des boîtes après init
+    _registerHiveAdapters(log);
+    log.info("✅ 2.2. Tous les TypeAdapters sont enregistrés.");
+
+    await _initializeHiveBoxes(log);
+    log.info("✅ 2.3. Toutes les boîtes Hive sont initialisées.");
     
-    _registerHiveAdapters(log); // Enregistrement des TypeAdapters
-    // --- Fin Gestion Hive ---
+    // Indiquer que l'initialisation de Hive est terminée.
+    hiveInitializationCompleter.complete();
+    log.info("✅ 2.4. Hive est entièrement prêt (Completer terminé).");
+    // --- FIN GESTION HIVE ---
 
-    // Initialiser Supabase
     await SupabaseConfig.initialize();
-    log.info("Supabase initialized successfully");
-    
-    // Initialiser SharedPreferences
+    log.info("✅ 3. Supabase initialized.");
+
     final sharedPreferences = await SharedPreferences.getInstance();
-    log.info("SharedPreferences initialized successfully");
+    log.info("✅ 4. SharedPreferences initialized.");
 
-    // Initialiser le cache Mistral
     await MistralCacheService.init();
-    log.info("MistralCacheService initialized successfully.");
+    log.info("✅ 5. MistralCacheService initialized.");
 
+    log.info("🚀 Démarrage de l'application Flutter...");
     runApp(
       ProviderScope(
         overrides: [
@@ -83,90 +81,78 @@ void main() async {
         child: const App(),
       ),
     );
-  } catch (e) {
-    log.severe("Error during initialization: $e");
-    // En cas d'erreur, lancer l'app quand même mais sans SharedPreferences
-    runApp(
-      const ProviderScope(
-        child: App(),
-      ),
-    );
-  }
+  }, (error, stack) {
+    log.severe(" BUGSPLAT 💥: Erreur fatale non interceptée dans main.", error, stack);
+  });
 }
 
-/// Supprime les boîtes Hive existantes pour éviter les conflits de type ID.
-/// Cela est crucial pour les changements de structure de données pendant le développement.
-Future<void> _resetHiveBoxes(Logger log) async {
+Future<void> _initializeHiveBoxes(Logger log) async {
   try {
-    log.info("Hive: Début du nettoyage des boîtes existantes...");
-    await Hive.deleteBoxFromDisk('userGamificationProfileBox');
-    await Hive.deleteBoxFromDisk('confidenceScenariosBox');
-    await Hive.deleteBoxFromDisk('userPreferencesBox'); // Si cette boîte existe
-    log.info("Hive: Nettoyage des boîtes terminé avec succès.");
-  } catch (e) {
-    log.warning("Hive: Erreur lors du nettoyage des boîtes (peut être ignorée si les boîtes n'existent pas encore): $e");
+    log.info("   -> Ouverture des boîtes Hive...");
+    final shouldReset = dotenv.env['RESET_HIVE_BOXES'] == 'true';
+    
+    if (shouldReset) {
+      log.warning("   -> NETTOYAGE FORCÉ des boîtes Hive activé.");
+      await Hive.deleteBoxFromDisk('userGamificationProfileBox');
+      await Hive.deleteBoxFromDisk('confidenceScenariosBox');
+      await Hive.deleteBoxFromDisk('userPreferencesBox');
+      await Hive.deleteBoxFromDisk('dragonProgressBox'); // Assurons-nous que celle-ci est aussi nettoyée
+    }
+    
+    // On ouvre les boîtes essentielles ici
+    await Hive.openBox('userGamificationProfileBox');
+    await Hive.openBox('confidenceScenariosBox');
+    log.info("   -> Boîtes principales ouvertes.");
+  } catch (e, stack) {
+    log.severe("   -> ERREUR CRITIQUE lors de l'initialisation des boîtes Hive.", e, stack);
+    rethrow;
   }
 }
 
-/// Enregistre tous les TypeAdapters Hive nécessaires.
-/// Vérifie qu'un adaptateur n'est pas déjà enregistré pour éviter les erreurs.
 void _registerHiveAdapters(Logger log) {
+  void register<T>(int typeId, TypeAdapter<T> adapter) {
+    if (!Hive.isAdapterRegistered(typeId)) {
+      Hive.registerAdapter(adapter);
+      log.info("   -> Adaptateur ${adapter.runtimeType} enregistré (typeId: $typeId)");
+    } else {
+      log.info("   -> Adaptateur ${adapter.runtimeType} (typeId: $typeId) était déjà enregistré.");
+    }
+  }
+
   try {
-    log.info("Hive: Enregistrement des TypeAdapters...");
-    if (!Hive.isAdapterRegistered(20)) {
-      Hive.registerAdapter(UserGamificationProfileAdapter());
-      log.info("✅ UserGamificationProfileAdapter registered (typeId: 20)");
-    }
-    if (!Hive.isAdapterRegistered(21)) {
-      Hive.registerAdapter(ConfidenceScenarioAdapter());
-      log.info("✅ ConfidenceScenarioAdapter registered (typeId: 21)");
-    }
-    if (!Hive.isAdapterRegistered(22)) {
-      Hive.registerAdapter(BadgeRarityAdapter());
-      log.info("✅ BadgeRarityAdapter registered (typeId: 22)");
-    }
-    if (!Hive.isAdapterRegistered(23)) {
-      Hive.registerAdapter(BadgeCategoryAdapter());
-      log.info("✅ BadgeCategoryAdapter registered (typeId: 23)");
-    }
-    if (!Hive.isAdapterRegistered(24)) {
-      Hive.registerAdapter(BadgeAdapter());
-      log.info("✅ BadgeAdapter registered (typeId: 24)");
-    }
+    log.info("   -> Enregistrement des TypeAdapters...");
+    register(20, UserGamificationProfileAdapter());
+    register(21, ConfidenceScenarioAdapter());
+    register(22, BadgeRarityAdapter());
+    register(23, BadgeCategoryAdapter());
+    register(24, BadgeAdapter());
     
-    // === ADAPTERS VIRELANGUES (typeId: 30-36) ===
-    if (!Hive.isAdapterRegistered(30)) {
-      Hive.registerAdapter(GemTypeAdapter());
-      log.info("✅ GemTypeAdapter registered (typeId: 30)");
-    }
-    if (!Hive.isAdapterRegistered(31)) {
-      Hive.registerAdapter(VirelangueAdapter());
-      log.info("✅ VirelangueAdapter registered (typeId: 31)");
-    }
-    if (!Hive.isAdapterRegistered(32)) {
-      Hive.registerAdapter(GemCollectionAdapter());
-      log.info("✅ GemCollectionAdapter registered (typeId: 32)");
-    }
-    if (!Hive.isAdapterRegistered(33)) {
-      Hive.registerAdapter(VirelangueDifficultyAdapter());
-      log.info("✅ VirelangueDifficultyAdapter registered (typeId: 33)");
-    }
-    if (!Hive.isAdapterRegistered(35)) {
-      Hive.registerAdapter(VirelangueStatsAdapter());
-      log.info("✅ VirelangueStatsAdapter registered (typeId: 35)");
-    }
-    if (!Hive.isAdapterRegistered(36)) {
-      Hive.registerAdapter(VirelangueUserProgressAdapter());
-      log.info("✅ VirelangueUserProgressAdapter registered (typeId: 36)");
-    }
+    // Virelangues
+    register(30, GemTypeAdapter());
+    register(31, VirelangueAdapter());
+    register(32, GemCollectionAdapter());
+    register(33, VirelangueDifficultyAdapter());
+    register(35, VirelangueStatsAdapter());
+    register(36, VirelangueUserProgressAdapter());
+
+    // Dragon Breath
+    register(40, DragonLevelAdapter());
+    register(41, BreathingPhaseAdapter());
+    register(42, BreathingExerciseAdapter());
+    register(43, BreathingMetricsAdapter());
+    register(44, DragonAchievementAdapter());
+    register(45, BreathingSessionAdapter());
+    register(46, DragonProgressAdapter());
     
-    // TODO: Ajouter PityTimerStateAdapter et RewardHistoryAdapter (typeId: 34, 37+)
-    // quand les directives 'part' seront ajoutées aux fichiers sources
+    // Adaptateurs pour types complexes
+    register(100, DurationAdapter());
+    register(101, MapStringDynamicAdapter());
+    register(102, ListDoubleAdapter());
+    register(103, DateTimeAdapter());
     
-    log.info("🎯 Tous les TypeAdapters Hive enregistrés avec succès (incluant virelangues).");
-  } catch (e) {
-    log.severe("❌ [HIVE_REGISTER_ERROR] Erreur lors de l'enregistrement des TypeAdapters: $e");
-    // Remonter l'erreur pour un crash explicite en développement si nécessaire
+    log.info("   -> Tous les adaptateurs ont été traités.");
+  } catch (e, stack) {
+    log.severe("   -> ERREUR CRITIQUE lors de l'enregistrement d'un adaptateur.", e, stack);
     rethrow;
   }
 }
