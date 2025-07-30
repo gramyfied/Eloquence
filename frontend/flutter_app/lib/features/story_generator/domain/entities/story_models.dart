@@ -502,6 +502,7 @@ class StoryExerciseSession {
   final Duration currentDuration;
   final List<AIIntervention> pendingInterventions;
   final StorySessionPhase phase;
+  final StoryNarrativeAnalysis? analysisResult;
 
   const StoryExerciseSession({
     required this.sessionId,
@@ -517,6 +518,7 @@ class StoryExerciseSession {
     this.currentDuration = Duration.zero,
     this.pendingInterventions = const [],
     this.phase = StorySessionPhase.elementSelection,
+    this.analysisResult,
   });
 
   /// Constructor pour session initiale
@@ -535,6 +537,7 @@ class StoryExerciseSession {
       currentDuration: Duration.zero,
       pendingInterventions: [],
       phase: StorySessionPhase.elementSelection,
+      analysisResult: null,
     );
   }
 
@@ -552,6 +555,7 @@ class StoryExerciseSession {
     Duration? currentDuration,
     List<AIIntervention>? pendingInterventions,
     StorySessionPhase? phase,
+    StoryNarrativeAnalysis? analysisResult,
   }) {
     return StoryExerciseSession(
       sessionId: sessionId ?? this.sessionId,
@@ -567,6 +571,7 @@ class StoryExerciseSession {
       currentDuration: currentDuration ?? this.currentDuration,
       pendingInterventions: pendingInterventions ?? this.pendingInterventions,
       phase: phase ?? this.phase,
+      analysisResult: analysisResult ?? this.analysisResult,
     );
   }
 }
@@ -576,6 +581,7 @@ enum StorySessionPhase {
   elementSelection,  // Sélection des 3 éléments
   narration,        // Narration en cours
   aiIntervention,   // Intervention IA
+  analysis,         // Analyse en cours
   completed         // Histoire terminée
 }
 
@@ -737,4 +743,143 @@ class StoryUserStats extends HiveObject {
   }) : genreStats = genreStats ?? {},
        unlockedBadges = unlockedBadges ?? [],
        lastStoryDate = lastStoryDate ?? DateTime.now();
+}
+
+
+/// Métriques audio détaillées
+@HiveType(typeId: 59)
+class AudioMetrics extends HiveObject {
+  @HiveField(0)
+  final double articulationScore;
+  @HiveField(1)
+  final double fluencyScore;
+  @HiveField(2)
+  final double emotionScore;
+  @HiveField(3)
+  final double volumeVariation;
+  @HiveField(4)
+  final double speakingRate;
+  @HiveField(5)
+  final List<String> fillerWords;
+
+  AudioMetrics({
+    required this.articulationScore,
+    required this.fluencyScore,
+    required this.emotionScore,
+    required this.volumeVariation,
+    required this.speakingRate,
+    required this.fillerWords,
+  });
+
+  factory AudioMetrics.fromJson(Map<String, dynamic> json) {
+    return AudioMetrics(
+      articulationScore: (json['articulation_score'] as num? ?? 0.0).toDouble(),
+      fluencyScore: (json['fluency_score'] as num? ?? 0.0).toDouble(),
+      emotionScore: (json['emotion_score'] as num? ?? 0.0).toDouble(),
+      volumeVariation: (json['volume_variation'] as num? ?? 0.0).toDouble(),
+      speakingRate: (json['speaking_rate'] as num? ?? 0.0).toDouble(),
+      fillerWords: List<String>.from(json['filler_words'] ?? []),
+    );
+  }
+}
+
+/// Analyse complète de la narration
+@HiveType(typeId: 60)
+class StoryNarrativeAnalysis extends HiveObject {
+  @HiveField(0)
+  final String storyId;
+  @HiveField(1)
+  final double overallScore;
+  @HiveField(2)
+  final double creativityScore;
+  @HiveField(3)
+  final double relevanceScore;
+  @HiveField(4)
+  final double structureScore;
+  @HiveField(5)
+  final String positiveFeedback;
+  @HiveField(6)
+  final String improvementSuggestions;
+  @HiveField(7)
+  final AudioMetrics audioMetrics;
+  @HiveField(8)
+  final String transcription;
+  @HiveField(9)
+  final String titleSuggestion;
+  @HiveField(10)
+  final List<String> detectedKeywords;
+
+  StoryNarrativeAnalysis({
+    required this.storyId,
+    required this.overallScore,
+    required this.creativityScore,
+    required this.relevanceScore,
+    required this.structureScore,
+    required this.positiveFeedback,
+    required this.improvementSuggestions,
+    required this.audioMetrics,
+    required this.transcription,
+    required this.titleSuggestion,
+    required this.detectedKeywords,
+  });
+
+  factory StoryNarrativeAnalysis.fromJson(Map<String, dynamic> json) {
+    return StoryNarrativeAnalysis(
+      storyId: json['story_id'] as String,
+      overallScore: (json['overall_score'] as num? ?? 0.0).toDouble(),
+      creativityScore: (json['creativity_score'] as num? ?? 0.0).toDouble(),
+      relevanceScore: (json['relevance_score'] as num? ?? 0.0).toDouble(),
+      structureScore: (json['structure_score'] as num? ?? 0.0).toDouble(),
+      positiveFeedback: json['positive_feedback'] as String? ?? '',
+      improvementSuggestions: json['improvement_suggestions'] as String? ?? '',
+      audioMetrics: AudioMetrics.fromJson(json['audio_metrics'] as Map<String, dynamic>? ?? {}),
+      transcription: json['transcription'] as String? ?? '',
+      titleSuggestion: json['title_suggestion'] as String? ?? '',
+      detectedKeywords: List<String>.from(json['detected_keywords'] ?? []),
+    );
+  }
+
+  factory StoryNarrativeAnalysis.fallback() {
+    return StoryNarrativeAnalysis(
+      storyId: 'fallback_story_${DateTime.now().millisecondsSinceEpoch}',
+      overallScore: 75.0,
+      creativityScore: 80.0,
+      relevanceScore: 70.0,
+      structureScore: 78.0,
+      positiveFeedback: "Excellente énergie ! Votre voix captive l'auditeur et on sent votre implication dans l'histoire.",
+      improvementSuggestions: "Essayez de varier un peu plus le rythme de votre narration pour créer des moments de suspense.",
+      audioMetrics: AudioMetrics(
+        articulationScore: 85.0,
+        fluencyScore: 90.0,
+        emotionScore: 75.0,
+        volumeVariation: 60.0,
+        speakingRate: 150.0,
+        fillerWords: ["euh", "donc"],
+      ),
+      transcription: "Ceci est une transcription de secours de votre histoire...",
+      titleSuggestion: "Le Mystère de la Forêt Oubliée",
+      detectedKeywords: ["forêt", "mystère", "trésor"],
+    );
+  }
+
+  /// Crée un objet Story à partir de l'analyse et de la session
+  factory StoryNarrativeAnalysis.fromSession(StoryExerciseSession session, Map<String, dynamic> analysisData) {
+      final analysis = StoryNarrativeAnalysis.fromJson(analysisData);
+      final interventions = session.currentStory?.aiInterventions ?? [];
+
+      final metrics = StoryMetrics(
+        creativity: analysis.creativityScore,
+        collaboration: (interventions.where((i) => i.wasAccepted).length / math.max(1, interventions.length)) * 100,
+        fluidity: analysis.audioMetrics.fluencyScore,
+        totalDuration: session.currentDuration,
+        wordCount: analysis.transcription.split(' ').where((s) => s.isNotEmpty).length,
+        pauseCount: 0, // A remplir plus tard si disponible
+        averagePauseDuration: 0.0, // A remplir plus tard si disponible
+        aiInterventionsUsed: interventions.where((i) => i.wasAccepted).length,
+      );
+
+      // Note: This factory currently only creates the analysis part.
+      // The calling service is responsible for creating the full Story object with these metrics.
+      return analysis;
+  }
 }

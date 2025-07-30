@@ -718,6 +718,453 @@ def test_adaptive_system():
             'error': str(e)
         })
 
+@app.route('/api/story/generate-elements', methods=['POST'])
+def generate_story_elements():
+    """
+    Génère des éléments narratifs personnalisés via Mistral AI
+    """
+    logger.info("🎯 Requête génération éléments narratifs reçue")
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Données JSON requises"}), 400
+            
+        # Extraction des paramètres
+        genre = data.get('genre')  # Ex: 'fantasy', 'adventure', etc.
+        difficulty = data.get('difficulty', 'medium')  # 'easy', 'medium', 'hard', 'expert'
+        keywords = data.get('keywords', [])  # Liste de mots-clés optionnels
+        user_id = data.get('user_id', 'anonymous')
+        
+        logger.info(f"🔧 Paramètres: genre={genre}, difficulté={difficulty}, mots-clés={keywords}")
+        
+        # Construction du prompt structuré pour Mistral
+        prompt = _build_story_elements_prompt(genre, difficulty, keywords)
+        
+        # Appel au service Mistral (version synchrone)
+        with httpx.Client() as client:
+            mistral_payload = {
+                "model": "mistral-nemo-instruct-2407",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Tu es un créateur d'histoires expert. Réponds UNIQUEMENT avec du JSON valide."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.8,  # Plus créatif pour la génération
+                "max_tokens": 1200
+            }
+            
+            logger.info("🔵 Envoi vers Mistral pour génération éléments")
+            mistral_response = client.post(
+                "http://localhost:8001/v1/chat/completions",
+                json=mistral_payload,
+                timeout=30
+            )
+            mistral_response.raise_for_status()
+            mistral_result = mistral_response.json()
+            
+            # Extraction du contenu généré
+            generated_content = mistral_result["choices"][0]["message"]["content"]
+            logger.info(f"✅ Contenu généré par Mistral: {generated_content[:200]}...")
+            
+            # Tentative de parsing JSON avec nettoyage
+            try:
+                # Nettoyer le contenu : supprimer les préfixes markdown et espaces
+                clean_content = generated_content.strip()
+                if clean_content.startswith('```json'):
+                    clean_content = clean_content[7:]  # Supprimer ```json
+                if clean_content.endswith('```'):
+                    clean_content = clean_content[:-3]  # Supprimer ```
+                clean_content = clean_content.strip()
+                
+                parsed_elements = json.loads(clean_content)
+                elements = parsed_elements.get('elements', [])
+                story_seed = parsed_elements.get('story_seed', '')
+                
+                # Validation des éléments générés
+                if len(elements) >= 3:
+                    logger.info(f"✅ {len(elements)} éléments générés avec succès")
+                    return jsonify({
+                        "success": True,
+                        "elements": elements,
+                        "story_seed": story_seed,
+                        "generation_params": {
+                            "genre": genre,
+                            "difficulty": difficulty,
+                            "keywords": keywords
+                        },
+                        "timestamp": time.time()
+                    }), 200
+                else:
+                    logger.warning(f"⚠️ Nombre d'éléments insuffisant: {len(elements)}")
+                    return _generate_fallback_elements(genre, difficulty, keywords)
+                    
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Erreur parsing JSON Mistral: {e}")
+                return _generate_fallback_elements(genre, difficulty, keywords)
+        
+    except httpx.RequestError as e:
+        logger.error(f"❌ Erreur réseau Mistral: {e}")
+        return _generate_fallback_elements(genre, difficulty, keywords)
+    except Exception as e:
+        logger.error(f"❌ Erreur inattendue génération éléments: {e}")
+        return _generate_fallback_elements(genre, difficulty, keywords)
+
+def _build_story_elements_prompt(genre, difficulty, keywords):
+    """Construit le prompt pour la génération d'éléments narratifs"""
+    
+    # Simplification pour éviter les erreurs Unicode
+    genre_simple = genre if genre else "general"
+    keywords_text = f" incluant les mots: {', '.join(keywords)}" if keywords else ""
+    
+    return f"""Create exactly 3 story elements in French for a {genre_simple} story.
+
+REQUIREMENTS:
+- Genre: {genre_simple}
+- Difficulty: {difficulty}
+- Keywords to include: {keywords}{keywords_text}
+
+RESPONSE FORMAT (JSON ONLY, NO EXTRA TEXT):
+{{
+  "elements": [
+    {{
+      "type": "character",
+      "name": "Character Name",
+      "emoji": "🧙‍♂️",
+      "description": "Simple description without accents",
+      "keywords": ["word1", "word2"],
+      "difficulty": "{difficulty}"
+    }},
+    {{
+      "type": "location",
+      "name": "Location Name",
+      "emoji": "🏰",
+      "description": "Simple description without accents",
+      "keywords": ["word1", "word2"],
+      "difficulty": "{difficulty}"
+    }},
+    {{
+      "type": "magic_object",
+      "name": "Object Name",
+      "emoji": "🔮",
+      "description": "Simple description without accents",
+      "keywords": ["word1", "word2"],
+      "difficulty": "{difficulty}"
+    }}
+  ],
+  "story_seed": "Simple connection phrase without accents"
+}}
+
+Generate NOW (JSON only):"""
+
+def _generate_fallback_elements(genre, difficulty, keywords):
+    """Génère des éléments de fallback en cas d'erreur Mistral"""
+    logger.info("🔧 Génération éléments de fallback")
+    
+    # Assurer une difficulté valide pour les fallbacks
+    fallback_difficulty = difficulty if difficulty in ['easy', 'medium', 'hard', 'expert'] else 'medium'
+    
+    fallback_elements = [
+        {
+            "type": "character",
+            "name": "Héros Mystérieux",
+            "emoji": "🦸‍♂️",
+            "description": "Un personnage aux capacités extraordinaires qui cache un secret profond",
+            "keywords": ["mystère", "héros", "secret"],
+            "difficulty": fallback_difficulty
+        },
+        {
+            "type": "location",
+            "name": "Forêt Enchantée",
+            "emoji": "🌲",
+            "description": "Une forêt magique où les arbres murmurent des secrets anciens",
+            "keywords": ["forêt", "magie", "ancien"],
+            "difficulty": fallback_difficulty
+        },
+        {
+            "type": "magic_object",
+            "name": "Cristal de Lumière",
+            "emoji": "💎",
+            "description": "Un cristal scintillant qui révèle la vérité cachée dans l'obscurité",
+            "keywords": ["cristal", "lumière", "vérité"],
+            "difficulty": fallback_difficulty
+        }
+    ]
+    
+    return jsonify({
+        "success": True,
+        "elements": fallback_elements,
+        "story_seed": "Un héros mystérieux découvre un cristal magique dans une forêt enchantée qui va révéler des secrets ancestraux.",
+        "generation_params": {
+            "genre": genre,
+            "difficulty": difficulty,
+            "keywords": keywords
+        },
+        "fallback": True,
+        "timestamp": time.time()
+    }), 200
+
+@app.route('/api/story/analyze-narrative', methods=['POST'])
+def analyze_complete_narrative():
+    """
+    Analyse complète d'une histoire avec Vosk STT + Mistral AI
+    """
+    logger.info("🎯 Requête analyse narrative complète reçue")
+    
+    # Vérifier si c'est un upload audio ou des données JSON
+    if 'audio' in request.files:
+        # Mode audio : Vosk STT + Mistral AI
+        return _analyze_narrative_from_audio()
+    else:
+        # Mode texte : Mistral AI direct
+        return _analyze_narrative_from_text()
+
+def _analyze_narrative_from_audio():
+    """Analyse narrative à partir d'un fichier audio (Vosk + Mistral)"""
+    try:
+        audio_file = request.files['audio']
+        session_id = request.form.get('session_id', f"story_analysis_{int(time.time())}")
+        story_title = request.form.get('story_title', 'Histoire racontée')
+        story_elements = request.form.get('story_elements', '[]')
+        genre = request.form.get('genre')
+        
+        # Parser les éléments d'histoire
+        try:
+            elements_list = json.loads(story_elements)
+        except:
+            elements_list = []
+        
+        logger.info(f"🔧 Analyse audio pour: {story_title}")
+        
+        # ÉTAPE 1: Transcription avec Vosk (version synchrone)
+        with httpx.Client() as client:
+            files = {'audio': (audio_file.filename, audio_file.read(), audio_file.mimetype)}
+            data = {
+                'session_id': session_id,
+                'scenario': 'story_analysis',
+                'language': 'fr'
+            }
+            
+            logger.info(f"🔵 Envoi vers Vosk STT: {session_id}")
+            vosk_response = client.post(
+                "http://vosk-stt:8002/analyze",
+                files=files,
+                data=data,
+                timeout=30
+            )
+            vosk_response.raise_for_status()
+            vosk_result = vosk_response.json()
+            
+            transcription = vosk_result.get("transcription", "")
+            logger.info(f"✅ Transcription Vosk: {transcription[:100]}...")
+            
+            if not transcription.strip():
+                return jsonify({
+                    "error": "Aucune transcription détectée",
+                    "transcription": "",
+                    "analysis": _generate_fallback_narrative_analysis(story_title, elements_list, genre)[0].get_json()["analysis"],
+                    "fallback": True
+                }), 200
+        
+        # ÉTAPE 2: Analyse narrative avec Mistral
+        return _analyze_transcribed_narrative(transcription, story_title, elements_list, genre, session_id)
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur analyse narrative audio: {e}")
+        return jsonify({
+            "error": f"Erreur analyse audio: {str(e)}",
+            "transcription": "",
+            "analysis": _generate_fallback_narrative_analysis("Histoire", [], None)[0].get_json()["analysis"],
+            "fallback": True
+        }), 500
+
+def _analyze_narrative_from_text():
+    """Analyse narrative à partir de texte (Mistral AI direct)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Données JSON requises"}), 400
+            
+        # Extraction des paramètres
+        story_title = data.get('story_title', 'Histoire sans titre')
+        full_narrative = data.get('full_narrative', '')
+        story_elements = data.get('story_elements', [])
+        genre = data.get('genre')
+        session_id = data.get('session_id', f"story_text_{int(time.time())}")
+        
+        logger.info(f"🔧 Analyse texte pour: {story_title}")
+        
+        if not full_narrative.strip():
+            return jsonify({"error": "Récit narratif requis"}), 400
+        
+        return _analyze_transcribed_narrative(full_narrative, story_title, story_elements, genre, session_id)
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur analyse narrative texte: {e}")
+        return jsonify({
+            "error": f"Erreur analyse texte: {str(e)}",
+            "analysis": _generate_fallback_narrative_analysis("Histoire", [], None)[0].get_json()["analysis"],
+            "fallback": True
+        }), 500
+
+def _analyze_transcribed_narrative(narrative_text, story_title, story_elements, genre, session_id):
+    """Analyse du texte narratif avec Mistral AI"""
+    try:
+        # Construction du prompt d'analyse structuré
+        prompt = _build_narrative_analysis_prompt(
+            story_title, narrative_text, story_elements, genre
+        )
+        
+        # Appel au service Mistral
+        with httpx.Client() as client:
+            mistral_payload = {
+                "model": "mistral-nemo-instruct-2407",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Tu es un expert en analyse narrative. Réponds UNIQUEMENT avec du JSON valide."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.6,  # Moins créatif, plus analytique
+                "max_tokens": 1000
+            }
+            
+            logger.info("🔵 Envoi vers Mistral pour analyse narrative")
+            mistral_response = client.post(
+                "http://localhost:8001/v1/chat/completions",
+                json=mistral_payload,
+                timeout=30
+            )
+            mistral_response.raise_for_status()
+            mistral_result = mistral_response.json()
+            
+            # Extraction du contenu généré
+            generated_content = mistral_result["choices"][0]["message"]["content"]
+            logger.info(f"✅ Analyse générée par Mistral: {generated_content[:200]}...")
+            
+            # Tentative de parsing JSON avec nettoyage
+            try:
+                # Nettoyer le contenu : supprimer les préfixes markdown et espaces
+                clean_content = generated_content.strip()
+                if clean_content.startswith('```json'):
+                    clean_content = clean_content[7:]
+                if clean_content.endswith('```'):
+                    clean_content = clean_content[:-3]
+                clean_content = clean_content.strip()
+                
+                analysis_result = json.loads(clean_content)
+                
+                logger.info("✅ Analyse narrative générée avec succès")
+                return jsonify({
+                    "success": True,
+                    "transcription": narrative_text,
+                    "analysis": analysis_result,
+                    "session_id": session_id,
+                    "analysis_params": {
+                        "story_title": story_title,
+                        "narrative_length": len(narrative_text),
+                        "elements_count": len(story_elements),
+                        "genre": genre
+                    },
+                    "timestamp": time.time()
+                }), 200
+                    
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Erreur parsing JSON analyse narrative: {e}")
+                fallback_response = _generate_fallback_narrative_analysis(story_title, story_elements, genre)[0].get_json()
+                fallback_response["transcription"] = narrative_text
+                fallback_response["session_id"] = session_id
+                return jsonify(fallback_response), 200
+        
+    except httpx.RequestError as e:
+        logger.error(f"❌ Erreur réseau Mistral: {e}")
+        fallback_response = _generate_fallback_narrative_analysis(story_title, story_elements, genre)[0].get_json()
+        fallback_response["transcription"] = narrative_text
+        fallback_response["session_id"] = session_id
+        return jsonify(fallback_response), 200
+    except Exception as e:
+        logger.error(f"❌ Erreur inattendue analyse narrative: {e}")
+        fallback_response = _generate_fallback_narrative_analysis(story_title, story_elements, genre)[0].get_json()
+        fallback_response["transcription"] = narrative_text
+        fallback_response["session_id"] = session_id
+        return jsonify(fallback_response), 200
+
+def _build_narrative_analysis_prompt(title, narrative, elements, genre):
+    """Construit le prompt pour l'analyse narrative"""
+    
+    elements_text = ", ".join([elem.get('name', elem) if isinstance(elem, dict) else str(elem) for elem in elements])
+    genre_text = genre if genre else "libre"
+    
+    return f"""Analyze this complete story narrative in French:
+
+STORY DETAILS:
+- Title: {title}
+- Genre: {genre_text}
+- Required elements: {elements_text}
+- Full narrative: "{narrative}"
+
+ANALYSIS REQUIRED:
+Evaluate the story on these criteria:
+1. Creative use of required elements
+2. Plot coherence and structure
+3. Narrative fluency and pacing
+4. Originality and creativity
+5. Genre consistency (if applicable)
+
+RESPONSE FORMAT (JSON ONLY):
+{{
+  "overall_score": 0.85,
+  "element_usage_score": 0.9,
+  "plot_coherence_score": 0.8,
+  "fluidity_score": 0.85,
+  "creativity_score": 0.9,
+  "genre_consistency_score": 0.8,
+  "strengths": ["Strong creative element use", "Good pacing", "Engaging plot"],
+  "improvements": ["Develop character depth", "Strengthen conclusion"],
+  "highlight_moments": ["Creative element integration", "Plot twist moment"],
+  "narrative_feedback": "Well-structured story with excellent use of required elements and good narrative flow."
+}}
+
+Analyze NOW (JSON only):"""
+
+def _generate_fallback_narrative_analysis(title, elements, genre):
+    """Génère une analyse de fallback en cas d'erreur Mistral"""
+    logger.info("🔧 Génération analyse narrative de fallback")
+    
+    fallback_analysis = {
+        "overall_score": 0.75,
+        "element_usage_score": 0.8,
+        "plot_coherence_score": 0.7,
+        "fluidity_score": 0.75,
+        "creativity_score": 0.8,
+        "genre_consistency_score": 0.75,
+        "strengths": ["Utilisation créative des éléments", "Histoire cohérente", "Bonne fluidité narrative"],
+        "improvements": ["Développer davantage les personnages", "Renforcer les transitions"],
+        "highlight_moments": ["Intégration créative des éléments imposés", "Moment de tension réussi"],
+        "narrative_feedback": "Histoire bien construite avec une utilisation cohérente des éléments imposés. Continue à développer ton style narratif !"
+    }
+    
+    return jsonify({
+        "success": True,
+        "analysis": fallback_analysis,
+        "analysis_params": {
+            "story_title": title,
+            "elements_count": len(elements),
+            "genre": genre
+        },
+        "fallback": True,
+        "timestamp": time.time()
+    }), 200
+
 @app.route('/dashboard')
 def serve_dashboard():
     """Servir le dashboard adaptatif via le serveur Flask"""

@@ -36,11 +36,10 @@ class _StoryResultsScreenState extends ConsumerState<StoryResultsScreen>
   late Animation<double> _celebrationRotationAnimation;
   late Animation<double> _badgePopAnimation;
   
-  // Scores simulés pour la démo
-  final double _creativityScore = 0.85; // 85%
-  final double _collaborationScore = 0.72; // 72%
-  final double _fluidityScore = 0.91; // 91%
-  
+  // Scores réels (seront initialisés depuis l'analyse)
+  late double _creativityScore;
+  late double _collaborationScore;
+  late double _fluidityScore;
   late double _overallScore;
   late List<StoryBadgeType> _newBadges;
 
@@ -48,11 +47,13 @@ class _StoryResultsScreenState extends ConsumerState<StoryResultsScreen>
   void initState() {
     super.initState();
     
-    // Calculer le score global
-    _overallScore = (_creativityScore + _collaborationScore + _fluidityScore) / 3;
-    
-    // Badges débloqués (simulation)
-    _newBadges = _getNewBadges();
+    // Les scores seront initialisés dans didChangeDependencies()
+    // après que le provider soit disponible
+    _creativityScore = 0.0;
+    _collaborationScore = 0.0;
+    _fluidityScore = 0.0;
+    _overallScore = 0.0;
+    _newBadges = [];
     
     // Animation principale pour l'entrée
     _mainAnimationController = AnimationController(
@@ -144,6 +145,65 @@ class _StoryResultsScreenState extends ConsumerState<StoryResultsScreen>
     
     // Démarrer les animations
     _startAnimations();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Récupérer les vraies données d'analyse depuis le provider
+    final storyState = ref.read(storyGeneratorProvider);
+    final analysisResult = storyState.currentSession?.analysisResult;
+    
+    if (analysisResult != null) {
+      // Utiliser les scores réels de l'analyse narrative
+      _creativityScore = analysisResult.creativityScore / 100.0; // Convertir en pourcentage
+      _collaborationScore = analysisResult.relevanceScore / 100.0; // Utiliser relevance comme proxy pour collaboration
+      _fluidityScore = analysisResult.audioMetrics.fluencyScore / 100.0;
+      _overallScore = analysisResult.overallScore / 100.0;
+      
+      logger.i('StoryResults', 'Scores réels utilisés - Global: ${(_overallScore * 100).toInt()}%, Créativité: ${(_creativityScore * 100).toInt()}%');
+    } else {
+      // Fallback vers des scores par défaut si pas d'analyse
+      _creativityScore = 0.75;
+      _collaborationScore = 0.65;
+      _fluidityScore = 0.80;
+      _overallScore = (_creativityScore + _collaborationScore + _fluidityScore) / 3;
+      
+      logger.w('StoryResults', 'Aucune analyse trouvée, utilisation des scores fallback');
+    }
+    
+    // Badges débloqués basés sur les vrais scores
+    _newBadges = _getNewBadges();
+    
+    // Reconfigurer les animations avec les vraies valeurs
+    _reconfigureAnimations();
+  }
+
+  void _reconfigureAnimations() {
+    _creativityScoreAnimation = Tween<double>(
+      begin: 0.0,
+      end: _creativityScore,
+    ).animate(CurvedAnimation(
+      parent: _scoreAnimationController,
+      curve: const Interval(0.0, 0.4, curve: Curves.easeOutCubic),
+    ));
+    
+    _collaborationScoreAnimation = Tween<double>(
+      begin: 0.0,
+      end: _collaborationScore,
+    ).animate(CurvedAnimation(
+      parent: _scoreAnimationController,
+      curve: const Interval(0.2, 0.6, curve: Curves.easeOutCubic),
+    ));
+    
+    _fluidityScoreAnimation = Tween<double>(
+      begin: 0.0,
+      end: _fluidityScore,
+    ).animate(CurvedAnimation(
+      parent: _scoreAnimationController,
+      curve: const Interval(0.4, 0.8, curve: Curves.easeOutCubic),
+    ));
   }
 
   void _startAnimations() async {
