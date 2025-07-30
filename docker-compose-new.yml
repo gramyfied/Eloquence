@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # === SERVICES CORE ===
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - eloquence
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # === API PRINCIPALE UNIFIÉE ===
+  eloquence-api:
+    build:
+      context: ./services/eloquence-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - eloquence
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LIVEKIT_URL=ws://livekit:7880
+      - VOSK_URL=http://vosk-stt:8002
+      - MISTRAL_URL=http://mistral:8001
+    depends_on:
+      - redis
+      - livekit
+      - vosk-stt
+      - mistral
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === SERVICES SPÉCIALISÉS ===
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "40000-40100:40000-40100/udp"
+    networks:
+      - eloquence
+    environment:
+      - "LIVEKIT_KEYS=devkey: devsecret123456789abcdef0123456789abcdef"
+      - LIVEKIT_REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  vosk-stt:
+    build:
+      context: ./services/vosk-stt-analysis
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    networks:
+      - eloquence
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mistral:
+    build:
+      context: ./services/mistral-conversation
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    networks:
+      - eloquence
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  eloquence:
+    driver: bridge
+
+volumes:
+  redis-data:
+  vosk-models:
