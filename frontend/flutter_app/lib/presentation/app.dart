@@ -16,24 +16,11 @@ class App extends ConsumerWidget {
     
     final router = ref.watch(routerProvider);
 
-    // Widget pour afficher l'URL backend au démarrage
     return MaterialApp.router(
       title: 'Eloquence',
       theme: EloquenceTheme.darkTheme,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
-      builder: (context, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final url = AppConfig.apiBaseUrl;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('LLM_SERVICE_URL utilisée : $url'),
-              duration: Duration(seconds: 8),
-            ),
-          );
-        });
-        return child!;
-      },
     );
   }
 }

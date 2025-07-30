@@ -6,6 +6,8 @@ import 'package:logger/logger.dart';
 
 import '../../domain/entities/virelangue_models.dart';
 
+part 'virelangue_reward_system.g.dart';
+
 /// Système de récompenses variables pour les virelangues
 /// 
 /// 🎲 MÉCANISMES DE RÉCOMPENSES VARIABLES :

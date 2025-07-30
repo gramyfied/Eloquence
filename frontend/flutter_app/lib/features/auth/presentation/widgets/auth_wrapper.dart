@@ -13,22 +13,54 @@ class AuthWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     
+    // DEBUG MODE DEVELOPER : Contournement de l'authentification pour les tests
+    const bool isDeveloperMode = true; // À changer pour la production
+    if (isDeveloperMode) {
+      debugPrint('🛠️ MODE DÉVELOPPEUR ACTIVÉ - Contournement authentification');
+      return _buildDeveloperModeScreen(context);
+    }
+    
     // Debug logs pour le mode développeur
     debugPrint('🔐 AuthWrapper: État auth = ${authState.state}');
     if (authState.user != null) {
       debugPrint('👤 Utilisateur connecté: ${authState.user!.email}');
     }
 
-    // Vérifier l'état d'authentification
-    if (authState.state == AuthState.loading) {
-      return _buildLoadingScreen();
-    } else if (authState.state == AuthState.authenticated && authState.user != null) {
-      debugPrint('✅ Utilisateur authentifié, redirection vers /home');
-      // Rediriger vers la route principale au lieu d'instancier MainScreen directement
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go('/home');
+    // CORRECTION BOUCLE BACK : Si authentifié, rediriger vers /home une seule fois
+    if (authState.state == AuthState.authenticated && authState.user != null) {
+      debugPrint('✅ Utilisateur authentifié, redirection ONE-TIME vers /home');
+      // Redirection conditionnelle pour éviter la boucle du bouton back
+      Future.microtask(() {
+        if (context.mounted) {
+          context.go('/home');
+        }
       });
-      return _buildLoadingScreen(); // Afficher le loading pendant la redirection
+      // Écran de transition minimal
+      return Scaffold(
+        backgroundColor: EloquenceColors.navy,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                EloquenceColors.navy,
+                EloquenceColors.cyan,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                EloquenceColors.cyan,
+              ),
+            ),
+          ),
+        ),
+      );
+    } else if (authState.state == AuthState.loading) {
+      // Timeout visuel rapide pour éviter la boucle infinie
+      return _buildQuickLoadingScreen();
     } else if (authState.state == AuthState.error) {
       debugPrint('🚨 Erreur d\'authentification: ${authState.error}');
       return _buildErrorScreen(authState.error ?? 'Erreur inconnue');
@@ -38,7 +70,7 @@ class AuthWrapper extends ConsumerWidget {
     }
   }
 
-  Widget _buildLoadingScreen() {
+  Widget _buildQuickLoadingScreen() {
     return Scaffold(
       backgroundColor: EloquenceColors.navy,
       body: Container(
@@ -63,11 +95,85 @@ class AuthWrapper extends ConsumerWidget {
               ),
               SizedBox(height: 24),
               Text(
-                'Initialisation...',
+                'Connexion...',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return _buildQuickLoadingScreen();
+  }
+
+  Widget _buildDeveloperModeScreen(BuildContext context) {
+    return Scaffold(
+      backgroundColor: EloquenceColors.navy,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              EloquenceColors.navy,
+              EloquenceColors.cyan,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.developer_mode,
+                size: 64,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '🛠️ MODE DÉVELOPPEUR',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Contournement de l\'authentification pour les tests',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  context.go('/home');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EloquenceColors.cyan,
+                  foregroundColor: EloquenceColors.navy,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text(
+                  'Continuer vers l\'accueil',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

@@ -139,7 +139,7 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
             end: Alignment.bottomCenter,
             colors: [
               EloquenceTheme.navy,
-              state.userProgress.currentLevel.dragonColor.withOpacity(0.3),
+              (state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet).withOpacity(0.3),
               EloquenceTheme.navy,
             ],
           ),
@@ -155,7 +155,7 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
                     size: Size.infinite,
                     painter: DragonEnergyParticlesPainter(
                       animation: _celebrationController,
-                      color: state.userProgress.currentLevel.dragonColor,
+                      color: state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet,
                     ),
                   );
                 },
@@ -170,7 +170,7 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
             if (_showCelebration && widget.hasLeveledUp && widget.previousLevel != null)
               DragonLevelUpAnimation(
                 fromLevel: widget.previousLevel!,
-                toLevel: state.userProgress.currentLevel,
+                toLevel: state.userProgress!.currentLevel,
                 onComplete: () {
                   setState(() {
                     _showCelebration = false;
@@ -226,7 +226,7 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
                 return Opacity(
                   opacity: _statsAnimation.value,
                   child: DragonProgressWidget(
-                    progress: state.userProgress,
+                    progress: state.userProgress!,
                     showDetails: true,
                   ),
                 );
@@ -277,12 +277,12 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
             color: EloquenceTheme.glassBackground,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: state.userProgress.currentLevel.dragonColor.withOpacity(0.5),
+              color: (state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet).withOpacity(0.5),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: state.userProgress.currentLevel.dragonColor.withOpacity(0.3),
+                color: (state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet).withOpacity(0.3),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -292,7 +292,7 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
             children: [
               // Avatar Dragon principal
               DragonGlowEffect(
-                glowColor: state.userProgress.currentLevel.dragonColor,
+                glowColor: state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet,
                 intensity: 1.5,
                 isActive: true,
                 child: Container(
@@ -302,18 +302,18 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        state.userProgress.currentLevel.dragonColor.withOpacity(0.9),
-                        state.userProgress.currentLevel.dragonColor.withOpacity(0.3),
+                        (state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet).withOpacity(0.9),
+                        (state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet).withOpacity(0.3),
                       ],
                     ),
                     border: Border.all(
-                      color: state.userProgress.currentLevel.dragonColor,
+                      color: state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet,
                       width: 3,
                     ),
                   ),
                   child: Center(
                     child: Text(
-                      state.userProgress.currentLevel.emoji,
+                      state.userProgress?.currentLevel.emoji ?? '🐉',
                       style: const TextStyle(fontSize: 60),
                     ),
                   ),
@@ -325,8 +325,8 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
               Text(
                 widget.hasLeveledUp ? 'NIVEAU SUPÉRIEUR!' : 'SESSION TERMINÉE!',
                 style: EloquenceTheme.headline1.copyWith(
-                  color: widget.hasLeveledUp 
-                      ? state.userProgress.currentLevel.dragonColor
+                  color: widget.hasLeveledUp
+                      ? state.userProgress?.currentLevel.dragonColor ?? EloquenceTheme.violet
                       : EloquenceTheme.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -336,8 +336,8 @@ class _DragonBreathResultsScreenState extends ConsumerState<DragonBreathResultsS
               const SizedBox(height: 8),
               
               Text(
-                widget.hasLeveledUp 
-                    ? 'Tu es maintenant ${state.userProgress.currentLevel.displayName}!'
+                widget.hasLeveledUp
+                    ? 'Tu es maintenant ${state.userProgress?.currentLevel.displayName ?? 'un Dragon'}!'
                     : 'Ta puissance vocale grandit!',
                 style: EloquenceTheme.bodyLarge.copyWith(
                   color: EloquenceTheme.white.withOpacity(0.9),
