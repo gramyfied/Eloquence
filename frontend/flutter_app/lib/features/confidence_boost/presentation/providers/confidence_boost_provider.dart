@@ -66,16 +66,23 @@ final confidenceRepositoryProvider = Provider<ConfidenceRepository>((ref) {
   );
 });
 
-// Provider pour le repository de gamification (maintenant asynchrone pour garantir l'initialisation)
-final gamificationRepositoryProvider = FutureProvider<GamificationRepository>((ref) async {
+// Provider pour le repository de gamification (maintenant synchrone avec initialisation lazy)
+final gamificationRepositoryProvider = Provider<GamificationRepository>((ref) {
   final repository = HiveGamificationRepository();
+  // Initialisation lazy - sera faite lors du premier accès
+  return repository;
+});
+
+// Provider d'initialisation séparé pour gérer l'état d'initialisation
+final gamificationInitializationProvider = FutureProvider<bool>((ref) async {
+  final repository = ref.watch(gamificationRepositoryProvider);
   try {
     await repository.initialize();
-    Logger().i('✅ [HIVE_INIT_SUCCESS] Hive GamificationRepository a été initialisé avec succès.');
-    return repository;
+    Logger().i('✅ [HIVE_INIT_SUCCESS] Hive GamificationRepository initialisé avec succès.');
+    return true;
   } catch (error) {
-    Logger().e('❌ [HIVE_INIT_ERROR] Échec de l\'initialisation de Hive: $error');
-    rethrow; // Important: propage l'erreur pour que le FutureProvider soit en état d'erreur
+    Logger().e('❌ [HIVE_INIT_ERROR] Échec initialisation Hive: $error');
+    return false; // Retourner false au lieu de rethrow
   }
 });
 
@@ -84,57 +91,25 @@ final xpCalculatorServiceProvider = Provider<XPCalculatorService>((ref) {
   return XPCalculatorService();
 });
 
-// Provider pour Badge Service (gère l'attente du repository)
+// Provider pour Badge Service (maintenant utilise directement le repository)
 final badgeServiceProvider = Provider<BadgeService>((ref) {
-  final repositoryAsync = ref.watch(gamificationRepositoryProvider);
-  return repositoryAsync.when(
-    data: (repository) => BadgeService(repository),
-    loading: () => BadgeService(HiveGamificationRepository()), // Service factice en chargement
-    error: (err, stack) => BadgeService(HiveGamificationRepository()), // Service factice en erreur
-  );
+  final repository = ref.watch(gamificationRepositoryProvider);
+  return BadgeService(repository);
 });
 
-// Provider pour Streak Service (gère l'attente du repository)
+// Provider pour Streak Service (maintenant utilise directement le repository)
 final streakServiceProvider = Provider<StreakService>((ref) {
-  final repositoryAsync = ref.watch(gamificationRepositoryProvider);
-  return repositoryAsync.when(
-    data: (repository) => StreakService(repository),
-    loading: () => StreakService(HiveGamificationRepository()), // Service factice
-    error: (err, stack) => StreakService(HiveGamificationRepository()), // Service factice
-  );
+  final repository = ref.watch(gamificationRepositoryProvider);
+  return StreakService(repository);
 });
 
-// Provider pour Gamification Service (gère l'attente du repository)
+// Provider pour Gamification Service (maintenant utilise directement le repository)
 final gamificationServiceProvider = Provider<GamificationService>((ref) {
-  final repositoryAsync = ref.watch(gamificationRepositoryProvider);
-  return repositoryAsync.when(
-    data: (repository) {
-      final badgeService = ref.watch(badgeServiceProvider);
-      final xpCalculator = ref.watch(xpCalculatorServiceProvider);
-      final streakService = ref.watch(streakServiceProvider);
-      return GamificationService(repository, badgeService, xpCalculator, streakService);
-    },
-    loading: () {
-      // Retourne un service factice ou non fonctionnel pendant le chargement
-      final dummyRepo = HiveGamificationRepository();
-      return GamificationService(
-        dummyRepo,
-        BadgeService(dummyRepo),
-        XPCalculatorService(),
-        StreakService(dummyRepo)
-      );
-    },
-    error: (err, stack) {
-      // Gère l'état d'erreur de la même manière
-      final dummyRepo = HiveGamificationRepository();
-      return GamificationService(
-        dummyRepo,
-        BadgeService(dummyRepo),
-        XPCalculatorService(),
-        StreakService(dummyRepo)
-      );
-    },
-  );
+  final repository = ref.watch(gamificationRepositoryProvider);
+  final badgeService = ref.watch(badgeServiceProvider);
+  final xpCalculator = ref.watch(xpCalculatorServiceProvider);
+  final streakService = ref.watch(streakServiceProvider);
+  return GamificationService(repository, badgeService, xpCalculator, streakService);
 });
 
 // Provider pour récupérer les scénarios

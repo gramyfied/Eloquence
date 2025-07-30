@@ -99,6 +99,13 @@ class _DragonBreathScreenState extends ConsumerState<DragonBreathScreen>
           }
         }
 
+        // Détecter la fin de session pour afficher la modale de célébration
+        if (state.currentPhase == BreathingPhase.completed && !state.isActive && state.currentMetrics != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showCelebrationModal(context, state);
+          });
+        }
+
         return Scaffold(
           body: Container(
             decoration: const BoxDecoration(
@@ -1113,5 +1120,213 @@ class _DragonBreathScreenState extends ConsumerState<DragonBreathScreen>
         ref.read(dragonBreathProvider.notifier).updateExerciseConfig(pauseDuration: duration);
         break;
     }
+  }
+
+  /// Affiche la modale de célébration simplifiée à la fin de la session
+  void _showCelebrationModal(BuildContext context, BreathingExerciseState state) {
+    if (state.currentMetrics == null || state.userProgress == null) return;
+    
+    final metrics = state.currentMetrics!;
+    final progress = state.userProgress!;
+    
+    // Calculer l'XP gagné
+    final xpGained = (metrics.qualityScore * 100).round();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                EloquenceTheme.navy,
+                EloquenceTheme.glassBackground,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: EloquenceTheme.cyan.withOpacity(0.5),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: EloquenceTheme.cyan.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header de célébration simplifié
+              _buildSimpleCelebrationHeader(progress),
+              
+              const SizedBox(height: 20),
+              
+              // XP gagné
+              _buildSimpleXPDisplay(xpGained, progress),
+              
+              const SizedBox(height: 20),
+              
+              // Boutons d'action compacts
+              _buildSimpleCelebrationButtons(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleCelebrationHeader(DragonProgress progress) {
+    return Column(
+      children: [
+        // Dragon animé
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                progress.currentLevel.dragonColor.withOpacity(0.8),
+                progress.currentLevel.dragonColor.withOpacity(0.3),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: progress.currentLevel.dragonColor.withOpacity(0.5),
+                blurRadius: 15,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              progress.currentLevel.emoji,
+              style: const TextStyle(fontSize: 32),
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        Text(
+          '🎉 Bravo !',
+          style: EloquenceTheme.headline3.copyWith(
+            color: EloquenceTheme.white,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        
+        const SizedBox(height: 4),
+        
+        Text(
+          'Session terminée',
+          style: EloquenceTheme.bodyMedium.copyWith(
+            color: EloquenceTheme.cyan,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSimpleXPDisplay(int xpGained, DragonProgress progress) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            EloquenceTheme.violet.withOpacity(0.3),
+            EloquenceTheme.cyan.withOpacity(0.3),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: EloquenceTheme.violet.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                '👑',
+                style: TextStyle(fontSize: 24),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '+$xpGained XP',
+                style: EloquenceTheme.headline3.copyWith(
+                  color: EloquenceTheme.violet,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Total: ${progress.totalXP} XP',
+            style: EloquenceTheme.bodySmall.copyWith(
+              color: EloquenceTheme.white.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleCelebrationButtons(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ref.read(dragonBreathProvider.notifier).resetExercise();
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Nouvelle Session'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: EloquenceTheme.cyan,
+              foregroundColor: EloquenceTheme.navy,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(Icons.home),
+            label: const Text('Retour au menu'),
+            style: TextButton.styleFrom(
+              foregroundColor: EloquenceTheme.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

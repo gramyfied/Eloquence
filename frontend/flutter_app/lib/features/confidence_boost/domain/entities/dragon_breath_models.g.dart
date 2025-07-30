@@ -221,7 +221,7 @@ class BreathingSessionAdapter extends TypeAdapter<BreathingSession> {
       startTime: fields[3] as DateTime,
       endTime: fields[4] as DateTime?,
       metrics: fields[5] as BreathingMetrics?,
-      unlockedAchievements: (fields[6] as List).cast<DragonAchievement>(),
+      unlockedAchievements: (fields[6] as List?)?.cast<DragonAchievement>(),
       xpGained: fields[7] as int,
       isCompleted: fields[8] as bool,
       motivationalMessage: fields[9] as String,
@@ -286,7 +286,7 @@ class DragonProgressAdapter extends TypeAdapter<DragonProgress> {
       bestQuality: fields[7] as double,
       totalPracticeTime: fields[8] as Duration?,
       lastSessionDate: fields[9] as DateTime?,
-      achievements: (fields[10] as List).cast<DragonAchievement>(),
+      achievements: (fields[10] as List?)?.cast<DragonAchievement>(),
       statistics: (fields[11] as Map?)?.cast<String, dynamic>(),
     );
   }

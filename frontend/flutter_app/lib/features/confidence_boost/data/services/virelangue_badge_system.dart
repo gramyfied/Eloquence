@@ -596,7 +596,7 @@ class VirelangueBadgeSystem {
 // ========== MODÈLES DE DONNÉES ==========
 
 /// Badge de virelangue
-@HiveType(typeId: 42)
+@HiveType(typeId: 52)
 class VirelangueBadge extends HiveObject {
   @HiveField(0)
   String id;
@@ -869,7 +869,7 @@ enum BadgeRarity {
 }
 
 /// Progression des badges d'un utilisateur
-@HiveType(typeId: 43)
+@HiveType(typeId: 53)
 class BadgeProgress extends HiveObject {
   @HiveField(0)
   String userId;
@@ -942,7 +942,7 @@ class BadgeStats {
 }
 
 /// Série de badges
-@HiveType(typeId: 44)
+@HiveType(typeId: 54)
 class BadgeSeries extends HiveObject {
   @HiveField(0)
   String name;
@@ -986,7 +986,7 @@ class BadgeSeriesProgress {
 }
 
 /// Badge d'événement spécial
-@HiveType(typeId: 45)
+@HiveType(typeId: 55)
 class SpecialEventBadge extends HiveObject {
   @HiveField(0)
   String eventName;

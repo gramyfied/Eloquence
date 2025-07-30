@@ -57,7 +57,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Container(
-          margin: const EdgeInsets.all(20),
+          margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
             color: EloquenceColors.navy.withAlpha((255 * 0.5).round()),

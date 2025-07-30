@@ -8,7 +8,7 @@ part of 'virelangue_badge_system.dart';
 
 class VirelangueBadgeAdapter extends TypeAdapter<VirelangueBadge> {
   @override
-  final int typeId = 42;
+  final int typeId = 52;
 
   @override
   VirelangueBadge read(BinaryReader reader) {
@@ -72,7 +72,7 @@ class VirelangueBadgeAdapter extends TypeAdapter<VirelangueBadge> {
 
 class BadgeProgressAdapter extends TypeAdapter<BadgeProgress> {
   @override
-  final int typeId = 43;
+  final int typeId = 53;
 
   @override
   BadgeProgress read(BinaryReader reader) {
@@ -121,7 +121,7 @@ class BadgeProgressAdapter extends TypeAdapter<BadgeProgress> {
 
 class BadgeSeriesAdapter extends TypeAdapter<BadgeSeries> {
   @override
-  final int typeId = 44;
+  final int typeId = 54;
 
   @override
   BadgeSeries read(BinaryReader reader) {
@@ -167,7 +167,7 @@ class BadgeSeriesAdapter extends TypeAdapter<BadgeSeries> {
 
 class SpecialEventBadgeAdapter extends TypeAdapter<SpecialEventBadge> {
   @override
-  final int typeId = 45;
+  final int typeId = 55;
 
   @override
   SpecialEventBadge read(BinaryReader reader) {

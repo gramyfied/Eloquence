@@ -15,6 +15,8 @@ import '../../features/confidence_boost/presentation/screens/confidence_boost_en
 import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
 import '../../features/confidence_boost/presentation/screens/virelangue_roulette_screen.dart';
+import '../../features/confidence_boost/presentation/screens/dragon_breath_screen.dart';
+import '../../features/story_generator/presentation/screens/story_generator_home_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/widgets/auth_wrapper.dart';
@@ -115,6 +117,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           
+          // Route dragon_breath - NOUVEL EXERCICE SOUFFLE DE DRAGON
+          GoRoute(
+            path: 'dragon_breath',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
+            builder: (BuildContext context, GoRouterState state) {
+              return const DragonBreathScreen();
+            },
+          ),
+          
+          // Route story_generator - GÉNÉRATEUR D'HISTOIRES INFINIES
+          GoRoute(
+            path: 'story_generator',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
+            builder: (BuildContext context, GoRouterState state) {
+              return const StoryGeneratorHomeScreen();
+            },
+          ),
+          
           // Routes paramétrées
           GoRoute(
             path: 'exercise_detail/:id',
@@ -151,6 +171,17 @@ final routerProvider = Provider<GoRouter>((ref) {
               if (exerciseId == 'virelangue_roulette') {
                 return const VirelangueRouletteScreen();
               }
+              
+              // NOUVEAU : Rediriger dragon_breath vers l'écran souffle de dragon
+              if (exerciseId == 'dragon_breath') {
+                return const DragonBreathScreen();
+              }
+              
+              // NOUVEAU : Rediriger story_generator vers l'écran générateur d'histoires
+              if (exerciseId == 'story_generator') {
+                return const StoryGeneratorHomeScreen();
+              }
+              
               return ExerciseActiveScreen(exerciseId: exerciseId);
             },
           ),

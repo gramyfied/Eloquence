@@ -7,6 +7,8 @@ import 'package:logger/logger.dart';
 
 import '../../domain/entities/virelangue_models.dart';
 
+part 'virelangue_leaderboard_service.g.dart';
+
 /// Service de gestion des classements et leaderboards pour les virelangues
 /// 
 /// 🏆 FONCTIONNALITÉS DU LEADERBOARD :
@@ -533,7 +535,7 @@ class VirelangueLeaderboardService {
 // ========== MODÈLES DE DONNÉES ==========
 
 /// Entrée de leaderboard pour un utilisateur
-@HiveType(typeId: 37)
+@HiveType(typeId: 56)
 class LeaderboardEntry extends HiveObject {
   @HiveField(0)
   String userId;
@@ -674,7 +676,7 @@ class UserLeaderboardPosition {
 }
 
 /// Historique des rangs d'un utilisateur
-@HiveType(typeId: 38)
+@HiveType(typeId: 57)
 class UserRankHistory extends HiveObject {
   @HiveField(0)
   String userId;
@@ -689,7 +691,7 @@ class UserRankHistory extends HiveObject {
 }
 
 /// Snapshot d'un rang à un moment donné
-@HiveType(typeId: 39)
+@HiveType(typeId: 58)
 class RankSnapshot extends HiveObject {
   @HiveField(0)
   DateTime timestamp;
@@ -720,7 +722,7 @@ class RankSnapshot extends HiveObject {
 }
 
 /// Statistiques de saison
-@HiveType(typeId: 40)
+@HiveType(typeId: 59)
 class SeasonStats extends HiveObject {
   @HiveField(0)
   int seasonNumber;
@@ -755,7 +757,7 @@ class SeasonStats extends HiveObject {
 }
 
 /// Achievement de leaderboard
-@HiveType(typeId: 41)
+@HiveType(typeId: 60)
 class LeaderboardAchievement extends HiveObject {
   @HiveField(0)
   String userId;

@@ -98,6 +98,16 @@ class ExercisesScreen extends ConsumerWidget {
                       _buildExerciseCard(
                         context,
                         ref,
+                        'Générateur d\'Histoires Infinies 📚✨',
+                        'Créez des histoires épiques avec l\'IA et améliorez votre narration',
+                        Icons.auto_stories,
+                        const Color(0xFFFF6B35), // Orange narratif
+                        'story_generator',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
                         'Pitch Perfect',
                         'Maîtrisez l\'art du pitch en 90 secondes',
                         Icons.rocket_launch,
@@ -164,6 +174,10 @@ class ExercisesScreen extends ConsumerWidget {
               // Navigation spéciale pour l'exercice Souffle de Dragon
               debugPrint('Navigating to dragon breath exercise using root navigator');
               context.go('/dragon_breath', extra: {});
+            } else if (exerciseId == 'story_generator') {
+              // Navigation spéciale pour le Générateur d'Histoires Infinies
+              debugPrint('Navigating to story generator home screen using root navigator');
+              context.go('/story_generator', extra: {});
             } else {
               // Navigation normale vers exercise_detail avec l'ID
               debugPrint('Navigating to exercise detail with ID: $exerciseId');
