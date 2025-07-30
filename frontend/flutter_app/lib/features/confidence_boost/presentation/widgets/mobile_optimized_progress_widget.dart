@@ -471,7 +471,7 @@ class _MobileOptimizedProgressWidgetState extends ConsumerState<MobileOptimizedP
                   ),
                 ),
                 Text(
-                  'Whisper + Backend simultanés (vs séquentiel)',
+                  'Services d\'analyse simultanés (vs séquentiel)',
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.purple.shade600,

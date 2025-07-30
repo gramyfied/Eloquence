@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import '../../domain/entities/app_user.dart';
@@ -74,33 +75,62 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
 
   /// Initialiser l'authentification et écouter les changements
   void _initializeAuth() {
-    // Vérifier l'état initial
-    final currentUser = _authService.currentUser;
-    if (currentUser != null) {
-      state = AuthStateData(state: AuthState.authenticated, user: currentUser);
-    } else {
+    // Timeout pour éviter que l'initialisation reste bloquée
+    _initializeWithTimeout();
+  }
+
+  Future<void> _initializeWithTimeout() async {
+    try {
+      // Timeout de 5 secondes pour l'initialisation
+      await Future.any([
+        _performInitialization(),
+        Future.delayed(const Duration(seconds: 5)).then((_) => throw TimeoutException('Auth timeout', const Duration(seconds: 5))),
+      ]);
+    } on TimeoutException {
+      _logger.w('⚠️ Timeout d\'authentification - Passage en mode hors ligne');
+      state = const AuthStateData(state: AuthState.unauthenticated);
+    } catch (e) {
+      _logger.e('❌ Erreur d\'initialisation auth: $e');
+      // En cas d'erreur, passer en mode unauthenticated plutôt que de rester en loading
       state = const AuthStateData(state: AuthState.unauthenticated);
     }
+  }
 
-    // Écouter les changements d'état d'authentification
-    _authService.authStateChanges.listen(
-      (user) {
-        if (user != null) {
-          _logger.i('Utilisateur connecté: ${user.email}');
-          state = AuthStateData(state: AuthState.authenticated, user: user);
-        } else {
-          _logger.i('Utilisateur déconnecté');
-          state = const AuthStateData(state: AuthState.unauthenticated);
-        }
-      },
-      onError: (error) {
-        _logger.e('Erreur dans le stream d\'authentification: $error');
-        state = AuthStateData(
-          state: AuthState.error,
-          error: error.toString(),
-        );
-      },
-    );
+  Future<void> _performInitialization() async {
+    try {
+      // Vérifier l'état initial avec timeout
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        _logger.i('👤 Utilisateur existant trouvé: ${currentUser.email}');
+        state = AuthStateData(state: AuthState.authenticated, user: currentUser);
+      } else {
+        _logger.i('👤 Aucun utilisateur connecté');
+        state = const AuthStateData(state: AuthState.unauthenticated);
+      }
+
+      // Écouter les changements d'état d'authentification avec gestion d'erreur robuste
+      _authService.authStateChanges.timeout(const Duration(seconds: 10)).listen(
+        (user) {
+          if (user != null) {
+            _logger.i('🔐 Utilisateur connecté: ${user.email}');
+            state = AuthStateData(state: AuthState.authenticated, user: user);
+          } else {
+            _logger.i('🔐 Utilisateur déconnecté');
+            state = const AuthStateData(state: AuthState.unauthenticated);
+          }
+        },
+        onError: (error) {
+          _logger.w('⚠️ Erreur dans le stream d\'authentification: $error - Mode hors ligne');
+          // En cas d'erreur réseau, ne pas bloquer l'app, rester en unauthenticated
+          if (state.state == AuthState.loading) {
+            state = const AuthStateData(state: AuthState.unauthenticated);
+          }
+        },
+      );
+    } catch (e) {
+      _logger.e('❌ Erreur lors de l\'initialisation: $e');
+      rethrow;
+    }
   }
 
   /// Inscription avec email et mot de passe

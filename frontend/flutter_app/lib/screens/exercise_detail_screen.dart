@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
@@ -19,7 +20,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
           onCarouselTap: () {
             // Tap sur le carrousel pour revenir aux exercices
             ref.read(navigationStateProvider).navigateTo('/exercises');
-            Navigator.pop(context);
+            context.pop();
           },
           content: Container(
             padding: const EdgeInsets.all(20),
@@ -33,7 +34,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
                     IconButton(
                       onPressed: () {
                         ref.read(navigationStateProvider).navigateTo('/exercises');
-                        Navigator.pop(context);
+                        context.pop();
                       },
                       icon: const Icon(
                         Icons.arrow_back_ios,
@@ -115,11 +116,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
                               .read(navigationStateProvider)
                               .startExercise(exerciseId);
                           // Navigation vers l'exercice actif
-                          Navigator.pushNamed(
-                            context,
-                            '/exercise_active',
-                            arguments: exerciseId,
-                          );
+                          context.go('/exercise_active/$exerciseId');
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 20),

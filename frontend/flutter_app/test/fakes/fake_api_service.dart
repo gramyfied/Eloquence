@@ -66,7 +66,6 @@ class FakeApiService extends ApiService {
     return true;
   }
 
-  @override
   Future<String> transcribeAudio(String audioFilePath) async {
     return 'fake transcription';
   }

@@ -142,7 +142,9 @@ enum BadgeCategory {
   @HiveField(3)
   special,
   @HiveField(4)
-  milestone
+  milestone,
+  @HiveField(5)
+  storytelling
 }
 
 class GamificationResult {

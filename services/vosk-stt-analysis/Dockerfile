@@ -1,10 +1,17 @@
 FROM python:3.11-slim
 
-# Installation des dépendances système
+# Installation des dépendances système incluant ffmpeg avec codecs complets
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     curl \
+    dos2unix \
+    ffmpeg \
+    libavcodec-extra \
+    libsndfile1 \
+    libsndfile1-dev \
+    libasound2-dev \
+    portaudio19-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -22,10 +29,11 @@ COPY . .
 # Script de téléchargement automatique du modèle
 COPY download_model.sh /app/
 RUN chmod +x /app/download_model.sh
+RUN dos2unix /app/download_model.sh
 
 # Télécharge le modèle au build
-RUN /app/download_model.sh
+RUN /bin/bash /app/download_model.sh
 
-EXPOSE 2700
+EXPOSE 8002
 
 CMD ["python", "main.py"]

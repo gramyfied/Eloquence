@@ -156,3 +156,104 @@ class ConfettiParticle {
     rotation += rotationSpeed * deltaTime;
   }
 }
+
+// === MODÈLES POUR LIVEKIT UNIFIÉ ===
+
+// Métriques de confiance temps réel
+@HiveType(typeId: 14)
+class ConfidenceMetrics extends HiveObject {
+  @HiveField(0)
+  final double confidenceLevel;
+  @HiveField(1)
+  final double voiceClarity;
+  @HiveField(2)
+  final double speakingPace;
+  @HiveField(3)
+  final double energyLevel;
+  @HiveField(4)
+  final DateTime timestamp;
+
+  ConfidenceMetrics({
+    required this.confidenceLevel,
+    required this.voiceClarity,
+    required this.speakingPace,
+    required this.energyLevel,
+    required this.timestamp,
+  });
+}
+
+// Message de conversation
+@HiveType(typeId: 15)
+class ConversationMessage extends HiveObject {
+  @HiveField(0)
+  final String id;
+  @HiveField(1)
+  final String content;
+  @HiveField(2)
+  final bool isUser;
+  @HiveField(3)
+  final DateTime timestamp;
+  @HiveField(4)
+  final ConfidenceMetrics? metrics;
+
+  ConversationMessage({
+    required this.id,
+    required this.content,
+    required this.isUser,
+    required this.timestamp,
+    this.metrics,
+  });
+}
+
+// Résultat d'analyse unifié
+@HiveType(typeId: 16)
+class AnalysisResult extends HiveObject {
+  @HiveField(0)
+  final double confidenceScore;
+  @HiveField(1)
+  final double clarityScore;
+  @HiveField(2)
+  final double fluencyScore;
+  @HiveField(3)
+  final String transcription;
+  @HiveField(4)
+  final List<String> keyInsights;
+  @HiveField(5)
+  final DateTime timestamp;
+
+  AnalysisResult({
+    required this.confidenceScore,
+    required this.clarityScore,
+    required this.fluencyScore,
+    required this.transcription,
+    required this.keyInsights,
+    required this.timestamp,
+  });
+}
+
+// Métriques de conversation temps réel
+class ConversationMetrics {
+  final double averageConfidence;
+  final double speechRate;
+  final int messageCount;
+  final Duration conversationDuration;
+  final List<ConfidenceMetrics> realtimeMetrics;
+
+  ConversationMetrics({
+    required this.averageConfidence,
+    required this.speechRate,
+    required this.messageCount,
+    required this.conversationDuration,
+    required this.realtimeMetrics,
+  });
+}
+
+// État de conversation
+enum ConversationState {
+  idle,
+  listening,
+  processing,
+  speaking,
+  completed,
+  error
+}

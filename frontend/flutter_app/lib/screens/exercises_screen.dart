@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:eloquence_2_0/presentation/providers/router_provider.dart'; // Import pour rootNavigatorKey
 import '../core/navigation/navigation_state.dart';
 import '../utils/constants.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/layered_scaffold.dart';
+import '../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
 
 class ExercisesScreen extends ConsumerWidget {
   const ExercisesScreen({Key? key}) : super(key: key);
@@ -12,7 +15,7 @@ class ExercisesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return LayeredScaffold(
           carouselState: CarouselVisibilityState.medium,
-          showNavigation: true,
+          showNavigation: false, // Désactiver car déjà gérée par MainScreen
           onCarouselTap: () {
             // Retour à l'accueil pour voir le carrousel en plein
             ref.read(navigationStateProvider).navigateTo('/home');
@@ -66,10 +69,40 @@ class ExercisesScreen extends ConsumerWidget {
                         context,
                         ref,
                         'Confidence Boost Express',
-                        'Gagnez en assurance en 3 minutes',
-                        Icons.trending_up,
-                        EloquenceColors.cyan,
+                        'Gagnez en assurance en 3 minutes avec un sujet qui vous passionne',
+                        Icons.psychology_rounded,
+                        EloquenceColors.violet,
                         'confidence_boost',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
+                        'Roulette des Virelangues Magiques',
+                        'Exercice gamifié avec collection de gemmes cosmétiques et récompenses variables',
+                        Icons.casino,
+                        EloquenceColors.cyan,
+                        'virelangue_roulette',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
+                        'Souffle de Dragon : Équilibre Professionnel-Ludique 🐉',
+                        'Exercice de respiration guidée gamifié avec progression Dragon et achievements',
+                        Icons.air,
+                        const Color(0xFF8B5CF6), // Violet Dragon
+                        'dragon_breath',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
+                        'Générateur d\'Histoires Infinies 📚✨',
+                        'Créez des histoires épiques avec l\'IA et améliorez votre narration',
+                        Icons.auto_stories,
+                        const Color(0xFFFF6B35), // Orange narratif
+                        'story_generator',
                       ),
                       const SizedBox(height: 16),
                       _buildExerciseCard(
@@ -129,14 +162,27 @@ class ExercisesScreen extends ConsumerWidget {
           debugPrint('Exercise ID: $exerciseId');
           
           try {
-            final navigationState = ref.read(navigationStateProvider);
-            debugPrint('NavigationState obtained: $navigationState');
-            
-            navigationState.navigateTo(
-              '/exercise_detail',
-              context,
-              exerciseId,
-            );
+            // Navigation spéciale pour confidence_boost vers l'interface conversationnelle
+            if (exerciseId == 'confidence_boost') {
+              debugPrint('Navigating to confidence boost conversational interface');
+              context.go('/confidence_boost');
+            } else if (exerciseId == 'virelangue_roulette') {
+              // Navigation spéciale pour la roulette des virelangues, en utilisant le navigateur racine
+              debugPrint('Navigating to virelangue roulette using root navigator');
+              context.go('/virelangue_roulette', extra: {});
+            } else if (exerciseId == 'dragon_breath') {
+              // Navigation spéciale pour l'exercice Souffle de Dragon
+              debugPrint('Navigating to dragon breath exercise using root navigator');
+              context.go('/dragon_breath', extra: {});
+            } else if (exerciseId == 'story_generator') {
+              // Navigation spéciale pour le Générateur d'Histoires Infinies
+              debugPrint('Navigating to story generator home screen using root navigator');
+              context.go('/story_generator', extra: {});
+            } else {
+              // Navigation normale vers exercise_detail avec l'ID
+              debugPrint('Navigating to exercise detail with ID: $exerciseId');
+              context.go('/exercise_detail/$exerciseId');
+            }
             debugPrint('Navigation called successfully');
           } catch (e, s) {
             debugPrint('Error during navigation: $e');
