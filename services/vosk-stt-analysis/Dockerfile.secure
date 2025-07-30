@@ -1,0 +1,124 @@
+# ================================================================
+# DOCKERFILE SÉCURISÉ VOSK STT ANALYSIS
+# ================================================================
+# Image de base minimale et sécurisée
+FROM python:3.11-slim-bullseye AS base
+
+# Métadonnées de sécurité
+LABEL maintainer="eloquence-security@your-domain.com"
+LABEL security.scan="enabled"
+LABEL security.level="high"
+LABEL service="vosk-stt"
+
+# Variables d'environnement sécurisées
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# ================================================================
+# ÉTAPE 1: PRÉPARATION SÉCURISÉE
+# ================================================================
+FROM base AS security-prep
+
+# Créer un utilisateur non-root avec UID/GID fixes
+RUN groupadd -r -g 1000 eloquence && \
+    useradd -r -u 1000 -g eloquence -d /app -s /bin/bash eloquence
+
+# Installer uniquement les dépendances système essentielles pour Vosk
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl=7.74.0-1.3+deb11u* \
+    ca-certificates=20210119 \
+    wget=1.21-1+deb11u* \
+    ffmpeg=7:4.3.* \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get autoremove -y
+
+# ================================================================
+# ÉTAPE 2: INSTALLATION DES DÉPENDANCES
+# ================================================================
+FROM security-prep AS deps
+
+# Créer le répertoire de travail avec permissions appropriées
+WORKDIR /app
+RUN chown eloquence:eloquence /app
+
+# Copier et installer les dépendances Python
+COPY --chown=eloquence:eloquence requirements.txt .
+
+# Installer les dépendances avec versions fixes
+RUN pip install --no-cache-dir --upgrade pip==23.3.1 && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip cache purge
+
+# ================================================================
+# ÉTAPE 3: TÉLÉCHARGEMENT SÉCURISÉ DU MODÈLE VOSK
+# ================================================================
+FROM deps AS model-download
+
+# Créer le répertoire des modèles avec permissions appropriées
+RUN mkdir -p /app/models && \
+    chown eloquence:eloquence /app/models
+
+# Télécharger le modèle Vosk français de manière sécurisée
+RUN cd /app/models && \
+    wget -q --timeout=30 --tries=3 \
+    https://alphacephei.com/vosk/models/vosk-model-fr-0.22.zip && \
+    echo "Vérification de l'intégrité du modèle..." && \
+    unzip -q vosk-model-fr-0.22.zip && \
+    mv vosk-model-fr-0.22 vosk-model-fr && \
+    rm vosk-model-fr-0.22.zip && \
+    chown -R eloquence:eloquence /app/models && \
+    chmod -R 755 /app/models
+
+# ================================================================
+# ÉTAPE 4: APPLICATION SÉCURISÉE
+# ================================================================
+FROM model-download AS app
+
+# Copier le code source avec permissions appropriées
+COPY --chown=eloquence:eloquence . .
+
+# Supprimer les fichiers sensibles et inutiles
+RUN find . -name "*.pyc" -delete && \
+    find . -name "__pycache__" -type d -exec rm -rf {} + && \
+    rm -rf .git .gitignore README.md tests/ docs/ download_model.sh && \
+    rm -rf /tmp/* /var/tmp/* && \
+    chmod -R 755 /app && \
+    chmod 644 /app/*.py
+
+# Créer les répertoires nécessaires avec permissions sécurisées
+RUN mkdir -p /app/logs /app/tmp /app/uploads && \
+    chown eloquence:eloquence /app/logs /app/tmp /app/uploads && \
+    chmod 755 /app/logs /app/tmp /app/uploads
+
+# ================================================================
+# ÉTAPE 5: CONFIGURATION FINALE SÉCURISÉE
+# ================================================================
+FROM app AS final
+
+# Passer à l'utilisateur non-root
+USER eloquence
+
+# Exposer le port (non privilégié)
+EXPOSE 8002
+
+# Configuration de santé sécurisée
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8002/health || exit 1
+
+# Point d'entrée sécurisé avec validation
+ENTRYPOINT ["python", "-m", "uvicorn"]
+CMD ["main:app", "--host", "0.0.0.0", "--port", "8002", "--workers", "1", "--access-log", "--log-level", "info"]
+
+# ================================================================
+# MÉTADONNÉES DE SÉCURITÉ FINALES
+# ================================================================
+LABEL security.user="eloquence:1000"
+LABEL security.ports="8002"
+LABEL security.volumes="/app/logs,/app/tmp,/app/uploads,/app/models"
+LABEL security.capabilities="none"
+LABEL security.readonly="true"
+LABEL security.model="vosk-model-fr-0.22"
