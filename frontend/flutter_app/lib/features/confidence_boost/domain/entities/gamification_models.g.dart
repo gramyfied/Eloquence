@@ -195,6 +195,8 @@ class BadgeCategoryAdapter extends TypeAdapter<BadgeCategory> {
         return BadgeCategory.special;
       case 4:
         return BadgeCategory.milestone;
+      case 5:
+        return BadgeCategory.storytelling;
       default:
         return BadgeCategory.performance;
     }
@@ -217,6 +219,9 @@ class BadgeCategoryAdapter extends TypeAdapter<BadgeCategory> {
         break;
       case BadgeCategory.milestone:
         writer.writeByte(4);
+        break;
+      case BadgeCategory.storytelling:
+        writer.writeByte(5);
         break;
     }
   }

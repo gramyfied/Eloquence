@@ -1,13 +1,17 @@
 import os
 import time
-import jwt
 import uuid
+import json
+import jwt
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 import logging
 from datetime import datetime, timedelta
+
+# Import du SDK officiel LiveKit
+from livekit import api
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -31,6 +35,69 @@ LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
 
 # Cache de tokens actifs (en production, utiliser Redis)
 active_tokens: Dict[str, Dict] = {}
+
+def create_manual_livekit_token(
+    api_key: str,
+    secret_key: str,
+    identity: str,
+    room_name: str,
+    grants: Optional[Dict] = None,
+    metadata: Optional[Dict] = None,
+    validity_hours: int = 24
+) -> str:
+    """
+    Génère un token JWT LiveKit manuellement avec format correct pour les métadonnées
+    
+    Cette fonction évite les problèmes du SDK Python en créant directement
+    le JWT avec le format attendu par le serveur LiveKit Go.
+    """
+    try:
+        now = int(time.time())
+        exp = now + (validity_hours * 60 * 60)
+        
+        # Configuration des grants par défaut
+        default_grants = grants or {}
+        
+        # Créer le payload JWT
+        payload = {
+            "exp": exp,
+            "iss": api_key,
+            "sub": identity,
+            "name": identity,
+            "video": {
+                "roomJoin": default_grants.get("roomJoin", True),
+                "room": room_name,
+                "canPublish": default_grants.get("canPublish", True),
+                "canSubscribe": default_grants.get("canSubscribe", True),
+                "canPublishData": default_grants.get("canPublishData", True),
+                "canUpdateOwnMetadata": default_grants.get("canUpdateOwnMetadata", True),
+                "roomRecord": default_grants.get("roomRecord", False),
+                "roomAdmin": default_grants.get("roomAdmin", False),
+                "roomCreate": default_grants.get("roomCreate", False),
+                "roomList": default_grants.get("roomList", False),
+            }
+        }
+        
+        # Ajouter les métadonnées UNIQUEMENT si elles existent et ne sont pas vides
+        # Format correct : string JSON, pas objet JSON
+        if metadata and len(metadata) > 0:
+            payload["metadata"] = json.dumps(metadata)
+        # Si pas de métadonnées, ne pas ajouter le champ du tout
+        
+        # Générer le token JWT
+        token = jwt.encode(payload, secret_key, algorithm="HS256")
+        
+        logger.info(f"✅ Token JWT manuel créé: {len(token)} chars")
+        if metadata:
+            logger.info(f"📦 Métadonnées incluses: {list(metadata.keys())}")
+        else:
+            logger.info("📦 Aucune métadonnée (champ omis)")
+            
+        return token
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur création JWT manuel: {e}")
+        raise Exception(f"Erreur génération token manuel: {e}")
 
 class TokenRequest(BaseModel):
     """Requête de génération de token"""
@@ -69,7 +136,7 @@ def health_check():
 @app.post("/generate-token", response_model=TokenResponse)
 async def generate_token(request: TokenRequest):
     """
-    Génère un token JWT pour LiveKit
+    Génère un token JWT pour LiveKit avec le SDK officiel
     
     Le token contient :
     - Identité du participant
@@ -86,38 +153,74 @@ async def generate_token(request: TokenRequest):
         # Calculer l'expiration
         now = datetime.now()
         expires_at = now + timedelta(hours=request.validity_hours or 24)
-        exp_timestamp = int(expires_at.timestamp())
+        
+        # Configurer les variables d'environnement pour le SDK
+        os.environ["LIVEKIT_API_KEY"] = LIVEKIT_API_KEY
+        os.environ["LIVEKIT_API_SECRET"] = LIVEKIT_API_SECRET
         
         # Permissions par défaut
-        default_grants = {
-            "roomJoin": True,
-            "room": request.room_name,
-            "canPublish": True,
-            "canSubscribe": True,
-            "canPublishData": True,
-            "canUpdateOwnMetadata": True,
-        }
+        default_grants = request.grants or {}
         
-        # Fusionner avec les permissions personnalisées
-        video_grants = {**default_grants, **(request.grants or {})}
-        
-        # Créer les claims JWT
-        claims = {
-            "exp": exp_timestamp,
-            "iss": LIVEKIT_API_KEY,
-            "sub": participant_identity,
-            "name": request.participant_name,
-            "video": video_grants,
-            "metadata": request.metadata or {},
-        }
-        
-        # Encoder le token
-        token = jwt.encode(
-            claims,
-            LIVEKIT_API_SECRET,
-            algorithm="HS256",
-            headers={"typ": "JWT", "alg": "HS256"}
+        # Créer les grants avec le SDK LiveKit
+        video_grants = api.VideoGrants(
+            room_join=default_grants.get("roomJoin", True),
+            room=request.room_name,
+            can_publish=default_grants.get("canPublish", True),
+            can_subscribe=default_grants.get("canSubscribe", True),
+            can_publish_data=default_grants.get("canPublishData", True),
+            can_update_own_metadata=default_grants.get("canUpdateOwnMetadata", True),
+            room_record=default_grants.get("roomRecord", False),
+            room_admin=default_grants.get("roomAdmin", False),
+            room_create=default_grants.get("roomCreate", False),
+            room_list=default_grants.get("roomList", False),
         )
+        
+        # Créer le token avec le SDK officiel
+        access_token = api.AccessToken() \
+            .with_identity(participant_identity) \
+            .with_name(request.participant_name) \
+            .with_grants(video_grants)
+        
+        # Ajouter les métadonnées SEULEMENT si présentes et non vides
+        # Note: LiveKit Go server attend une string, pas un objet JSON vide
+        if request.metadata and len(request.metadata) > 0:
+            # Convertir les métadonnées en string JSON pour compatibilité
+            metadata_str = json.dumps(request.metadata)
+            access_token = access_token.with_metadata(metadata_str)
+        # Si pas de métadonnées, on ne fait RIEN - pas d'appel à with_metadata()
+        
+        # Configurer la durée de validité
+        validity_seconds = (request.validity_hours or 24) * 3600
+        access_token = access_token.with_ttl(validity_seconds)
+        
+        # 🔧 CORRECTION FINALE: Utiliser UNIQUEMENT la génération manuelle
+        # pour garantir le format string des métadonnées
+        logger.info("🔧 Utilisation génération JWT manuelle pour métadonnées string")
+        token = create_manual_livekit_token(
+            api_key=LIVEKIT_API_KEY,
+            secret_key=LIVEKIT_API_SECRET,
+            identity=participant_identity,
+            room_name=request.room_name,
+            grants=request.grants,
+            metadata=request.metadata,
+            validity_hours=request.validity_hours or 24
+        )
+        
+        # Vérification supplémentaire du format des métadonnées dans le JWT
+        import jwt as jwt_lib
+        try:
+            decoded = jwt_lib.decode(token, options={"verify_signature": False})
+            metadata_in_jwt = decoded.get("metadata")
+            if metadata_in_jwt:
+                logger.info(f"✅ JWT vérifié - métadonnées type: {type(metadata_in_jwt)}")
+                if isinstance(metadata_in_jwt, str):
+                    logger.info("✅ Métadonnées JWT au format string correct")
+                else:
+                    logger.error("❌ Métadonnées JWT encore en format objet!")
+            else:
+                logger.info("✅ JWT sans métadonnées (correct)")
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible de vérifier JWT: {e}")
         
         # Stocker dans le cache
         active_tokens[participant_identity] = {
@@ -128,7 +231,7 @@ async def generate_token(request: TokenRequest):
             "metadata": request.metadata
         }
         
-        logger.info(f"Token généré avec succès pour {participant_identity}")
+        logger.info(f"✅ Token LiveKit MANUEL généré avec succès pour {participant_identity}")
         
         return TokenResponse(
             token=token,
@@ -139,7 +242,7 @@ async def generate_token(request: TokenRequest):
         )
         
     except Exception as e:
-        logger.error(f"Erreur génération token: {str(e)}")
+        logger.error(f"❌ Erreur génération token SDK: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur génération token: {str(e)}")
 
 @app.post("/refresh-token")
@@ -147,27 +250,36 @@ async def refresh_token(old_token: str):
     """
     Renouvelle un token existant
     
-    Décode le token expiré et génère un nouveau avec les mêmes permissions
+    Note: Avec le SDK LiveKit, il est recommandé de simplement générer
+    un nouveau token plutôt que de décoder l'ancien
     """
     try:
-        # Décoder sans vérifier l'expiration
-        decoded = jwt.decode(old_token, LIVEKIT_API_SECRET, algorithms=["HS256"], options={"verify_exp": False})
+        # Chercher le token dans le cache pour récupérer les informations
+        participant_identity = None
+        token_info = None
+        
+        for identity, info in active_tokens.items():
+            if info["token"] == old_token:
+                participant_identity = identity
+                token_info = info
+                break
+        
+        if not token_info:
+            raise HTTPException(status_code=404, detail="Token non trouvé dans le cache")
         
         # Créer une nouvelle requête avec les mêmes informations
         request = TokenRequest(
-            room_name=decoded["video"]["room"],
-            participant_name=decoded["name"],
-            participant_identity=decoded["sub"],
-            grants=decoded["video"],
-            metadata=decoded.get("metadata", {})
+            room_name=token_info["room_name"],
+            participant_name=participant_identity.split("_")[0],  # Extraire le nom
+            participant_identity=participant_identity,
+            metadata=token_info.get("metadata", {})
         )
         
         # Générer un nouveau token
         return await generate_token(request)
         
-    except jwt.InvalidTokenError as e:
-        logger.error(f"Token invalide: {str(e)}")
-        raise HTTPException(status_code=401, detail="Token invalide")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Erreur renouvellement token: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur renouvellement: {str(e)}")

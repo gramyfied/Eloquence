@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
-import 'package:eloquence_2_0/features/confidence_boost/data/repositories/gamification_repository.dart';
 import 'package:eloquence_2_0/features/confidence_boost/data/services/mistral_api_service.dart';
 import 'package:eloquence_2_0/features/confidence_boost/presentation/providers/mistral_api_service_provider.dart';
 

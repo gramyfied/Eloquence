@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/navigation/navigation_state.dart';
+import '../../../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,18 @@ class HomeScreen extends StatelessWidget {
         'icon': Icons.star,
         'color': Colors.amber,
         'onTap': () => context.read<NavigationState>().navigateTo('/confidence-boost', context, 'user123'), // Utilisateur par défaut pour la démo
+      },
+      {
+        'title': 'Roulette des Virelangues',
+        'description': 'Exercice gamifié avec collection de gemmes magiques.',
+        'icon': Icons.casino,
+        'color': Colors.deepPurple,
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ConfidenceBoostEntry.virelangueRoulette(),
+          ),
+        ),
       },
       {
         'title': 'Exercice 1',

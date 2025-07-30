@@ -17,6 +17,10 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import vosk
 import librosa
@@ -24,6 +28,7 @@ import soundfile as sf
 from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
+from dataclasses import dataclass # Ajout de cette ligne
 
 # Configuration des logs avec encodage UTF-8
 log_dir = Path('/app/logs')
@@ -139,18 +144,43 @@ class ProsodyAnalysis(BaseModel):
     pause_ratio: float
     voice_quality: float
 
-class AnalysisResult(BaseModel):
+from dataclasses import dataclass
+from typing import Dict, Any
+
+@dataclass
+class AnalysisResult:
     transcription: TranscriptionResult
     prosody: ProsodyAnalysis
     confidence_score: float
     fluency_score: float
     clarity_score: float
     energy_score: float
-    overall_score: float
     processing_time: float
     strengths: List[str]
     improvements: List[str]
     feedback: str
+    
+    # overall_score sera calculé automatiquement
+    overall_score: float = 0.0 # Initialisation pour éviter les erreurs de dataclass
+    
+    def __post_init__(self):
+        # Calculer overall_score automatiquement
+        # Note: 'scores' n'existe plus directement dans AnalysisResult,
+        # mais la logique d'origine utilisait 'confidence_score', 'fluency_score', etc.
+        # Je vais adapter la logique de calcul ici en utilisant ces champs.
+        
+        # Pour simuler le comportement original (30% conf, 25% fluidité, 25% clarté, 20% énergie)
+        # Assurez-vous que ces champs existent lors de l'instanciation de AnalysisResult
+        calculated_overall_score = (
+            self.confidence_score * 0.3 +
+            self.fluency_score * 0.25 +
+            self.clarity_score * 0.25 +
+            self.energy_score * 0.2
+        )
+        self.overall_score = calculated_overall_score * 100 # Multiplier par 100 pour être en pourcentage
+
+# Re-importer BaseModel si nécessaire après la conversion de AnalysisResult en dataclass
+from pydantic import BaseModel # Assurez-vous que BaseModel est toujours importé
 
 @app.get("/health")
 async def health_check():
@@ -164,23 +194,185 @@ async def health_check():
     }
 
 def convert_audio_to_wav(audio_data: bytes, original_filename: str) -> tuple[str, float]:
-    """Convertit l'audio en WAV 16kHz mono pour VOSK"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(original_filename)[1]) as tmp_input:
+    """Convertit l'audio en WAV 16kHz mono pour VOSK avec gestion Flutter optimisée"""
+    logger.info(f"🎵 Conversion audio: {original_filename} ({len(audio_data)} bytes)")
+    
+    # Détecter l'extension du fichier
+    file_ext = os.path.splitext(original_filename)[1].lower()
+    logger.info(f"📄 Extension détectée: {file_ext}")
+    
+    # Vérifier si c'est déjà du WAV Flutter
+    if audio_data.startswith(b'RIFF') and b'WAVE' in audio_data[:50]:
+        logger.info("🎯 Audio WAV détecté depuis Flutter")
+        file_ext = '.wav'
+    
+    # Créer le fichier temporaire d'entrée
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext or '.audio') as tmp_input:
         tmp_input.write(audio_data)
         tmp_input_path = tmp_input.name
     
     try:
-        audio, sr = librosa.load(tmp_input_path, sr=None, mono=True)
+        # Tentative 1: Si c'est du WAV, vérifier s'il est déjà au bon format
+        if file_ext == '.wav' or audio_data.startswith(b'RIFF'):
+            try:
+                logger.info("🔄 Tentative de lecture directe WAV...")
+                with wave.open(tmp_input_path, 'rb') as wav_file:
+                    sample_rate = wav_file.getframerate()
+                    channels = wav_file.getnchannels()
+                    sample_width = wav_file.getsampwidth()
+                    n_frames = wav_file.getnframes()
+                    duration = n_frames / sample_rate
+                    
+                    logger.info(f"📊 WAV info: {sample_rate}Hz, {channels}ch, {sample_width}bytes, {duration:.2f}s")
+                    
+                    # Si c'est déjà 16kHz mono 16-bit, copier vers un nouveau fichier temporaire
+                    if sample_rate == SAMPLE_RATE and channels == 1 and sample_width == 2:
+                        logger.info("✅ WAV déjà au bon format, création d'une copie sécurisée")
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_output:
+                            # Copier le contenu vers le nouveau fichier
+                            with open(tmp_input_path, 'rb') as src:
+                                tmp_output.write(src.read())
+                            logger.info(f"🔒 Copie sécurisée créée: {tmp_output.name}")
+                            return tmp_output.name, duration
+                        
+            except Exception as wav_error:
+                logger.warning(f"⚠️ Lecture WAV directe échouée: {wav_error}")
         
-        if sr != SAMPLE_RATE:
-            audio = librosa.resample(audio, orig_sr=sr, target_sr=SAMPLE_RATE)
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_output:
-            sf.write(tmp_output.name, audio, SAMPLE_RATE, subtype='PCM_16')
-            return tmp_output.name, len(audio) / SAMPLE_RATE
+        # Tentative 2: librosa avec paramètres optimisés
+        try:
+            logger.info("🔄 Conversion avec librosa...")
+            # Forcer le chargement avec différents backends
+            try:
+                audio, sr = librosa.load(tmp_input_path, sr=None, mono=True)
+            except:
+                # Fallback avec soundfile backend
+                import soundfile as sf_read
+                audio, sr = sf_read.read(tmp_input_path)
+                if len(audio.shape) > 1:
+                    audio = np.mean(audio, axis=1)  # Convertir en mono
+                    
+            logger.info(f"✅ Librosa OK: sr={sr}Hz, durée={len(audio)/sr:.2f}s")
+            
+            # Resampling si nécessaire
+            if sr != SAMPLE_RATE:
+                logger.info(f"🔄 Resampling: {sr}Hz → {SAMPLE_RATE}Hz")
+                audio = librosa.resample(audio, orig_sr=sr, target_sr=SAMPLE_RATE)
+            
+            # Normaliser l'audio
+            if len(audio) > 0:
+                max_val = np.max(np.abs(audio))
+                if max_val > 0:
+                    audio = audio / max_val * 0.8  # Normaliser à 80% pour éviter clipping
+            
+            # Sauvegarder en WAV
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_output:
+                sf.write(tmp_output.name, audio, SAMPLE_RATE, subtype='PCM_16')
+                duration = len(audio) / SAMPLE_RATE
+                logger.info(f"✅ Conversion librosa réussie: {duration:.2f}s")
+                return tmp_output.name, duration
+                
+        except Exception as librosa_error:
+            logger.warning(f"⚠️ Librosa échoué: {librosa_error}")
+            
+            # Tentative 3: ffmpeg avec paramètres robustes
+            logger.info("🔄 Conversion avec ffmpeg robuste...")
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_output:
+                try:
+                    # Commande ffmpeg robuste pour Flutter audio
+                    cmd = [
+                        'ffmpeg', '-y',
+                        '-loglevel', 'error',  # Réduire les logs FFmpeg
+                        '-i', tmp_input_path,
+                        '-ar', str(SAMPLE_RATE),
+                        '-ac', '1',
+                        '-acodec', 'pcm_s16le',
+                        '-f', 'wav',
+                        '-avoid_negative_ts', 'make_zero',  # Éviter les problèmes de timestamp
+                        tmp_output.name
+                    ]
+                    
+                    result = subprocess.run(cmd,
+                                          capture_output=True,
+                                          text=True,
+                                          timeout=30)
+                    
+                    if result.returncode != 0:
+                        logger.error(f"❌ ffmpeg stderr: {result.stderr}")
+                        raise RuntimeError(f"ffmpeg failed with code {result.returncode}: {result.stderr}")
+                    
+                    # Vérifier la durée
+                    try:
+                        probe_cmd = ['ffprobe', '-v', 'quiet', '-show_entries',
+                                   'format=duration', '-of', 'csv=p=0', tmp_output.name]
+                        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=10)
+                        duration = float(probe_result.stdout.strip()) if probe_result.returncode == 0 else 1.0
+                    except:
+                        duration = 1.0  # Fallback
+                        
+                    logger.info(f"✅ Conversion ffmpeg réussie: {duration:.2f}s")
+                    return tmp_output.name, duration
+                    
+                except subprocess.TimeoutExpired:
+                    logger.error("❌ ffmpeg timeout")
+                    if os.path.exists(tmp_output.name):
+                        os.unlink(tmp_output.name)
+                    raise RuntimeError("ffmpeg timeout after 30s")
+                except Exception as ffmpeg_error:
+                    logger.error(f"❌ ffmpeg error: {ffmpeg_error}")
+                    if os.path.exists(tmp_output.name):
+                        os.unlink(tmp_output.name)
+                    # Ne pas lever l'exception, essayer la méthode suivante
+            
+            # Tentative 4: Conversion raw améliorée
+            logger.info("🔄 Tentative conversion raw améliorée...")
+            try:
+                # Essayer différents formats raw
+                possible_formats = [
+                    (np.int16, 16000),  # PCM 16-bit à 16kHz
+                    (np.int16, 44100),  # PCM 16-bit à 44.1kHz
+                    (np.float32, 16000),  # Float32 à 16kHz
+                    (np.uint8, 8000),   # 8-bit à 8kHz
+                ]
+                
+                for dtype, assumed_sr in possible_formats:
+                    try:
+                        if dtype == np.float32:
+                            audio_raw = np.frombuffer(audio_data, dtype=dtype)
+                        elif dtype == np.int16:
+                            audio_raw = np.frombuffer(audio_data, dtype=dtype).astype(np.float32) / 32768.0
+                        else:  # uint8
+                            audio_raw = (np.frombuffer(audio_data, dtype=dtype).astype(np.float32) - 128) / 128.0
+                        
+                        duration = len(audio_raw) / assumed_sr
+                        
+                        # Vérification de sanité
+                        if 0.1 <= duration <= 30.0:  # Durée raisonnable
+                            # Resampler si nécessaire
+                            if assumed_sr != SAMPLE_RATE:
+                                audio_resampled = librosa.resample(audio_raw, orig_sr=assumed_sr, target_sr=SAMPLE_RATE)
+                                duration = len(audio_resampled) / SAMPLE_RATE
+                            else:
+                                audio_resampled = audio_raw
+                            
+                            # Sauvegarder
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_output:
+                                sf.write(tmp_output.name, audio_resampled, SAMPLE_RATE, subtype='PCM_16')
+                                logger.info(f"✅ Conversion raw réussie ({dtype.__name__}, {assumed_sr}Hz): {duration:.2f}s")
+                                return tmp_output.name, duration
+                                
+                    except Exception as format_error:
+                        logger.debug(f"Format {dtype.__name__}@{assumed_sr}Hz échoué: {format_error}")
+                        continue
+                
+                raise RuntimeError("Aucun format raw compatible trouvé")
+                
+            except Exception as raw_error:
+                logger.error(f"❌ Conversion raw échouée: {raw_error}")
+                raise RuntimeError(f"Conversion audio impossible: {raw_error}")
             
     finally:
-        os.unlink(tmp_input_path)
+        if os.path.exists(tmp_input_path):
+            os.unlink(tmp_input_path)
 
 def transcribe_with_vosk(wav_path: str) -> Dict[str, Any]:
     """Transcription avec VOSK"""
@@ -381,9 +573,13 @@ async def analyze_speech(
                     duration=duration
                 ),
                 prosody=ProsodyAnalysis(**prosody_result),
-                **scores,
-                overall_score=scores['overall_score'] * 100,
-                processing_time=processing_time,
+                # Les scores sont déjà directement passés/calculés en interne.
+                # overall_score est calculé dans __post_init__ de AnalysisResult
+                confidence_score=scores['confidence_score'],
+                fluency_score=scores['fluency_score'],
+                clarity_score=scores['clarity_score'],
+                energy_score=scores['energy_score'],
+                processing_time=processing_time, # processing_time est toujours un champ direct
                 strengths=strengths,
                 improvements=improvements,
                 feedback=feedback
@@ -430,7 +626,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=2700, # Port standard pour ce service
+        port=8002, # Port standard pour ce service
         reload=False,
         log_level="info"
     )

@@ -93,7 +93,7 @@ RUN sed -i 's/\r$//' start-agent-v1.sh && \
     chmod +x wait-for-it.sh
 
 # Exposer le port pour l'agent
-EXPOSE 8080
+EXPOSE 8000
 
 # Health check - Vérifier que le processus agent fonctionne
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

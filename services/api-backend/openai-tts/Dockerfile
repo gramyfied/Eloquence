@@ -57,7 +57,7 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Exposition du port
-EXPOSE 5002
+EXPOSE 8000
 
 # Commande de démarrage
 CMD ["uvicorn", "tts_service_openai:app", "--host", "0.0.0.0", "--port", "5002"]

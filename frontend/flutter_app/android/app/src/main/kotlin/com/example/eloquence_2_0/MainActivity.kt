@@ -27,17 +27,21 @@ import android.media.AudioAttributes
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL_NATIVE_CHECK = "com.example.eloquence_2_0/native_check"
-    private val CHANNEL_AUDIO_DIAGNOSTIC = "eloquence/audio" 
+    private val CHANNEL_AUDIO_DIAGNOSTIC = "eloquence/audio"
+    private val CHANNEL_AUDIO_NATIVE = "eloquence.audio/native"
+    private val CHANNEL_EMERGENCY_AUDIO = "com.eloquence.emergency_audio"
 
     private lateinit var audioManager: AudioManager
-    private lateinit var notificationManager: NotificationManager 
+    private lateinit var notificationManager: NotificationManager
     private var headsetPlugReceiver: BroadcastReceiver? = null
+    private lateinit var emergencyAudioManager: EmergencyAudioManager
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager 
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        emergencyAudioManager = EmergencyAudioManager(this)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NATIVE_CHECK).setMethodCallHandler { call, result ->
             if (call.method == "checkNativeLibraries") {
@@ -91,6 +95,69 @@ class MainActivity: FlutterActivity() {
                         result.success(null)
                     }
                     else -> result.notImplemented()
+                }
+            }
+        }
+
+        // Channel pour les méthodes audio spécifiques à Eloquence
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_AUDIO_NATIVE).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "configureAudioForSpeech" -> {
+                    configureAudioForSpeech()
+                    result.success(true)
+                }
+                "setAudioToSpeaker" -> {
+                    setAudioToSpeaker()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // 🚨 CANAL EMERGENCY AUDIO - CONTOURNEMENT BLOCAGES ANDROID
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_EMERGENCY_AUDIO).setMethodCallHandler { call, result ->
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    when (call.method) {
+                        "forcePermission" -> {
+                            val args = call.arguments as? Map<String, Any?>
+                            val permission = args?.get("permission") as? String ?: ""
+                            val forceResult = emergencyAudioManager.forcePermission(permission)
+                            result.success(forceResult)
+                        }
+                        "configurePlatform" -> {
+                            val args = call.arguments as? Map<String, Any?> ?: emptyMap()
+                            // Convertir Map<String, Any?> vers Map<String, Any> en filtrant les valeurs null
+                            val safeArgs = args.filterValues { it != null }.mapValues { it.value!! }
+                            val configResult = emergencyAudioManager.configurePlatform(safeArgs)
+                            result.success(configResult)
+                        }
+                        "testEmergencyAccess" -> {
+                            val args = call.arguments as? Map<String, Any?>
+                            val duration = args?.get("duration") as? Int ?: 1000
+                            val testResult = emergencyAudioManager.testEmergencyAccess(duration)
+                            result.success(testResult)
+                        }
+                        "startRecording" -> {
+                            val args = call.arguments as? Map<String, Any?>
+                            val outputPath = args?.get("outputPath") as? String ?: ""
+                            val maxDuration = args?.get("maxDuration") as? Int ?: 30000
+                            val startResult = emergencyAudioManager.startRecording(outputPath, maxDuration)
+                            result.success(startResult)
+                        }
+                        "stopRecording" -> {
+                            val stopResult = emergencyAudioManager.stopRecording()
+                            result.success(stopResult)
+                        }
+                        "getDiagnosticInfo" -> {
+                            val diagnosticInfo = emergencyAudioManager.getDiagnosticInfo()
+                            result.success(diagnosticInfo)
+                        }
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "🚨 Erreur emergency audio: ${e.message}", e)
+                    result.error("EMERGENCY_ERROR", e.message, null)
                 }
             }
         }
@@ -401,6 +468,66 @@ class MainActivity: FlutterActivity() {
     private fun getAudioConfiguration(): Map<String, Any> {
         val audioConfig = mutableMapOf<String, Any>()
         return audioConfig
+    }
+
+    // Méthodes spécifiques pour Eloquence audio
+    private fun configureAudioForSpeech() {
+        try {
+            // Configuration pour la communication vocale
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            audioManager.isSpeakerphoneOn = true
+            
+            // Définir le volume à un niveau optimal
+            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val optimalVolume = (maxVolume * 0.8).toInt()
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, optimalVolume, 0)
+            
+            // Demander le focus audio pour la communication
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    .setWillPauseWhenDucked(false)
+                    .build()
+                audioManager.requestAudioFocus(focusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE
+                )
+            }
+            
+            Log.d("MainActivity", "Audio configuré pour la parole - Mode: ${audioManager.mode}, Speaker: ${audioManager.isSpeakerphoneOn}")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Erreur configuration audio pour la parole", e)
+        }
+    }
+    
+    private fun setAudioToSpeaker() {
+        try {
+            audioManager.isSpeakerphoneOn = true
+            
+            // Forcer le routage vers le haut-parleur principal
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                val speaker = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                if (speaker != null) {
+                    // Note: setPreferredDevice n'est pas disponible directement sur AudioManager
+                    // mais on peut utiliser setSpeakerphoneOn qui a le même effet
+                    audioManager.isSpeakerphoneOn = true
+                }
+            }
+            
+            Log.d("MainActivity", "Audio routé vers le haut-parleur - isSpeakerphoneOn: ${audioManager.isSpeakerphoneOn}")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Erreur routage audio vers haut-parleur", e)
+        }
     }
     //endregion
 

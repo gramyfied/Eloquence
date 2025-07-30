@@ -1,147 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/entities/confidence_models.dart';
-import '../../domain/entities/confidence_scenario.dart';
 import '../providers/confidence_boost_provider.dart';
-import 'scenario_selection_screen.dart';
-import 'text_support_selection_screen.dart';
-import 'recording_screen.dart';
-import 'results_screen.dart';
+import 'confidence_boost_rest_screen.dart';
 
-class ConfidenceBoostMainScreen extends ConsumerStatefulWidget {
+class ConfidenceBoostMainScreen extends ConsumerWidget {
   const ConfidenceBoostMainScreen({Key? key}) : super(key: key);
 
   @override
-  ConfidenceBoostMainScreenState createState() =>
-      ConfidenceBoostMainScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scenariosAsync = ref.watch(confidenceScenariosProvider);
+    final gamificationInit = ref.watch(gamificationInitializationProvider);
 
-class ConfidenceBoostMainScreenState extends ConsumerState<ConfidenceBoostMainScreen> {
-  late PageController _pageController;
-  ConfidenceScenario? _selectedScenario;
-  TextSupport? _selectedTextSupport;
-  ConfidenceAnalysis? _analysisResult;
-  Duration _recordingDuration = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  void _onScenarioSelected(ConfidenceScenario scenario) {
-    setState(() {
-      _selectedScenario = scenario;
-    });
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _onSupportSelected(TextSupport support) {
-    setState(() {
-      _selectedTextSupport = support;
-    });
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _onRecordingComplete(Duration duration) async {
-    if (!mounted) return;
-    
-    setState(() {
-      _recordingDuration = duration;
-    });
-    
-    if (_selectedScenario != null && _selectedTextSupport != null) {
-      
-      await ref.read(confidenceBoostProvider.notifier).analyzePerformance(
-            scenario: _selectedScenario!,
-            textSupport: _selectedTextSupport!,
-            recordingDuration: _recordingDuration,
-          );
-      
-      if (!mounted) {
-        return;
-      }
-      
-      final analysisResult = ref.read(confidenceBoostProvider).lastAnalysis;
-      
-      if (analysisResult != null) {
-        setState(() {
-          _analysisResult = analysisResult;
-        });
-        
-        if (mounted) {
-          // ✅ CORRECTION: Attendre le rebuild avant navigation
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              // Navigation maintenant que la ResultsScreen existe
-              _pageController.nextPage(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeInOut,
-              );
-              
-              // Vérification finale
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                }
-              });
-            }
-          });
-        }
-      }
-    }
-  }
-
-  void _onRestart() {
-    if (!mounted) return;
-    
-    setState(() {
-      _selectedScenario = null;
-      _selectedTextSupport = null;
-      _analysisResult = null;
-      _recordingDuration = Duration.zero;
-    });
-    _pageController.jumpToPage(0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          ScenarioSelectionScreen(onScenarioSelected: _onScenarioSelected),
-          if (_selectedScenario != null)
-            TextSupportSelectionScreen(
-              scenario: _selectedScenario!,
-              onSupportSelected: _onSupportSelected,
-            ),
-          if (_selectedScenario != null && _selectedTextSupport != null)
-            RecordingScreen(
-              scenario: _selectedScenario!,
-              textSupport: _selectedTextSupport!,
-              sessionId: 'session-id-placeholder', // TODO: Remplacer par un vrai ID de session
-              onRecordingComplete: _onRecordingComplete,
-            ),
-          if (_analysisResult != null)
-            ResultsScreen(
-              analysis: _analysisResult!,
-              onContinue: _onRestart,
-            ),
-        ],
+      appBar: AppBar(
+        title: const Text('Boost Confidence - Scénarios'),
+      ),
+      body: gamificationInit.when(
+        data: (isInitialized) {
+          if (!isInitialized) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning, color: Colors.orange, size: 48),
+                  SizedBox(height: 16),
+                  Text('Système de gamification indisponible'),
+                  Text('L\'application fonctionne en mode dégradé'),
+                ],
+              ),
+            );
+          }
+          
+          return scenariosAsync.when(
+            data: (scenarios) {
+              return ListView.builder(
+                itemCount: scenarios.length,
+                itemBuilder: (context, index) {
+                  final scenario = scenarios[index];
+                  return ListTile(
+                    title: Text(scenario.title),
+                    subtitle: Text(scenario.description),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => ConfidenceBoostRestScreen(
+                            scenario: scenario,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Erreur: $err')),
+          );
+        },
+        loading: () => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Initialisation du système de gamification...'),
+            ],
+          ),
+        ),
+        error: (err, stack) => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error, color: Colors.red, size: 48),
+              SizedBox(height: 16),
+              Text('Erreur d\'initialisation'),
+              Text('Redémarrez l\'application'),
+            ],
+          ),
+        ),
       ),
     );
   }

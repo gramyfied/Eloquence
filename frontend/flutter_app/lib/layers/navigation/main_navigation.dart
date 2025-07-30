@@ -48,11 +48,16 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   Widget build(BuildContext context) {
     final currentRoute = ref.watch(navigationStateProvider).currentRoute;
 
+    // Masquer la barre de navigation si sur l'écran virelangue_roulette
+    if (currentRoute == '/virelangue_roulette') {
+      return const SizedBox.shrink(); // Widget vide pour masquer
+    }
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Container(
-          margin: const EdgeInsets.all(20),
+          margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
             color: EloquenceColors.navy.withAlpha((255 * 0.5).round()),
