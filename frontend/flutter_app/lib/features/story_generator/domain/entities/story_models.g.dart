@@ -311,6 +311,120 @@ class StoryUserStatsAdapter extends TypeAdapter<StoryUserStats> {
           typeId == other.typeId;
 }
 
+class AudioMetricsAdapter extends TypeAdapter<AudioMetrics> {
+  @override
+  final int typeId = 59;
+
+  @override
+  AudioMetrics read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return AudioMetrics(
+      articulationScore: fields[0] as double,
+      fluencyScore: fields[1] as double,
+      emotionScore: fields[2] as double,
+      volumeVariation: fields[3] as double,
+      speakingRate: fields[4] as double,
+      fillerWords: (fields[5] as List).cast<String>(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, AudioMetrics obj) {
+    writer
+      ..writeByte(6)
+      ..writeByte(0)
+      ..write(obj.articulationScore)
+      ..writeByte(1)
+      ..write(obj.fluencyScore)
+      ..writeByte(2)
+      ..write(obj.emotionScore)
+      ..writeByte(3)
+      ..write(obj.volumeVariation)
+      ..writeByte(4)
+      ..write(obj.speakingRate)
+      ..writeByte(5)
+      ..write(obj.fillerWords);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AudioMetricsAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class StoryNarrativeAnalysisAdapter
+    extends TypeAdapter<StoryNarrativeAnalysis> {
+  @override
+  final int typeId = 60;
+
+  @override
+  StoryNarrativeAnalysis read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return StoryNarrativeAnalysis(
+      storyId: fields[0] as String,
+      overallScore: fields[1] as double,
+      creativityScore: fields[2] as double,
+      relevanceScore: fields[3] as double,
+      structureScore: fields[4] as double,
+      positiveFeedback: fields[5] as String,
+      improvementSuggestions: fields[6] as String,
+      audioMetrics: fields[7] as AudioMetrics,
+      transcription: fields[8] as String,
+      titleSuggestion: fields[9] as String,
+      detectedKeywords: (fields[10] as List).cast<String>(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, StoryNarrativeAnalysis obj) {
+    writer
+      ..writeByte(11)
+      ..writeByte(0)
+      ..write(obj.storyId)
+      ..writeByte(1)
+      ..write(obj.overallScore)
+      ..writeByte(2)
+      ..write(obj.creativityScore)
+      ..writeByte(3)
+      ..write(obj.relevanceScore)
+      ..writeByte(4)
+      ..write(obj.structureScore)
+      ..writeByte(5)
+      ..write(obj.positiveFeedback)
+      ..writeByte(6)
+      ..write(obj.improvementSuggestions)
+      ..writeByte(7)
+      ..write(obj.audioMetrics)
+      ..writeByte(8)
+      ..write(obj.transcription)
+      ..writeByte(9)
+      ..write(obj.titleSuggestion)
+      ..writeByte(10)
+      ..write(obj.detectedKeywords);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StoryNarrativeAnalysisAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class StoryElementTypeAdapter extends TypeAdapter<StoryElementType> {
   @override
   final int typeId = 50;

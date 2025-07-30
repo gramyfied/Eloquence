@@ -1,6 +1,12 @@
 import 'dart:math' as math;
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 import '../../domain/entities/story_models.dart';
 import '../../../confidence_boost/domain/entities/virelangue_models.dart';
+import '../../../confidence_boost/data/services/mistral_api_service.dart';
+import 'story_prompt_templates_service.dart';
+import '../../../../core/utils/logger_service.dart';
 
 /// Service de génération d'éléments narratifs pour les histoires
 class StoryGenerationService {
@@ -9,6 +15,8 @@ class StoryGenerationService {
   StoryGenerationService._internal();
 
   final math.Random _random = math.Random();
+  final IMistralApiService _mistralService = MistralApiService();
+  final String _tag = 'StoryGenerationService';
 
   // Base de données des personnages
   static const List<Map<String, dynamic>> _characters = [
@@ -396,20 +404,55 @@ class StoryGenerationService {
     return source.map((data) => _createElement(type, data)).toList();
   }
 
-  /// Génère des éléments personnalisés via IA (placeholder)
+  /// Génère des éléments personnalisés via notre backend API
   Future<List<StoryElement>> generateCustomElements({
     StoryGenre? theme,
     List<String>? keywords,
     VirelangueDifficulty difficulty = VirelangueDifficulty.medium,
   }) async {
-    // TODO: Intégration avec Mistral AI pour génération personnalisée
-    // Pour l'instant, retourne des éléments aléatoirement
-    await Future.delayed(const Duration(milliseconds: 800)); // Simule l'appel API
-    
-    if (theme != null) {
-      return generateThemedElements(theme);
-    } else {
-      return generateElementsByDifficulty(difficulty);
+    try {
+      logger.i(_tag, 'Génération éléments personnalisés via backend API');
+      logger.i(_tag, 'Paramètres: genre=$theme, difficulté=$difficulty, mots-clés=$keywords');
+      
+      // Préparer les données de la requête
+      final requestData = {
+        'genre': theme?.name,
+        'difficulty': difficulty.name,
+        'keywords': keywords ?? [],
+        'count': 3,
+      };
+      
+      // Appel à notre endpoint backend
+      final response = await http.post(
+        Uri.parse('http://localhost:8000/api/story/generate-elements'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestData),
+      );
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+        
+        // Parser la réponse de notre backend
+        final elements = await _parseElementsFromBackendResponse(responseData);
+        
+        if (elements.isNotEmpty) {
+          logger.i(_tag, 'Éléments générés avec succès: ${elements.length} éléments');
+          return elements;
+        } else {
+          logger.w(_tag, 'Aucun élément généré, fallback vers éléments par défaut');
+          return _generateFallbackElements(theme, difficulty);
+        }
+      } else {
+        logger.e(_tag, 'Erreur HTTP ${response.statusCode}: ${response.body}');
+        return _generateFallbackElements(theme, difficulty);
+      }
+      
+    } catch (e) {
+      logger.e(_tag, 'Erreur génération éléments personnalisés: $e');
+      // En cas d'erreur, retour vers la génération par défaut
+      return _generateFallbackElements(theme, difficulty);
     }
   }
 
@@ -509,5 +552,213 @@ class StoryGenerationService {
       }
     }
     return distribution;
+  }
+
+  /// Parse la réponse JSON de notre backend pour extraire les éléments narratifs
+  Future<List<StoryElement>> _parseElementsFromBackendResponse(Map<String, dynamic> response) async {
+    try {
+      final elements = <StoryElement>[];
+      
+      // Notre backend retourne soit 'elements' soit 'generated_elements'
+      final elementsData = (response['elements'] ?? response['generated_elements']) as List<dynamic>?;
+      
+      if (elementsData == null || elementsData.isEmpty) {
+        logger.w(_tag, 'Aucun élément trouvé dans la réponse backend');
+        return [];
+      }
+      
+      for (final elementData in elementsData) {
+        try {
+          final elementMap = elementData as Map<String, dynamic>;
+          final element = _createStoryElementFromBackendJson(elementMap);
+          if (element != null) {
+            elements.add(element);
+          }
+        } catch (e) {
+          logger.w(_tag, 'Erreur parsing élément individuel: $e');
+          continue; // Continue avec les autres éléments
+        }
+      }
+      
+      logger.i(_tag, 'Éléments parsés avec succès: ${elements.length}/${elementsData.length}');
+      return elements;
+      
+    } catch (e) {
+      logger.e(_tag, 'Erreur parsing réponse backend: $e');
+      return [];
+    }
+  }
+
+  /// Parse la réponse JSON de Mistral pour extraire les éléments narratifs (legacy)
+  Future<List<StoryElement>> _parseElementsFromMistralResponse(Map<String, dynamic> response) async {
+    try {
+      final elements = <StoryElement>[];
+      final elementsData = response['elements'] as List<dynamic>?;
+      
+      if (elementsData == null || elementsData.isEmpty) {
+        logger.w(_tag, 'Aucun élément trouvé dans la réponse Mistral');
+        return [];
+      }
+      
+      for (final elementData in elementsData) {
+        try {
+          final elementMap = elementData as Map<String, dynamic>;
+          final element = _createStoryElementFromJson(elementMap);
+          if (element != null) {
+            elements.add(element);
+          }
+        } catch (e) {
+          logger.w(_tag, 'Erreur parsing élément individuel: $e');
+          continue; // Continue avec les autres éléments
+        }
+      }
+      
+      logger.i(_tag, 'Éléments parsés avec succès: ${elements.length}/${elementsData.length}');
+      return elements;
+      
+    } catch (e) {
+      logger.e(_tag, 'Erreur parsing réponse Mistral: $e');
+      return [];
+    }
+  }
+
+  /// Crée un StoryElement à partir des données JSON de notre backend
+  StoryElement? _createStoryElementFromBackendJson(Map<String, dynamic> data) {
+    try {
+      // Mapping des types d'éléments
+      StoryElementType? elementType;
+      switch (data['type']?.toString().toLowerCase()) {
+        case 'character':
+          elementType = StoryElementType.character;
+          break;
+        case 'location':
+          elementType = StoryElementType.location;
+          break;
+        case 'magic_object':
+        case 'magicobject':
+          elementType = StoryElementType.magicObject;
+          break;
+        default:
+          logger.w(_tag, 'Type d\'élément inconnu: ${data['type']}');
+          return null;
+      }
+      
+      // Extraction des données
+      final name = data['name']?.toString() ?? 'Élément mystérieux';
+      final emoji = data['emoji']?.toString() ?? '✨';
+      final description = data['description']?.toString() ?? 'Un élément narratif unique';
+      final keywords = List<String>.from(data['keywords'] ?? []);
+      
+      // Difficulté avec fallback - notre backend utilise des strings
+      VirelangueDifficulty difficulty = VirelangueDifficulty.medium;
+      if (data['difficulty'] != null) {
+        try {
+          final difficultyStr = data['difficulty'].toString().toLowerCase();
+          switch (difficultyStr) {
+            case 'easy':
+              difficulty = VirelangueDifficulty.easy;
+              break;
+            case 'medium':
+              difficulty = VirelangueDifficulty.medium;
+              break;
+            case 'hard':
+              difficulty = VirelangueDifficulty.hard;
+              break;
+            case 'expert':
+              difficulty = VirelangueDifficulty.expert;
+              break;
+          }
+        } catch (e) {
+          logger.w(_tag, 'Difficulté invalide, utilisation de medium par défaut');
+        }
+      }
+      
+      return StoryElement(
+        id: '${elementType.name}_generated_${DateTime.now().millisecondsSinceEpoch}_${_random.nextInt(1000)}',
+        type: elementType,
+        name: name,
+        emoji: emoji,
+        description: description,
+        difficulty: difficulty,
+        keywords: keywords,
+        preferredGenre: null, // Sera défini par le contexte si nécessaire
+        isCustomGenerated: true, // Marque comme généré par IA
+      );
+      
+    } catch (e) {
+      logger.e(_tag, 'Erreur création StoryElement: $e');
+      return null;
+    }
+  }
+
+  /// Crée un StoryElement à partir des données JSON de Mistral (legacy)
+  StoryElement? _createStoryElementFromJson(Map<String, dynamic> data) {
+    try {
+      // Mapping des types d'éléments
+      StoryElementType? elementType;
+      switch (data['type']?.toString().toLowerCase()) {
+        case 'character':
+          elementType = StoryElementType.character;
+          break;
+        case 'location':
+          elementType = StoryElementType.location;
+          break;
+        case 'magic_object':
+        case 'magicobject':
+          elementType = StoryElementType.magicObject;
+          break;
+        default:
+          logger.w(_tag, 'Type d\'élément inconnu: ${data['type']}');
+          return null;
+      }
+      
+      // Extraction des données
+      final name = data['name']?.toString() ?? 'Élément mystérieux';
+      final emoji = data['emoji']?.toString() ?? '✨';
+      final description = data['description']?.toString() ?? 'Un élément narratif unique';
+      final keywords = List<String>.from(data['keywords'] ?? []);
+      
+      // Difficulté avec fallback
+      VirelangueDifficulty difficulty = VirelangueDifficulty.medium;
+      if (data['difficulty_level'] != null) {
+        try {
+          final difficultyIndex = int.parse(data['difficulty_level'].toString());
+          if (difficultyIndex >= 0 && difficultyIndex < VirelangueDifficulty.values.length) {
+            difficulty = VirelangueDifficulty.values[difficultyIndex];
+          }
+        } catch (e) {
+          logger.w(_tag, 'Difficulté invalide, utilisation de medium par défaut');
+        }
+      }
+      
+      return StoryElement(
+        id: '${elementType.name}_generated_${DateTime.now().millisecondsSinceEpoch}_${_random.nextInt(1000)}',
+        type: elementType,
+        name: name,
+        emoji: emoji,
+        description: description,
+        difficulty: difficulty,
+        keywords: keywords,
+        preferredGenre: null, // Sera défini par le contexte si nécessaire
+        isCustomGenerated: true, // Marque comme généré par IA
+      );
+      
+    } catch (e) {
+      logger.e(_tag, 'Erreur création StoryElement: $e');
+      return null;
+    }
+  }
+
+  /// Génère des éléments de fallback en cas d'erreur Mistral
+  List<StoryElement> _generateFallbackElements(StoryGenre? theme, VirelangueDifficulty difficulty) {
+    logger.i(_tag, 'Génération éléments de fallback: theme=$theme, difficulté=$difficulty');
+    
+    if (theme != null) {
+      // Utiliser la génération thématique existante
+      return generateThemedElements(theme);
+    } else {
+      // Utiliser la génération par difficulté existante
+      return generateElementsByDifficulty(difficulty);
+    }
   }
 }
