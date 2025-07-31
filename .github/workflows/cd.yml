@@ -12,9 +12,22 @@ on:
       - 'Dockerfile.*'
 
 jobs:
+  # Job de validation simple avant déploiement
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    
+    - name: Validate deployment readiness
+      run: |
+        echo "Validation des fichiers de déploiement..."
+        test -f docker-compose.yml || exit 1
+        echo "✅ Prêt pour le déploiement"
+
   deploy:
     runs-on: ubuntu-latest
-    needs: build_and_test # Corrigé: underscore au lieu de tiret
+    needs: validate # Dépend du job de validation dans le même workflow
     environment:
       name: production # Environnement de déploiement
     steps:
