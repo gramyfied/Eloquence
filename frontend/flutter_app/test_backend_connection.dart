@@ -13,15 +13,26 @@ void main() async {
   });
   
   await testEnvironment('Production (Scaleway)', () {
-    // Remplacez 'votre-domaine.com' par votre vrai domaine
-    EnvironmentConfig.configureForScaleway('votre-domaine.com');
-  });
-  
-  // Test avec une URL personnalisée
-  await testEnvironment('Custom URL', () {
+    // Configuration avec l'IP Scaleway réelle sur le bon port
     EnvironmentConfig.initialize(
       environment: 'production',
-      apiUrl: 'https://eloquence.example.com', // Remplacez par votre URL
+      apiUrl: 'http://51.159.110.4:8005',
+    );
+  });
+  
+  // Test avec l'IP directe Scaleway
+  await testEnvironment('Scaleway Direct IP', () {
+    EnvironmentConfig.initialize(
+      environment: 'production',
+      apiUrl: 'http://51.159.110.4:8005',
+    );
+  });
+  
+  // Test avec HTTPS (si configuré)
+  await testEnvironment('Scaleway HTTPS', () {
+    EnvironmentConfig.initialize(
+      environment: 'production',
+      apiUrl: 'https://51.159.110.4:8005',
     );
   });
   

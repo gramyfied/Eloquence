@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/api_config.dart';
+import '../config/environment_config.dart';
 
 class EloquenceConversationService {
   final String baseUrl;
@@ -11,8 +12,8 @@ class EloquenceConversationService {
   
   EloquenceConversationService({
     String? customBaseUrl,
-  }) : baseUrl = customBaseUrl ?? ApiConfig.baseUrl,
-       wsUrl = (customBaseUrl ?? ApiConfig.baseUrl).replaceFirst('http', 'ws');
+  }) : baseUrl = customBaseUrl ?? EnvironmentConfig.apiUrl,
+       wsUrl = (customBaseUrl ?? EnvironmentConfig.apiUrl).replaceFirst('http', 'ws');
   
   // Test de santé de l'API
   Future<bool> healthCheck() async {

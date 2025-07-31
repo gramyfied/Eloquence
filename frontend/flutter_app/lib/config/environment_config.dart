@@ -50,7 +50,12 @@ class EnvironmentConfig {
   // Configuration pour Scaleway (production)
   static void configureForScaleway(String domain) {
     _currentEnvironment = production;
-    _customApiUrl = 'https://$domain';
+    // Gérer le cas où le domaine contient déjà le protocole
+    if (domain.startsWith('http://') || domain.startsWith('https://')) {
+      _customApiUrl = domain;
+    } else {
+      _customApiUrl = 'https://$domain';
+    }
     ApiConfig.setProductionUrl(_customApiUrl!);
   }
   
