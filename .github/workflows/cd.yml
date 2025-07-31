@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - deployment-scaleway-production
     paths:
       - 'services/**'
       - 'docker-compose.yml'
@@ -13,7 +14,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-test # Dépend du succès du CI
+    needs: build_and_test # Corrigé: underscore au lieu de tiret
     environment:
       name: production # Environnement de déploiement
     steps:
