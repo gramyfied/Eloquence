@@ -57,7 +57,7 @@ class StreamingConfidenceService {
     // Utiliser AppConfig.apiBaseUrl et remplacer http/https par ws/wss
     final baseUri = Uri.parse(AppConfig.apiBaseUrl);
     final wsScheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
-    final uri = Uri.parse('$wsScheme://${baseUri.host}:${baseUri.port}/ws/confidence-stream/$sessionId');
+    final uri = Uri.parse('$wsScheme://${baseUri.host}:${baseUri.port}/api/v1/exercises/realtime/$sessionId');
 
     debugPrint('📡 Connexion WebSocket à: $uri');
     

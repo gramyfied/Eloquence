@@ -59,7 +59,7 @@ class AppConfig {
     if (isProduction) {
       return "https://your-prod-server.com/livekit-tokens";
     }
-    return _buildUrl('http', 8004, '/health'); // Endpoint confirmé fonctionnel
+    return _buildUrl('http', 8004); // ✅ CORRIGÉ: Enlever /health pour éviter 404
   }
 
   static String get whisperUrl {
@@ -81,7 +81,7 @@ class AppConfig {
     if (isProduction) {
       return "https://api.eloquence.app";
     }
-    return _buildUrl('http', 8000); // ✅ CORRIGÉ: Port 8000 selon test exhaustif
+    return _buildUrl('http', 8005); // ✅ CORRIGÉ: Port 8005 selon architecture Scaleway
   }
 
   // API des exercices vocaux (utilise l'API unifiée)
@@ -89,7 +89,7 @@ class AppConfig {
     if (isProduction) {
       return "https://exercises.eloquence.app";
     }
-    return _buildUrl('http', 8000); // ✅ CORRIGÉ: API unifiée port 8000
+    return _buildUrl('http', 8005); // ✅ CORRIGÉ: API unifiée port 8005
   }
 
   // 🎤 SERVICE VOSK STT (selon documentation README-new.md)
@@ -105,7 +105,7 @@ class AppConfig {
     if (isProduction) {
       return "https://streaming.eloquence.app";
     }
-    return _buildUrl('http', 8000); // ✅ CORRIGÉ: Redirigé vers API unifiée port 8000
+    return _buildUrl('http', 8005); // ✅ CORRIGÉ: Redirigé vers API unifiée port 8005
   }
   
   static String get mistralBaseUrl {
