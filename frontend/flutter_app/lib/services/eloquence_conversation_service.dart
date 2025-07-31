@@ -32,7 +32,18 @@ class EloquenceConversationService {
       final response = await http.get(Uri.parse('$baseUrl/api/exercises'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return List<Map<String, dynamic>>.from(data['exercises']);
+        
+        // Port 8000 retourne directement la liste
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+        
+        // Port 8005 retourne un objet avec 'exercises'
+        if (data is Map && data.containsKey('exercises')) {
+          return List<Map<String, dynamic>>.from(data['exercises'] ?? []);
+        }
+        
+        return [];
       }
       return [];
     } catch (e) {

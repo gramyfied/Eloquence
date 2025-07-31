@@ -1,7 +1,7 @@
 // lib/config/api_config.dart
 class ApiConfig {
   // Configuration pour l'environnement de production
-  static const String _productionBaseUrl = 'http://51.159.110.4:8005';
+  static const String _productionBaseUrl = 'http://51.159.110.4:8000';
   
   // Configuration pour l'environnement de développement local
   static const String _developmentBaseUrl = 'http://192.168.1.44:8000';

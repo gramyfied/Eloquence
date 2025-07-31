@@ -41,8 +41,7 @@ async def health_check():
     """Santé de l'API"""
     return {
         "status": "healthy",
-        "service": "eloquence-api",
-        "version": "2.0.0",
+        "service": "backend-api",
         "timestamp": datetime.now().isoformat()
     }
 
@@ -73,6 +72,170 @@ async def services_health():
         "services": health_status,
         "overall_status": "healthy" if all(s["status"] == "healthy" for s in health_status.values()) else "degraded"
     }
+
+# === ENDPOINTS COMPATIBILITÉ FRONTEND ===
+
+@app.get("/api/exercises")
+async def get_exercises_legacy():
+    """Endpoint de compatibilité pour le frontend - retourne les exercices au format attendu"""
+    exercises = [
+        {
+            "id": 1,
+            "title": "Respiration Dragon",
+            "description": "Exercice de respiration pour améliorer la confiance",
+            "type": "breathing",
+            "difficulty": "facile",
+            "duration": 5
+        },
+        {
+            "id": 2,
+            "title": "Virelangues",
+            "description": "Exercices d'articulation avec des virelangues",
+            "type": "articulation",
+            "difficulty": "moyen",
+            "duration": 10
+        },
+        {
+            "id": 3,
+            "title": "Présentation Publique",
+            "description": "Simulation de présentation devant un public",
+            "type": "presentation",
+            "difficulty": "difficile",
+            "duration": 15
+        },
+        {
+            "id": 4,
+            "title": "Conversation Spontanée",
+            "description": "Dialogue improvisé avec l'IA",
+            "type": "conversation",
+            "difficulty": "moyen",
+            "duration": 8
+        }
+    ]
+    return exercises
+
+@app.post("/api/sessions/create")
+async def create_session_legacy(session_data: Dict[str, Any]):
+    """Endpoint de compatibilité pour créer une session"""
+    exercise_type = session_data.get("exercise_type", "conversation")
+    user_id = session_data.get("user_id", "anonymous")
+    
+    # Mapper les types d'exercices vers les templates
+    exercise_mapping = {
+        "breathing": "dragon_breath",
+        "articulation": "tongue_twister", 
+        "presentation": "impromptu_speaking",
+        "conversation": "confidence_boost"
+    }
+    
+    template_id = exercise_mapping.get(exercise_type, "confidence_boost")
+    
+    # Créer la session avec le nouveau système
+    session_id = f"session_{uuid.uuid4().hex[:10]}"
+    livekit_room = f"exercise_{session_id}"
+    livekit_token = f"token_{session_id}"
+    
+    session = {
+        "session_id": session_id,
+        "exercise_type": exercise_type,
+        "user_id": user_id,
+        "template_id": template_id,
+        "livekit_room": livekit_room,
+        "livekit_token": livekit_token,
+        "status": "created",
+        "created_at": datetime.now().isoformat(),
+        "settings": session_data.get("settings", {}),
+        "metrics": {}
+    }
+    
+    # Stocker en Redis
+    redis_client.setex(f"session:{session_id}", 3600, json.dumps(session))
+    
+    # Retourner au format attendu par le frontend
+    return {
+        "session_id": session_id,
+        "exercise_type": exercise_type,
+        "user_id": user_id,
+        "status": "created",
+        "created_at": session["created_at"],
+        "livekit_room": livekit_room,
+        "livekit_token": livekit_token,
+        "livekit_url": SERVICES["livekit"]
+    }
+
+@app.get("/api/sessions")
+async def get_sessions_legacy():
+    """Liste toutes les sessions actives"""
+    sessions = []
+    for key in redis_client.scan_iter(match="session:*"):
+        session_data = redis_client.get(key)
+        if session_data:
+            session = json.loads(session_data)
+            sessions.append(session)
+    
+    return {
+        "sessions": sessions,
+        "total": len(sessions)
+    }
+
+@app.get("/api/sessions/{session_id}")
+async def get_session_legacy(session_id: str):
+    """Détails d'une session spécifique"""
+    session_data = redis_client.get(f"session:{session_id}")
+    
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+    
+    return json.loads(session_data)
+
+@app.post("/api/sessions/{session_id}/end")
+async def end_session_legacy(session_id: str):
+    """Terminer une session"""
+    session_data = redis_client.get(f"session:{session_id}")
+    
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+    
+    session = json.loads(session_data)
+    session["status"] = "completed"
+    session["completed_at"] = datetime.now().isoformat()
+    
+    # Sauvegarder état final
+    redis_client.setex(f"session:{session_id}", 86400, json.dumps(session))  # 24h
+    
+    return {
+        "message": "Session terminée avec succès",
+        "session_id": session_id,
+        "status": "completed",
+        "session": session
+    }
+
+@app.get("/api/sessions/{session_id}/analysis")
+async def get_session_analysis_legacy(session_id: str):
+    """Analyse d'une session terminée"""
+    session_data = redis_client.get(f"session:{session_id}")
+    
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+    
+    session = json.loads(session_data)
+    
+    # Générer une analyse basique
+    analysis = {
+        "session_id": session_id,
+        "exercise_type": session.get("exercise_type", "unknown"),
+        "duration": 0,  # À calculer
+        "metrics": session.get("metrics", {}),
+        "score": 75,  # Score par défaut
+        "feedback": "Bonne performance générale",
+        "recommendations": [
+            "Continuez à pratiquer régulièrement",
+            "Travaillez sur la fluidité de parole"
+        ],
+        "analysis_date": datetime.now().isoformat()
+    }
+    
+    return analysis
 
 # === TEMPLATES D'EXERCICES ===
 
@@ -147,6 +310,64 @@ async def get_exercise_template(template_id: str):
     return template
 
 # === SESSIONS D'EXERCICES ===
+
+@app.post("/api/v1/sessions/create")
+async def create_session_v1(session_data: Dict[str, Any]):
+    """Créer une session v1 - Endpoint principal pour le frontend"""
+    exercise_type = session_data.get("exercise_type", "conversation")
+    user_id = session_data.get("user_id", "anonymous")
+    template_id = session_data.get("template_id")
+    
+    # Si pas de template_id, mapper depuis exercise_type
+    if not template_id:
+        exercise_mapping = {
+            "breathing": "dragon_breath",
+            "articulation": "tongue_twister", 
+            "presentation": "impromptu_speaking",
+            "conversation": "confidence_boost"
+        }
+        template_id = exercise_mapping.get(exercise_type, "confidence_boost")
+    
+    # Vérifier que le template existe
+    try:
+        template = await get_exercise_template(template_id)
+    except HTTPException:
+        # Si le template n'existe pas, utiliser le template par défaut
+        template_id = "confidence_boost"
+        template = await get_exercise_template(template_id)
+    
+    session_id = f"session_{uuid.uuid4().hex[:10]}"
+    livekit_room = f"exercise_{session_id}"
+    livekit_token = f"token_{session_id}"
+    
+    session = {
+        "session_id": session_id,
+        "exercise_type": exercise_type,
+        "template_id": template_id,
+        "user_id": user_id,
+        "livekit_room": livekit_room,
+        "livekit_token": livekit_token,
+        "status": "created",
+        "created_at": datetime.now().isoformat(),
+        "settings": session_data.get("settings", {}),
+        "metrics": {}
+    }
+    
+    # Stocker en Redis
+    redis_client.setex(f"session:{session_id}", 3600, json.dumps(session))
+    
+    return {
+        "session_id": session_id,
+        "exercise_type": exercise_type,
+        "template_id": template_id,
+        "user_id": user_id,
+        "status": "created",
+        "created_at": session["created_at"],
+        "livekit_room": livekit_room,
+        "livekit_token": livekit_token,
+        "livekit_url": SERVICES["livekit"],
+        "template": template
+    }
 
 @app.post("/api/v1/exercises/sessions")
 async def create_exercise_session(session_data: Dict[str, Any]):

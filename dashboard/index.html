@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eloquence Dashboard - Monitoring Stratégique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
+        .status-online { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .chart-container { position: relative; height: 300px; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                        <i data-lucide="activity" class="w-6 h-6 text-purple-600"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">Eloquence Dashboard</h1>
+                        <p class="text-purple-100">Monitoring Stratégique en Temps Réel</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <p class="text-sm text-purple-100">Dernière mise à jour</p>
+                        <p class="font-semibold" id="lastUpdate">--:--:--</p>
+                    </div>
+                    <div class="w-3 h-3 bg-green-400 rounded-full status-online"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- Métriques Principales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Statut Global -->
+            <div class="bg-white rounded-xl p-6 card-shadow metric-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Statut Global</p>
+                        <p class="text-2xl font-bold text-green-600" id="globalStatus">OPÉRATIONNEL</p>
+                        <p class="text-xs text-gray-400 mt-1">8/8 services actifs</p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Utilisateurs Actifs -->
+            <div class="bg-white rounded-xl p-6 card-shadow metric-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Utilisateurs Actifs</p>
+                        <p class="text-2xl font-bold text-blue-600" id="activeUsers">--</p>
+                        <p class="text-xs text-green-500 mt-1">+12% vs hier</p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latence Moyenne -->
+            <div class="bg-white rounded-xl p-6 card-shadow metric-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Latence Moyenne</p>
+                        <p class="text-2xl font-bold text-yellow-600" id="avgLatency">--ms</p>
+                        <p class="text-xs text-green-500 mt-1">-5ms vs hier</p>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <i data-lucide="zap" class="w-6 h-6 text-yellow-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Uptime -->
+            <div class="bg-white rounded-xl p-6 card-shadow metric-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Uptime</p>
+                        <p class="text-2xl font-bold text-purple-600" id="uptime">99.9%</p>
+                        <p class="text-xs text-gray-400 mt-1">23h 45m</p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i data-lucide="clock" class="w-6 h-6 text-purple-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graphiques et Métriques Détaillées -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Graphique d'Utilisation -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800">Utilisation des Ressources</h3>
+                    <div class="flex space-x-2">
+                        <span class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">CPU</span>
+                        <span class="px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-medium">RAM</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="resourceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Graphique de Latence -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800">Latence par Service</h3>
+                    <select class="px-3 py-1 border border-gray-200 rounded-lg text-sm">
+                        <option>Dernière heure</option>
+                        <option>Dernières 24h</option>
+                        <option>Dernière semaine</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statut des Services -->
+        <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-6">Statut des Services</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="servicesStatus">
+                <!-- Services seront injectés ici -->
+            </div>
+        </div>
+
+        <!-- Métriques Business -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Activité Utilisateurs -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6">Activité Utilisateurs</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Sessions Actives</span>
+                        <span class="font-semibold" id="activeSessions">--</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Exercices Complétés</span>
+                        <span class="font-semibold" id="completedExercises">--</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Temps Moyen Session</span>
+                        <span class="font-semibold" id="avgSessionTime">--min</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Taux de Rétention</span>
+                        <span class="font-semibold text-green-600" id="retentionRate">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance API -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6">Performance API</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Requêtes/min</span>
+                        <span class="font-semibold" id="requestsPerMin">--</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Taux d'Erreur</span>
+                        <span class="font-semibold text-red-600" id="errorRate">--</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">P95 Latence</span>
+                        <span class="font-semibold" id="p95Latency">--ms</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Cache Hit Rate</span>
+                        <span class="font-semibold text-green-600" id="cacheHitRate">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heures de Pointe -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6">Analyse Temporelle</h3>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertes et Notifications -->
+        <div class="bg-white rounded-xl p-6 card-shadow">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-800">Alertes et Notifications</h3>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i data-lucide="settings" class="w-4 h-4 inline mr-2"></i>
+                    Configurer
+                </button>
+            </div>
+            <div id="alertsList" class="space-y-3">
+                <!-- Alertes seront injectées ici -->
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# ================================================================
+# DÉPENDANCES DASHBOARD ELOQUENCE
+# ================================================================
+
+# Framework web
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Middleware et utilitaires
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+
+# Monitoring système
+psutil==5.9.6
+
+# Base de données et cache
+redis==5.0.1
+
+# Client HTTP asynchrone
+aiohttp==3.9.1
+
+# Validation des données
+pydantic==2.5.0
+
+# Logging et configuration
+python-dotenv==1.0.0
+
+# Utilitaires
+requests==2.31.0
