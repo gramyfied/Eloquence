@@ -67,6 +67,14 @@ class NavigationState extends ChangeNotifier {
           newCarouselState = CarouselVisibilityState.medium;
           _log.info('📋 Exercises route - setting carousel to medium');
           break;
+        case '/scenarios':
+          newCarouselState = CarouselVisibilityState.full;
+          _log.info('🎭 Scenarios route - setting carousel to full');
+          break;
+        case '/profile':
+          newCarouselState = CarouselVisibilityState.full;
+          _log.info('👤 Profile route - setting carousel to full');
+          break;
         case '/exercise_detail':
           newCarouselState = CarouselVisibilityState.subtle;
           _log.info('📖 Exercise detail route - setting carousel to subtle');
@@ -74,6 +82,21 @@ class NavigationState extends ChangeNotifier {
         case '/exercise_active':
           newCarouselState = CarouselVisibilityState.minimal;
           _log.info('🎯 Exercise active route - setting carousel to minimal');
+          break;
+        case '/scenario_exercise':
+          newCarouselState = CarouselVisibilityState.minimal;
+          _log.info('🎬 Scenario exercise route - setting carousel to minimal');
+          break;
+        case '/scenario_feedback':
+          newCarouselState = CarouselVisibilityState.minimal;
+          _log.info('📝 Scenario feedback route - setting carousel to minimal');
+          break;
+        case '/confidence_boost':
+        case '/virelangue_roulette':
+        case '/dragon_breath':
+        case '/story_generator':
+          newCarouselState = CarouselVisibilityState.minimal;
+          _log.info('🎮 Exercise route detected - setting carousel to minimal');
           break;
         default:
           newCarouselState = CarouselVisibilityState.full;

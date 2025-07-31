@@ -4,23 +4,45 @@ import 'dart:io' show Platform;
 
 class AppConfig {
   static const bool isProduction = false;
+  
+  // 🌐 CONFIGURATION SERVEUR - Switcher entre local et distant
+  static const bool useRemoteServer = true; // ✅ ACTIVÉ: Serveur distant suite au diagnostic des endpoints
+  static const String remoteServerIp = '51.159.110.4'; // IP du serveur distant
+  static const String localServerIp = '192.168.1.44'; // IP locale pour développement
+
+  // Fonction pour obtenir l'IP du serveur selon la configuration
+  static String get currentServerIp {
+    if (useRemoteServer) {
+      debugPrint('🌐 Utilisation du serveur distant: $remoteServerIp');
+      return remoteServerIp;
+    } else {
+      debugPrint('🌐 Utilisation du serveur local: $localServerIp');
+      return localServerIp;
+    }
+  }
 
   // Fonction utilitaire pour substituer localhost avec l'IP correcte en mode debug
   static String _replaceLocalhostWithDevIp(String url) {
     if (kDebugMode && url.contains('localhost')) {
-      // FIX: Utiliser l'IP machine hôte pour tous les cas car Docker expose sur 0.0.0.0
-      const devIp = '192.168.1.44';
-      final newUrl = url.replaceFirst('localhost', devIp);
+      final newUrl = url.replaceFirst('localhost', currentServerIp);
       debugPrint('🌐 URL remplacée: $url → $newUrl');
       return newUrl;
     }
     return url;
   }
 
+  // Fonction pour construire une URL avec l'IP appropriée
+  static String _buildUrl(String protocol, int port, [String path = '']) {
+    final baseUrl = '$protocol://$currentServerIp:$port';
+    return path.isNotEmpty ? '$baseUrl$path' : baseUrl;
+  }
+
   // URLs des services
   static String get livekitUrl {
-    final url = dotenv.env['LIVEKIT_URL'] ?? 'ws://localhost:7880';
-    return isProduction ? "wss://your-prod-server.com" : _replaceLocalhostWithDevIp(url);
+    if (isProduction) {
+      return "wss://your-prod-server.com";
+    }
+    return _buildUrl('ws', 7880);
   }
 
   // Clés API LiveKit
@@ -32,48 +54,58 @@ class AppConfig {
     return dotenv.env['LIVEKIT_API_SECRET'] ?? (kDebugMode ? 'secret' : null);
   }
 
-  // URL du serveur de tokens LiveKit
+  // URL du serveur de tokens LiveKit (confirmé par diagnostic)
   static String get livekitTokenUrl {
-    final url = dotenv.env['LIVEKIT_TOKEN_URL'] ?? 'http://localhost:8004';
-    return isProduction ? "https://your-prod-server.com/livekit-tokens" : _replaceLocalhostWithDevIp(url);
+    if (isProduction) {
+      return "https://your-prod-server.com/livekit-tokens";
+    }
+    return _buildUrl('http', 8004, '/health'); // Endpoint confirmé fonctionnel
   }
 
   static String get whisperUrl {
-    final url = dotenv.env['WHISPER_STT_URL'] ?? 'http://localhost:8001';
-    return isProduction ? "https://your-prod-server.com/stt" : _replaceLocalhostWithDevIp(url);
+    if (isProduction) {
+      return "https://your-prod-server.com/stt";
+    }
+    return _buildUrl('http', 8001); // Port 8001 confirmé (Mistral service)
   }
 
   static String get azureTtsUrl {
-    final url = dotenv.env['TTS_SERVICE_URL'] ?? 'http://localhost:5002'; // Ou OPENAI_TTS_SERVICE_URL
-    return isProduction ? "https://your-prod-server.com/tts" : _replaceLocalhostWithDevIp(url);
-  }
-
-  static String get apiBaseUrl {
-    final url = dotenv.env['LLM_SERVICE_URL'] ?? 'http://localhost:8000'; // BACKEND_URL ou LLM_SERVICE_URL
-    return isProduction ? "https://api.eloquence.app" : _replaceLocalhostWithDevIp(url);
-  }
-
-  // Nouveau service unifié eloquence-streaming-api
-  static String get eloquenceStreamingApiUrl {
-    final url = dotenv.env['ELOQUENCE_STREAMING_API_URL'] ?? 'http://localhost:8005';
-    // FIXED: Utiliser le bon port 8005 pour eloquence-exercises-api
-    if (kDebugMode) {
-      const debugUrl = 'http://192.168.1.44:8005';
-      debugPrint('🔧 DEBUG: Force eloquenceStreamingApiUrl = $debugUrl (API exercices port 8005)');
-      return debugUrl;
+    if (isProduction) {
+      return "https://your-prod-server.com/tts";
     }
-    return isProduction ? "https://streaming.eloquence.app" : _replaceLocalhostWithDevIp(url);
+    return _buildUrl('http', 5002);
   }
 
-  // API des exercices vocaux
+  // 🎯 API UNIFIÉE ELOQUENCE (selon diagnostic Scaleway réel)
+  static String get apiBaseUrl {
+    if (isProduction) {
+      return "https://api.eloquence.app";
+    }
+    return _buildUrl('http', 8000); // ✅ CORRIGÉ: Port 8000 selon test exhaustif
+  }
+
+  // API des exercices vocaux (utilise l'API unifiée)
   static String get exercisesApiUrl {
-    final url = dotenv.env['EXERCISES_API_URL'] ?? 'http://localhost:8005';
-    return isProduction ? "https://exercises.eloquence.app" : _replaceLocalhostWithDevIp(url);
+    if (isProduction) {
+      return "https://exercises.eloquence.app";
+    }
+    return _buildUrl('http', 8000); // ✅ CORRIGÉ: API unifiée port 8000
   }
 
+  // 🎤 SERVICE VOSK STT (selon documentation README-new.md)
   static String get voskServiceUrl {
-    final url = dotenv.env['VOSK_SERVICE_URL'] ?? 'http://localhost:2700';
-    return isProduction ? "https://your-prod-server.com/vosk" : _replaceLocalhostWithDevIp(url);
+    if (isProduction) {
+      return "https://your-prod-server.com/vosk";
+    }
+    return _buildUrl('http', 8002); // ✅ CORRIGÉ: Port 8002 selon doc
+  }
+
+  // Service de streaming (legacy - utiliser API unifiée)
+  static String get eloquenceStreamingApiUrl {
+    if (isProduction) {
+      return "https://streaming.eloquence.app";
+    }
+    return _buildUrl('http', 8000); // ✅ CORRIGÉ: Redirigé vers API unifiée port 8000
   }
   
   static String get mistralBaseUrl {

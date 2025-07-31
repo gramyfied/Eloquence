@@ -1,11 +1,11 @@
 /// Constantes globales pour l'application Eloquence
 class AppConstants {
-  // URLs des services backend
-  static const String defaultApiBaseUrl = 'http://localhost:8000';
-  static const String defaultVoskUrl = 'http://localhost:2700';
-  static const String defaultMistralUrl = 'http://localhost:8001';
-  static const String defaultLivekitUrl = 'ws://localhost:7880';
-  static const String defaultEloquenceConversationUrl = 'http://localhost:8003';
+  // URLs des services backend (serveur distant)
+  static const String defaultApiBaseUrl = 'http://51.159.110.4:8000';
+  static const String defaultVoskUrl = 'http://51.159.110.4:2700';
+  static const String defaultMistralUrl = 'http://51.159.110.4:8001';
+  static const String defaultLivekitUrl = 'ws://51.159.110.4:7880';
+  static const String defaultEloquenceConversationUrl = 'http://51.159.110.4:8003';
   
   // Timeouts
   static const Duration defaultTimeout = Duration(seconds: 45);

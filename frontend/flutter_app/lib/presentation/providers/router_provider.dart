@@ -20,6 +20,9 @@ import '../../features/story_generator/presentation/screens/story_generator_home
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/widgets/auth_wrapper.dart';
+import '../../features/ai_scenarios/presentation/screens/scenario_exercise_screen.dart';
+import '../../features/ai_scenarios/presentation/screens/scenario_feedback_screen.dart';
+import '../../features/ai_scenarios/domain/entities/scenario_models.dart';
 
 // Définir une GlobalKey pour le navigateur racine, après les imports
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -69,12 +72,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'exercises',
                 builder: (BuildContext context, GoRouterState state) {
                   return const ExercisesScreen();
-                },
-              ),
-              GoRoute(
-                path: 'scenarios',
-                builder: (BuildContext context, GoRouterState state) {
-                  return const ScenarioScreen();
                 },
               ),
               GoRoute(
@@ -132,6 +129,45 @@ final routerProvider = Provider<GoRouter>((ref) {
             parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
             builder: (BuildContext context, GoRouterState state) {
               return const StoryGeneratorHomeScreen();
+            },
+          ),
+          
+          // Routes AI Scenarios - NOUVEAUX SCÉNARIOS IA
+          GoRoute(
+            path: 'scenarios',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
+            builder: (BuildContext context, GoRouterState state) {
+              return const ScenarioScreen();
+            },
+          ),
+          
+          GoRoute(
+            path: 'scenario_exercise',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) {
+              final configurationData = state.extra as Map<String, dynamic>?;
+              if (configurationData == null) {
+                return const Scaffold(
+                  body: Center(
+                    child: Text('Erreur: Configuration du scénario manquante'),
+                  ),
+                );
+              }
+              
+              final configuration = ScenarioConfiguration.fromJson(configurationData);
+              
+              return ScenarioExerciseScreen(
+                configuration: configuration,
+              );
+            },
+          ),
+          
+          GoRoute(
+            path: 'scenario_feedback',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) {
+              // L'écran de feedback utilise les données du provider
+              return const ScenarioFeedbackScreen();
             },
           ),
           

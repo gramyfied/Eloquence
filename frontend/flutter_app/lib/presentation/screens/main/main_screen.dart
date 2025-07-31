@@ -24,8 +24,9 @@ class MainScreen extends ConsumerWidget {
               child,
 
               // Main Navigation Bar below content avec padding Android
-              // Masquer si sur la route virelangue_roulette
-              if (ref.watch(navigationStateProvider).currentRoute != '/virelangue_roulette')
+              // Masquer si sur la route virelangue_roulette ou scenario_exercise
+              if (ref.watch(navigationStateProvider).currentRoute != '/virelangue_roulette' &&
+                  ref.watch(navigationStateProvider).currentRoute != '/scenario_exercise')
                 Positioned(
                   left: 0,
                   right: 0,
