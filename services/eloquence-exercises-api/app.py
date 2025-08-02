@@ -1412,6 +1412,104 @@ async def websocket_voice_analysis_realtime(websocket: WebSocket, session_id: st
 # Endpoints pour l'analyse narrative d'histoires
 # ============================================
 
+async def call_mistral_with_retry(payload, max_retries=2):
+    """Appel Mistral avec retry et fallback intelligent - Gère son propre client httpx"""
+    
+    for attempt in range(max_retries + 1):
+        try:
+            logger.info(f"🔄 Tentative Mistral {attempt + 1}/{max_retries + 1}")
+            
+            # ✅ CORRECTION CRITIQUE : Créer un nouveau client pour chaque tentative
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=5.0, read=15.0, write=10.0, pool=2.0),
+                transport=httpx_async_transport
+            ) as mistral_client:
+                response = await mistral_client.post(
+                    f"{MISTRAL_SERVICE_URL}/v1/chat/completions",
+                    json=payload,
+                    timeout=15.0
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"✅ Mistral réponse OK - Tentative {attempt + 1}")
+                    return response
+                else:
+                    logger.warning(f"⚠️ Mistral HTTP {response.status_code} - Tentative {attempt + 1}")
+                
+        except httpx.ConnectError as e:
+            logger.warning(f"⚠️ Mistral connexion échouée - Tentative {attempt + 1}: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(1)  # Attendre 1s avant retry
+                continue
+                
+        except httpx.TimeoutException as e:
+            logger.warning(f"⚠️ Mistral timeout - Tentative {attempt + 1}: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(0.5)  # Attendre 0.5s avant retry
+                continue
+        
+        except Exception as e:
+            logger.warning(f"⚠️ Mistral erreur inattendue - Tentative {attempt + 1}: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(1)
+                continue
+    
+    # Si toutes les tentatives échouent
+    logger.error("❌ Toutes les tentatives Mistral ont échoué")
+    return None
+
+def _generate_vosk_only_analysis(session_id, story_title, transcription, elements_list):
+    """Génère une analyse basée uniquement sur Vosk quand Mistral échoue"""
+    
+    # Analyser la transcription avec des heuristiques simples
+    words = transcription.lower().split() if transcription else []
+    word_count = len(words)
+    
+    # Calculer des scores basés sur la longueur et le contenu
+    length_score = min(1.0, word_count / 50) if word_count > 0 else 0.3
+    
+    # Détecter l'utilisation des éléments
+    elements_used = 0
+    if elements_list and transcription:
+        for element in elements_list:
+            if element.lower() in transcription.lower():
+                elements_used += 1
+    
+    element_usage_score = elements_used / max(len(elements_list), 1) if elements_list else 0.7
+    
+    # Calculer un score global (légèrement pénalisé car pas d'IA)
+    overall_score = (length_score * 0.4 + element_usage_score * 0.6) * 0.75
+    
+    logger.info(f"📊 Analyse Vosk-only - Mots: {word_count}, Éléments: {elements_used}/{len(elements_list)}, Score: {overall_score:.2f}")
+    
+    return {
+        "success": True,
+        "analysis": {
+            "overall_score": overall_score,
+            "creativity_score": overall_score + 0.05,
+            "element_usage_score": element_usage_score,
+            "plot_coherence_score": overall_score,
+            "fluidity_score": 0.75,  # Score fixe pour la fluidité
+            "genre_consistency_score": 0.7,
+            "strengths": [
+                f"Histoire de {word_count} mots détectés",
+                f"Utilisation de {elements_used} éléments sur {len(elements_list)}" if elements_list else "Contenu détecté"
+            ],
+            "improvements": [
+                "Développer davantage les détails" if word_count < 30 else "Bonne longueur d'histoire",
+                "Utiliser tous les éléments imposés" if elements_used < len(elements_list) else "Bonne utilisation des éléments"
+            ],
+            "highlight_moments": ["Début de l'histoire", "Développement narratif"],
+            "narrative_feedback": f"Histoire analysée avec Vosk (IA temporairement indisponible). {word_count} mots détectés.",
+            "title_suggestion": story_title or "Histoire Créative",
+            "detected_keywords": words[:5] if words else ["histoire", "créativité"]
+        },
+        "transcription": transcription or "Transcription indisponible",
+        "session_id": session_id,
+        "analysis_method": "vosk_only",  # Indiquer la méthode utilisée
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.post("/api/story/analyze-narrative")
 async def analyze_story_narrative(
     audio: UploadFile = File(...),
@@ -1434,16 +1532,19 @@ async def analyze_story_narrative(
         audio_size = len(audio_content)
         logger.info(f"📊 VALIDATION AUDIO - Taille: {audio_size} bytes, Nom: {audio.filename}")
         
-        # Validation critique de la taille du fichier
-        if audio_size < 1000:  # Moins de 1KB = fichier corrompu
-            logger.error(f"❌ FICHIER AUDIO CORROMPU - Taille: {audio_size} bytes (minimum 1KB requis)")
+        # ✅ CORRECTION : Validation assouplie de la taille du fichier
+        if audio_size < 100:  # Moins de 100 bytes = fichier invalide
+            logger.error(f"❌ FICHIER AUDIO INVALIDE - Taille: {audio_size} bytes (minimum 100 bytes requis)")
             return {
                 "success": False,
-                "error": "CORRUPTED_AUDIO_FILE",
-                "details": f"Fichier audio trop petit: {audio_size} bytes. Minimum requis: 1KB",
+                "error": "INVALID_AUDIO_FILE",
+                "details": f"Fichier audio trop petit: {audio_size} bytes. Minimum requis: 100 bytes",
                 "session_id": session_id,
                 "timestamp": datetime.now().isoformat()
             }
+        elif audio_size < 1000:
+            # ✅ NOUVEAU : Avertissement pour fichiers petits mais valides
+            logger.warning(f"⚠️ FICHIER AUDIO PETIT - Taille: {audio_size} bytes - Analyse avec prudence")
         
         # Log des détails audio
         logger.info(f"✅ AUDIO VALIDE - Format: {audio.content_type}, Taille: {audio_size} bytes")
@@ -1520,37 +1621,21 @@ Analysez la créativité, l'utilisation des éléments, la cohérence narrative 
                     "max_tokens": 1000
                 }
                 
-                logger.info(f"🔗 Envoi vers Mistral AI: {MISTRAL_SERVICE_URL}/chat/completions")
+                logger.info(f"🔗 Envoi vers Mistral AI: {MISTRAL_SERVICE_URL}/v1/chat/completions")
                 
                 # ✅ MONITORING CONNEXION MISTRAL
                 mistral_start_time = datetime.now()
                 logger.info(f"🔍 MISTRAL CONNEXION - Début: {mistral_start_time.isoformat()}")
                 
-                try:
-                    mistral_response = await client.post(
-                        f"{MISTRAL_SERVICE_URL}/chat/completions",
-                        json=mistral_payload,
-                        headers={"Content-Type": "application/json"}
-                    )
-                    
-                    mistral_duration = (datetime.now() - mistral_start_time).total_seconds()
-                    logger.info(f"⏱️ MISTRAL RESPONSE - Durée: {mistral_duration:.2f}s, Status: {mistral_response.status_code}")
-                    
-                except httpx.ConnectError as e:
-                    logger.error(f"❌ MISTRAL CONNEXION FERMÉE: {e}")
-                    return _generate_fallback_narrative_analysis(
-                        session_id, story_title, transcription, json.loads(story_elements) if story_elements else []
-                    )
-                except httpx.TimeoutException as e:
-                    logger.error(f"❌ MISTRAL TIMEOUT: {e}")
-                    return _generate_fallback_narrative_analysis(
-                        session_id, story_title, transcription, json.loads(story_elements) if story_elements else []
-                    )
-                except Exception as e:
-                    logger.error(f"❌ MISTRAL ERREUR INATTENDUE: {e}")
-                    return _generate_fallback_narrative_analysis(
-                        session_id, story_title, transcription, json.loads(story_elements) if story_elements else []
-                    )
+                # ✅ UTILISATION DU SYSTÈME DE RETRY INTELLIGENT
+                mistral_response = await call_mistral_with_retry(mistral_payload)
+                
+                if mistral_response is None:
+                    logger.warning("⚠️ Mistral indisponible - Utilisation analyse Vosk seule")
+                    return _generate_vosk_only_analysis(session_id, story_title, transcription, elements_list)
+                
+                mistral_duration = (datetime.now() - mistral_start_time).total_seconds()
+                logger.info(f"⏱️ MISTRAL RESPONSE - Durée: {mistral_duration:.2f}s, Status: {mistral_response.status_code}")
                 
                 if mistral_response.status_code == 200:
                     mistral_result = mistral_response.json()
@@ -1687,44 +1772,37 @@ Adaptez le vocabulaire à la difficulté {difficulty}."""
             "max_tokens": 800
         }
         
-        async with httpx.AsyncClient(
-            timeout=httpx_timeout,
-            transport=httpx_async_transport
-        ) as client:
-            mistral_response = await client.post(
-                f"{MISTRAL_SERVICE_URL}/chat/completions",
-                json=mistral_payload,
-                headers={"Content-Type": "application/json"}
-            )
+        # ✅ CORRECTION CRITIQUE : Utiliser le système de retry intelligent
+        mistral_response = await call_mistral_with_retry(mistral_payload)
+        
+        if mistral_response and mistral_response.status_code == 200:
+            mistral_result = mistral_response.json()
+            content = mistral_result.get("choices", [{}])[0].get("message", {}).get("content", "")
             
-            if mistral_response.status_code == 200:
-                mistral_result = mistral_response.json()
-                content = mistral_result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            # Parser le JSON
+            try:
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1]
                 
-                # Parser le JSON
-                try:
-                    if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0]
-                    elif "```" in content:
-                        content = content.split("```")[1]
-                    
-                    elements_data = json.loads(content.strip())
-                    
-                    return {
-                        "success": True,
-                        "elements": elements_data.get("elements", []),
-                        "element_type": element_type,
-                        "theme": theme,
-                        "difficulty": difficulty,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    
-                except json.JSONDecodeError:
-                    logger.error(f"❌ Erreur parsing JSON génération: {content}")
-                    return _generate_fallback_elements(element_type, count)
-            else:
-                logger.error(f"❌ Mistral génération erreur: {mistral_response.status_code}")
+                elements_data = json.loads(content.strip())
+                
+                return {
+                    "success": True,
+                    "elements": elements_data.get("elements", []),
+                    "element_type": element_type,
+                    "theme": theme,
+                    "difficulty": difficulty,
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+            except json.JSONDecodeError:
+                logger.error(f"❌ Erreur parsing JSON génération: {content}")
                 return _generate_fallback_elements(element_type, count)
+        else:
+            logger.error(f"❌ Mistral génération erreur: {mistral_response.status_code if mistral_response else 'No response'}")
+            return _generate_fallback_elements(element_type, count)
                 
     except Exception as e:
         logger.error(f"❌ Erreur génération éléments: {e}")

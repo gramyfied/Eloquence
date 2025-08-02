@@ -109,15 +109,15 @@ class StoryAudioAnalysisService {
       final audioSize = audioData.length;
       logger.i(_tag, '📊 VALIDATION AUDIO FLUTTER - Taille: $audioSize bytes');
       
-      if (audioSize < 1000) {
-        logger.e(_tag, '❌ AUDIO CORROMPU FLUTTER - Taille: $audioSize bytes (minimum 1KB)');
+      if (audioSize < 100) { // ✅ CORRECTION : 1000 → 100 bytes
+        logger.e(_tag, '❌ AUDIO INVALIDE FLUTTER - Taille: $audioSize bytes (minimum 100 bytes)');
         return StoryNarrativeAnalysis(
           storyId: sessionId,
           overallScore: 0.0,
           creativityScore: 0.0,
           relevanceScore: 0.0,
           structureScore: 0.0,
-          positiveFeedback: 'Impossible d\'analyser l\'audio',
+          positiveFeedback: 'Fichier audio trop petit pour être analysé',
           improvementSuggestions: 'Vérifiez votre enregistrement audio',
           audioMetrics: AudioMetrics(
             articulationScore: 0.0,
@@ -127,10 +127,13 @@ class StoryAudioAnalysisService {
             speakingRate: 0.0,
             fillerWords: [],
           ),
-          transcription: 'Erreur: Fichier audio corrompu (${audioSize} bytes)',
+          transcription: 'Erreur: Fichier audio invalide (${audioSize} bytes)',
           titleSuggestion: 'Erreur Audio',
           detectedKeywords: ['erreur', 'audio'],
         );
+      } else if (audioSize < 1000) {
+        // ✅ NOUVEAU : Avertissement pour fichiers petits mais valides
+        logger.w(_tag, '⚠️ FICHIER AUDIO PETIT - Taille: $audioSize bytes - Analyse avec prudence');
       }
       
       if (audioSize > 10 * 1024 * 1024) { // Plus de 10MB
