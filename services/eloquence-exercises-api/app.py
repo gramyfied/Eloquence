@@ -1430,6 +1430,24 @@ async def analyze_story_narrative(
         # Préparer les données pour l'envoi vers Vosk STT
         audio_content = await audio.read()
         
+        # ✅ VALIDATION LOG: Vérifier la taille du fichier audio
+        audio_size = len(audio_content)
+        logger.info(f"📊 VALIDATION AUDIO - Taille: {audio_size} bytes, Nom: {audio.filename}")
+        
+        # Validation critique de la taille du fichier
+        if audio_size < 1000:  # Moins de 1KB = fichier corrompu
+            logger.error(f"❌ FICHIER AUDIO CORROMPU - Taille: {audio_size} bytes (minimum 1KB requis)")
+            return {
+                "success": False,
+                "error": "CORRUPTED_AUDIO_FILE",
+                "details": f"Fichier audio trop petit: {audio_size} bytes. Minimum requis: 1KB",
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # Log des détails audio
+        logger.info(f"✅ AUDIO VALIDE - Format: {audio.content_type}, Taille: {audio_size} bytes")
+        
         # Étape 1: Transcription via Vosk
         files = {"audio": (audio.filename, audio_content, audio.content_type)}
         data = {
@@ -1503,44 +1521,104 @@ Analysez la créativité, l'utilisation des éléments, la cohérence narrative 
                 }
                 
                 logger.info(f"🔗 Envoi vers Mistral AI: {MISTRAL_SERVICE_URL}/chat/completions")
-                mistral_response = await client.post(
-                    f"{MISTRAL_SERVICE_URL}/chat/completions",
-                    json=mistral_payload,
-                    headers={"Content-Type": "application/json"}
-                )
+                
+                # ✅ MONITORING CONNEXION MISTRAL
+                mistral_start_time = datetime.now()
+                logger.info(f"🔍 MISTRAL CONNEXION - Début: {mistral_start_time.isoformat()}")
+                
+                try:
+                    mistral_response = await client.post(
+                        f"{MISTRAL_SERVICE_URL}/chat/completions",
+                        json=mistral_payload,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    mistral_duration = (datetime.now() - mistral_start_time).total_seconds()
+                    logger.info(f"⏱️ MISTRAL RESPONSE - Durée: {mistral_duration:.2f}s, Status: {mistral_response.status_code}")
+                    
+                except httpx.ConnectError as e:
+                    logger.error(f"❌ MISTRAL CONNEXION FERMÉE: {e}")
+                    return _generate_fallback_narrative_analysis(
+                        session_id, story_title, transcription, json.loads(story_elements) if story_elements else []
+                    )
+                except httpx.TimeoutException as e:
+                    logger.error(f"❌ MISTRAL TIMEOUT: {e}")
+                    return _generate_fallback_narrative_analysis(
+                        session_id, story_title, transcription, json.loads(story_elements) if story_elements else []
+                    )
+                except Exception as e:
+                    logger.error(f"❌ MISTRAL ERREUR INATTENDUE: {e}")
+                    return _generate_fallback_narrative_analysis(
+                        session_id, story_title, transcription, json.loads(story_elements) if story_elements else []
+                    )
                 
                 if mistral_response.status_code == 200:
                     mistral_result = mistral_response.json()
                     analysis_text = mistral_result.get("choices", [{}])[0].get("message", {}).get("content", "")
                     
-                    # Parser le JSON de l'analyse
-                    try:
-                        # Nettoyer le texte pour extraire le JSON
-                        if "```json" in analysis_text:
-                            analysis_text = analysis_text.split("```json")[1].split("```")[0]
-                        elif "```" in analysis_text:
-                            analysis_text = analysis_text.split("```")[1]
+                    # 🧠 SYSTÈME HYBRIDE INTELLIGENT : Analyse préliminaire du contenu
+                    transcription_clean = transcription.lower().strip()
+                    words = transcription_clean.split()
+                    
+                    # Détecter le contenu non significatif
+                    nonsense_patterns = [
+                        "bla", "blabla", "euh", "hum", "ah", "oh", "mmm",
+                        "test", "testing", "allo", "hello", "bonjour"
+                    ]
+                    
+                    nonsense_count = 0
+                    for word in words:
+                        if any(pattern in word for pattern in nonsense_patterns):
+                            nonsense_count += 1
+                    
+                    nonsense_ratio = nonsense_count / max(len(words), 1)
+                    
+                    logger.info(f"🔍 ANALYSE HYBRIDE - Ratio charabia: {nonsense_ratio:.2f}, Mots: {len(words)}")
+                    
+                    # Si le contenu est de qualité, utiliser Mistral IA + ajustements intelligents
+                    if len(words) >= 5 and nonsense_ratio < 0.3:
+                        logger.info("✅ Contenu de qualité détecté - Utilisation Mistral + ajustements")
                         
-                        analysis_data = json.loads(analysis_text.strip())
-                        logger.info("✅ Analyse Mistral réussie et parsée")
-                        
-                        # Construire la réponse finale
-                        return {
-                            "success": True,
-                            "analysis": analysis_data,
-                            "transcription": transcription,
-                            "session_id": session_id,
-                            "story_title": story_title,
-                            "genre": genre,
-                            "elements": elements_list,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                        
-                    except json.JSONDecodeError as e:
-                        logger.error(f"❌ Erreur parsing JSON Mistral: {e}")
-                        logger.error(f"Contenu reçu: {analysis_text}")
-                        
-                        # Fallback avec données génériques
+                        # Parser le JSON de l'analyse Mistral
+                        try:
+                            # Nettoyer le texte pour extraire le JSON
+                            if "```json" in analysis_text:
+                                analysis_text = analysis_text.split("```json")[1].split("```")[0]
+                            elif "```" in analysis_text:
+                                analysis_text = analysis_text.split("```")[1]
+                            
+                            mistral_analysis = json.loads(analysis_text.strip())
+                            
+                            # Appliquer des ajustements intelligents aux scores Mistral
+                            adjusted_analysis = _apply_intelligent_adjustments(
+                                mistral_analysis, transcription, elements_list, nonsense_ratio
+                            )
+                            
+                            logger.info("✅ Analyse Mistral + ajustements intelligents appliquée")
+                            
+                            # Construire la réponse finale avec Mistral amélioré
+                            return {
+                                "success": True,
+                                "analysis": adjusted_analysis,
+                                "transcription": transcription,
+                                "session_id": session_id,
+                                "story_title": story_title,
+                                "genre": genre,
+                                "elements": elements_list,
+                                "analysis_method": "mistral_intelligent",
+                                "content_quality": "good",
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            
+                        except json.JSONDecodeError as e:
+                            logger.error(f"❌ Erreur parsing JSON Mistral: {e}")
+                            # Fallback vers analyse intelligente
+                            return _generate_fallback_narrative_analysis(
+                                session_id, story_title, transcription, elements_list
+                            )
+                    else:
+                        # Contenu de mauvaise qualité ou charabia - utiliser analyse intelligente
+                        logger.info(f"⚠️ Contenu de mauvaise qualité détecté (ratio: {nonsense_ratio:.2f}) - Utilisation analyse intelligente")
                         return _generate_fallback_narrative_analysis(
                             session_id, story_title, transcription, elements_list
                         )
@@ -1652,28 +1730,193 @@ Adaptez le vocabulaire à la difficulté {difficulty}."""
         logger.error(f"❌ Erreur génération éléments: {e}")
         return _generate_fallback_elements(element_type, count)
 
+def _apply_intelligent_adjustments(mistral_analysis: Dict[str, Any], transcription: str, elements: List[str], nonsense_ratio: float) -> Dict[str, Any]:
+    """Applique des ajustements intelligents aux scores Mistral basés sur l'analyse réelle du contenu"""
+    
+    # Copier l'analyse Mistral pour modification
+    adjusted_analysis = mistral_analysis.copy()
+    
+    # Analyse du contenu pour ajustements
+    words = transcription.lower().strip().split()
+    word_count = len(words)
+    
+    # Facteur d'ajustement basé sur la qualité du contenu
+    content_quality_factor = 1.0 - (nonsense_ratio * 0.5)  # Réduction max de 50% pour 100% charabia
+    length_factor = min(1.0, word_count / 15.0)  # Bonus pour contenu plus long
+    
+    # Analyse de l'utilisation des éléments
+    element_usage_factor = 1.0
+    if elements:
+        elements_found = 0
+        for element in elements:
+            if element.lower() in transcription.lower():
+                elements_found += 1
+        element_usage_factor = 0.8 + (elements_found / len(elements)) * 0.4  # Entre 0.8 et 1.2
+    
+    # Appliquer les ajustements aux scores Mistral
+    original_scores = {
+        "overall_score": mistral_analysis.get("overall_score", 0.5),
+        "creativity_score": mistral_analysis.get("creativity_score", 0.5),
+        "element_usage_score": mistral_analysis.get("element_usage_score", 0.5),
+        "plot_coherence_score": mistral_analysis.get("plot_coherence_score", 0.5),
+        "fluidity_score": mistral_analysis.get("fluidity_score", 0.5),
+        "genre_consistency_score": mistral_analysis.get("genre_consistency_score", 0.5)
+    }
+    
+    # Ajuster chaque score
+    adjusted_analysis["overall_score"] = min(1.0, max(0.0,
+        original_scores["overall_score"] * content_quality_factor * length_factor))
+    
+    adjusted_analysis["creativity_score"] = min(1.0, max(0.0,
+        original_scores["creativity_score"] * content_quality_factor))
+    
+    adjusted_analysis["element_usage_score"] = min(1.0, max(0.0,
+        original_scores["element_usage_score"] * element_usage_factor))
+    
+    adjusted_analysis["plot_coherence_score"] = min(1.0, max(0.0,
+        original_scores["plot_coherence_score"] * content_quality_factor * length_factor))
+    
+    adjusted_analysis["fluidity_score"] = min(1.0, max(0.0,
+        original_scores["fluidity_score"] * content_quality_factor))
+    
+    adjusted_analysis["genre_consistency_score"] = min(1.0, max(0.0,
+        original_scores["genre_consistency_score"] * content_quality_factor))
+    
+    # Ajouter des informations sur les ajustements
+    if nonsense_ratio > 0.1:
+        if "improvements" not in adjusted_analysis:
+            adjusted_analysis["improvements"] = []
+        adjusted_analysis["improvements"].append("Réduire les mots de remplissage et hésitations")
+    
+    if word_count < 10:
+        if "improvements" not in adjusted_analysis:
+            adjusted_analysis["improvements"] = []
+        adjusted_analysis["improvements"].append("Développer davantage l'histoire")
+    
+    # Arrondir les scores
+    for score_key in ["overall_score", "creativity_score", "element_usage_score",
+                      "plot_coherence_score", "fluidity_score", "genre_consistency_score"]:
+        if score_key in adjusted_analysis:
+            adjusted_analysis[score_key] = round(adjusted_analysis[score_key], 2)
+    
+    logger.info(f"🔧 AJUSTEMENTS APPLIQUÉS - Facteur qualité: {content_quality_factor:.2f}, "
+                f"Facteur longueur: {length_factor:.2f}, Score final: {adjusted_analysis.get('overall_score', 0):.2f}")
+    
+    return adjusted_analysis
+
 def _generate_fallback_narrative_analysis(session_id: str, title: str, transcription: str, elements: List[str]) -> Dict[str, Any]:
-    """Génère une analyse de fallback"""
+    """Génère une analyse de fallback basée sur le contenu réel"""
+    
+    # ✅ ANALYSE RÉELLE DU CONTENU DE LA TRANSCRIPTION
+    transcription_clean = transcription.lower().strip()
+    words = transcription_clean.split()
+    
+    logger.info(f"🔍 ANALYSE CONTENU - Transcription: '{transcription_clean}', Mots: {len(words)}")
+    
+    # Détection de contenu non significatif
+    nonsense_patterns = [
+        "bla", "blabla", "euh", "hum", "ah", "oh", "mmm",
+        "test", "testing", "allo", "hello", "bonjour"
+    ]
+    
+    # Calculer le pourcentage de mots non significatifs
+    nonsense_count = 0
+    for word in words:
+        if any(pattern in word for pattern in nonsense_patterns):
+            nonsense_count += 1
+    
+    nonsense_ratio = nonsense_count / max(len(words), 1)
+    meaningful_ratio = 1.0 - nonsense_ratio
+    
+    logger.info(f"📊 ANALYSE QUALITÉ - Mots non significatifs: {nonsense_count}/{len(words)} ({nonsense_ratio:.2f})")
+    
+    # Analyse de la longueur du contenu
+    content_length_score = min(1.0, len(words) / 20.0)  # Score basé sur 20 mots minimum
+    
+    # Calcul des scores basés sur le contenu réel
+    if len(words) < 3:
+        # Très peu de contenu
+        overall_score = 0.1
+        creativity_score = 0.1
+        plot_coherence_score = 0.0
+        fluidity_score = 0.2
+        strengths = ["Tentative d'expression"]
+        improvements = ["Développer le contenu", "Raconter une véritable histoire", "Utiliser plus de mots"]
+        feedback = "Il semble qu'il n'y ait pas assez de contenu pour évaluer l'histoire. Essayez de raconter une histoire plus développée."
+        
+    elif nonsense_ratio > 0.7:
+        # Majoritairement du charabia
+        overall_score = 0.15
+        creativity_score = 0.2
+        plot_coherence_score = 0.1
+        fluidity_score = 0.3
+        strengths = ["Expression orale tentée"]
+        improvements = ["Raconter une vraie histoire", "Utiliser des mots significatifs", "Développer une intrigue"]
+        feedback = "Le contenu semble principalement composé de sons ou mots non significatifs. Essayez de raconter une véritable histoire avec des personnages et une intrigue."
+        
+    elif nonsense_ratio > 0.4:
+        # Partiellement intelligible
+        overall_score = 0.35
+        creativity_score = 0.4
+        plot_coherence_score = 0.3
+        fluidity_score = 0.5
+        strengths = ["Quelques éléments narratifs identifiables"]
+        improvements = ["Clarifier l'histoire", "Réduire les hésitations", "Développer les personnages"]
+        feedback = "Il y a quelques éléments d'histoire, mais le contenu pourrait être plus clair et développé."
+        
+    else:
+        # Contenu décent, scores basés sur la qualité
+        base_score = meaningful_ratio * content_length_score
+        overall_score = max(0.4, min(0.9, base_score))
+        creativity_score = max(0.4, min(0.9, base_score + 0.1))
+        plot_coherence_score = max(0.3, min(0.9, base_score - 0.1))
+        fluidity_score = max(0.4, min(0.9, base_score))
+        strengths = ["Histoire cohérente", "Bon niveau d'expression"]
+        improvements = ["Développer davantage les détails", "Enrichir le vocabulaire"]
+        feedback = "Belle tentative narrative ! Continuez à développer vos histoires."
+    
+    # Analyse de l'utilisation des éléments
+    element_usage_score = 0.0
+    if elements:
+        elements_found = 0
+        for element in elements:
+            if element.lower() in transcription_clean:
+                elements_found += 1
+        element_usage_score = elements_found / len(elements)
+    else:
+        element_usage_score = overall_score  # Score par défaut si pas d'éléments
+    
+    # Score de consistance de genre (évaluation basique)
+    genre_consistency_score = overall_score * 0.9  # Légèrement inférieur au score global
+    
+    logger.info(f"✅ SCORES CALCULÉS - Overall: {overall_score:.2f}, Creativity: {creativity_score:.2f}")
+    
     return {
         "success": True,
         "analysis": {
-            "overall_score": 0.75,
-            "creativity_score": 0.8,
-            "element_usage_score": 0.7,
-            "plot_coherence_score": 0.75,
-            "fluidity_score": 0.8,
-            "genre_consistency_score": 0.7,
-            "strengths": ["Utilisation créative des éléments", "Bonne énergie narrative"],
-            "improvements": ["Développer davantage l'intrigue", "Varier le rythme"],
-            "highlight_moments": ["Moment d'introduction", "Développement central"],
-            "narrative_feedback": "Excellente performance ! Votre histoire était captivante et bien structurée.",
-            "title_suggestion": title if title != "Histoire sans titre" else "Histoire Créative",
-            "detected_keywords": elements[:3] if elements else ["aventure", "créativité", "imagination"]
+            "overall_score": round(overall_score, 2),
+            "creativity_score": round(creativity_score, 2),
+            "element_usage_score": round(element_usage_score, 2),
+            "plot_coherence_score": round(plot_coherence_score, 2),
+            "fluidity_score": round(fluidity_score, 2),
+            "genre_consistency_score": round(genre_consistency_score, 2),
+            "strengths": strengths,
+            "improvements": improvements,
+            "highlight_moments": ["Début de l'histoire"] if overall_score > 0.3 else [],
+            "narrative_feedback": feedback,
+            "title_suggestion": title if title != "Histoire sans titre" else "Histoire à développer",
+            "detected_keywords": elements[:3] if elements and overall_score > 0.3 else ["pratique", "expression", "développement"]
         },
         "transcription": transcription,
         "session_id": session_id,
         "story_title": title,
         "fallback": True,
+        "content_analysis": {
+            "word_count": len(words),
+            "nonsense_ratio": round(nonsense_ratio, 2),
+            "meaningful_content": round(meaningful_ratio, 2),
+            "content_quality": "faible" if overall_score < 0.3 else "moyenne" if overall_score < 0.6 else "bonne"
+        },
         "timestamp": datetime.now().isoformat()
     }
 

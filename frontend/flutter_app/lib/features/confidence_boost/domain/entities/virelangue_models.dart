@@ -307,13 +307,21 @@ class GemCollection extends HiveObject {
 }
 
 /// Récompense de gemmes obtenue après un virelangue
-class GemReward {
+@HiveType(typeId: 40)
+class GemReward extends HiveObject {
+  @HiveField(0)
   final GemType type;
+  
+  @HiveField(1)
   final int count;
+  
+  @HiveField(2)
   final double multiplier;
+  
+  @HiveField(3)
   final String reason;
 
-  const GemReward({
+  GemReward({
     required this.type,
     required this.count,
     required this.multiplier,

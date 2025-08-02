@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/utils/logger_service.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../confidence_boost/data/services/universal_audio_exercise_service.dart';
 import '../../domain/entities/story_models.dart';
 import 'story_collaboration_ai_service.dart';
@@ -104,13 +105,55 @@ class StoryAudioAnalysisService {
     try {
       logger.i(_tag, 'Analyse narrative complète RÉELLE pour: ${story.title}');
       
+      // ✅ VALIDATION CRITIQUE: Vérifier la taille des données audio
+      final audioSize = audioData.length;
+      logger.i(_tag, '📊 VALIDATION AUDIO FLUTTER - Taille: $audioSize bytes');
+      
+      if (audioSize < 1000) {
+        logger.e(_tag, '❌ AUDIO CORROMPU FLUTTER - Taille: $audioSize bytes (minimum 1KB)');
+        return StoryNarrativeAnalysis(
+          storyId: sessionId,
+          overallScore: 0.0,
+          creativityScore: 0.0,
+          relevanceScore: 0.0,
+          structureScore: 0.0,
+          positiveFeedback: 'Impossible d\'analyser l\'audio',
+          improvementSuggestions: 'Vérifiez votre enregistrement audio',
+          audioMetrics: AudioMetrics(
+            articulationScore: 0.0,
+            fluencyScore: 0.0,
+            emotionScore: 0.0,
+            volumeVariation: 0.0,
+            speakingRate: 0.0,
+            fillerWords: [],
+          ),
+          transcription: 'Erreur: Fichier audio corrompu (${audioSize} bytes)',
+          titleSuggestion: 'Erreur Audio',
+          detectedKeywords: ['erreur', 'audio'],
+        );
+      }
+      
+      if (audioSize > 10 * 1024 * 1024) { // Plus de 10MB
+        logger.w(_tag, '⚠️ AUDIO TRÈS VOLUMINEUX - Taille: ${(audioSize / 1024 / 1024).toStringAsFixed(2)} MB');
+      }
+      
+      // Log du format d'audio détecté
+      String audioFormat = 'unknown';
+      if (audioData.length > 4) {
+        final header = audioData.sublist(0, 4);
+        if (header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46) {
+          audioFormat = 'WAV';
+        }
+      }
+      logger.i(_tag, '🎵 FORMAT AUDIO DÉTECTÉ: $audioFormat');
+      
       // Préparer les données pour l'API backend
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://localhost:8005/api/story/analyze-narrative'),
+        Uri.parse('${AppConfig.exercisesApiUrl}/api/story/analyze-narrative'),
       );
       
-      // Ajouter le fichier audio
+      // Ajouter le fichier audio avec le nom de champ correct pour Vosk
       request.files.add(
         http.MultipartFile.fromBytes(
           'audio',
@@ -118,6 +161,8 @@ class StoryAudioAnalysisService {
           filename: 'story_${sessionId}.wav',
         ),
       );
+      
+      logger.i(_tag, '📤 ENVOI VERS BACKEND - URL: ${AppConfig.exercisesApiUrl}/api/story/analyze-narrative, Taille: $audioSize bytes');
       
       // Ajouter les métadonnées
       request.fields['session_id'] = sessionId;
@@ -146,19 +191,20 @@ class StoryAudioAnalysisService {
           logger.i(_tag, 'Analyse réussie - transcription: ${transcription.substring(0, maxLength)}...');
           
           // Convertir l'analyse backend vers le modèle Flutter
+          // ✅ CORRECTION: Convertir les scores décimaux (0.0-1.0) en pourcentages (0.0-100.0)
           return StoryNarrativeAnalysis(
             storyId: sessionId,
-            overallScore: (analysisData['overall_score'] as num?)?.toDouble() ?? 75.0,
-            creativityScore: (analysisData['creativity_score'] as num?)?.toDouble() ?? 80.0,
-            relevanceScore: (analysisData['element_usage_score'] as num?)?.toDouble() ?? 70.0,
-            structureScore: (analysisData['plot_coherence_score'] as num?)?.toDouble() ?? 75.0,
+            overallScore: ((analysisData['overall_score'] as num?)?.toDouble() ?? 0.75) * 100.0,
+            creativityScore: ((analysisData['creativity_score'] as num?)?.toDouble() ?? 0.80) * 100.0,
+            relevanceScore: ((analysisData['element_usage_score'] as num?)?.toDouble() ?? 0.70) * 100.0,
+            structureScore: ((analysisData['plot_coherence_score'] as num?)?.toDouble() ?? 0.75) * 100.0,
             positiveFeedback: (analysisData['strengths'] as List?)?.cast<String>().join(', ') ??
                 'Excellente utilisation des éléments narratifs !',
             improvementSuggestions: (analysisData['improvements'] as List?)?.cast<String>().join(', ') ??
                 'Continuez à développer votre créativité.',
             audioMetrics: AudioMetrics(
               articulationScore: 85.0,
-              fluencyScore: (analysisData['fluidity_score'] as num?)?.toDouble() ?? 80.0,
+              fluencyScore: ((analysisData['fluidity_score'] as num?)?.toDouble() ?? 0.80) * 100.0,
               emotionScore: 75.0,
               volumeVariation: 60.0,
               speakingRate: 150.0,

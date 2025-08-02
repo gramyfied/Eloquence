@@ -54,10 +54,9 @@ class StreamingConfidenceService {
 
   /// Démarre la connexion WebSocket
   Future<void> startStreaming(String sessionId) async {
-    // Utiliser AppConfig.apiBaseUrl et remplacer http/https par ws/wss
-    final baseUri = Uri.parse(AppConfig.apiBaseUrl);
-    final wsScheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
-    final uri = Uri.parse('$wsScheme://${baseUri.host}:${baseUri.port}/ws/confidence-stream/$sessionId');
+    // ✅ CORRIGÉ: Utiliser port 8005 et endpoint /ws/voice-analysis/ selon architecture Scaleway
+    final wsScheme = 'ws'; // Force ws car serveur Scaleway
+    final uri = Uri.parse('$wsScheme://${AppConfig.currentServerIp}:8005/ws/voice-analysis/$sessionId');
 
     debugPrint('📡 Connexion WebSocket à: $uri');
     

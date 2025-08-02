@@ -8,7 +8,7 @@ part of 'virelangue_reward_system.dart';
 
 class PityTimerStateAdapter extends TypeAdapter<PityTimerState> {
   @override
-  final int typeId = 33;
+  final int typeId = 38;
 
   @override
   PityTimerState read(BinaryReader reader) {
@@ -88,6 +88,55 @@ class RewardHistoryAdapter extends TypeAdapter<RewardHistory> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is RewardHistoryAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class SpecialEventTypeAdapter extends TypeAdapter<SpecialEventType> {
+  @override
+  final int typeId = 39;
+
+  @override
+  SpecialEventType read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return SpecialEventType.weekend;
+      case 1:
+        return SpecialEventType.happyHour;
+      case 2:
+        return SpecialEventType.newMonth;
+      case 3:
+        return SpecialEventType.perfectStreak;
+      default:
+        return SpecialEventType.weekend;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, SpecialEventType obj) {
+    switch (obj) {
+      case SpecialEventType.weekend:
+        writer.writeByte(0);
+        break;
+      case SpecialEventType.happyHour:
+        writer.writeByte(1);
+        break;
+      case SpecialEventType.newMonth:
+        writer.writeByte(2);
+        break;
+      case SpecialEventType.perfectStreak:
+        writer.writeByte(3);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SpecialEventTypeAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

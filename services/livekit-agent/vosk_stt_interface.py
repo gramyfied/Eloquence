@@ -38,6 +38,36 @@ class VoskSTT(stt.STT):
         
         logger.info(f"🔧 VoskSTT initialisé - URL: {vosk_url}, Langue: {language}")
     
+    async def start(self, conn_options: Optional[object] = None) -> None:
+        """Démarre le service STT - requis par l'interface LiveKit"""
+        await self._ensure_session()
+        logger.info("✅ VoskSTT service démarré")
+    
+    async def aclose(self) -> None:
+        """Ferme proprement le service STT"""
+        await self._close_session()
+        logger.info("🔴 VoskSTT service fermé")
+    
+    @property
+    def vosk_url(self) -> str:
+        """URL du service Vosk STT"""
+        return self._vosk_url
+    
+    @property
+    def ws_url(self) -> str:
+        """URL WebSocket du service Vosk STT"""
+        return f"{self._vosk_url.replace('http', 'ws')}/websocket"
+    
+    @property
+    def sample_rate(self) -> int:
+        """Taux d'échantillonnage audio"""
+        return self._sample_rate
+    
+    @property
+    def encoding(self) -> str:
+        """Format d'encodage audio"""
+        return "wav"
+    
     async def _ensure_session(self):
         """Assure qu'une session HTTP est disponible"""
         if self._session is None or self._session.closed:

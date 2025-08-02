@@ -6,7 +6,7 @@ class AppConfig {
   static const bool isProduction = false;
   
   // 🌐 CONFIGURATION SERVEUR - Switcher entre local et distant
-  static const bool useRemoteServer = true; // ✅ ACTIVÉ: Serveur distant suite au diagnostic des endpoints
+  static const bool useRemoteServer = false; // ✅ CORRIGÉ: Serveur local pour confidence boost
   static const String remoteServerIp = '51.159.110.4'; // IP du serveur distant
   static const String localServerIp = '192.168.1.44'; // IP locale pour développement
 
@@ -51,7 +51,7 @@ class AppConfig {
   }
 
   static String? get livekitApiSecret {
-    return dotenv.env['LIVEKIT_API_SECRET'] ?? (kDebugMode ? 'secret' : null);
+    return dotenv.env['LIVEKIT_API_SECRET'] ?? (kDebugMode ? 'dev-local-secret-32chars-min-req' : null);
   }
 
   // URL du serveur de tokens LiveKit (confirmé par diagnostic)
@@ -59,7 +59,7 @@ class AppConfig {
     if (isProduction) {
       return "https://your-prod-server.com/livekit-tokens";
     }
-    return _buildUrl('http', 8004, '/health'); // Endpoint confirmé fonctionnel
+    return _buildUrl('http', 8004); // ✅ CORRIGÉ: Suppression du /health
   }
 
   static String get whisperUrl {
@@ -89,7 +89,7 @@ class AppConfig {
     if (isProduction) {
       return "https://exercises.eloquence.app";
     }
-    return _buildUrl('http', 8000); // ✅ CORRIGÉ: API unifiée port 8000
+    return _buildUrl('http', 8005); // ✅ CORRIGÉ: Port 8005 eloquence-exercises-api avec Vosk STT
   }
 
   // 🎤 SERVICE VOSK STT (selon documentation README-new.md)
@@ -97,7 +97,7 @@ class AppConfig {
     if (isProduction) {
       return "https://your-prod-server.com/vosk";
     }
-    return _buildUrl('http', 8002); // ✅ CORRIGÉ: Port 8002 selon doc
+    return _buildUrl('http', 8012); // ✅ CORRIGÉ: Port 8012 selon Docker
   }
 
   // Service de streaming (legacy - utiliser API unifiée)
@@ -105,7 +105,7 @@ class AppConfig {
     if (isProduction) {
       return "https://streaming.eloquence.app";
     }
-    return _buildUrl('http', 8000); // ✅ CORRIGÉ: Redirigé vers API unifiée port 8000
+    return _buildUrl('http', 8005); // ✅ CORRIGÉ: Port 8005 eloquence-exercises-api avec Vosk STT
   }
   
   static String get mistralBaseUrl {

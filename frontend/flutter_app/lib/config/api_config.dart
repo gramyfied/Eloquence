@@ -1,7 +1,9 @@
 // lib/config/api_config.dart
+import 'environment_config.dart';
+
 class ApiConfig {
   // Configuration pour l'environnement de production
-  static const String _productionBaseUrl = 'http://51.159.110.4:8000';
+  static const String _productionBaseUrl = 'http://51.159.110.4:8005';
   
   // Configuration pour l'environnement de développement local
   static const String _developmentBaseUrl = 'http://192.168.1.44:8000';
@@ -9,14 +11,19 @@ class ApiConfig {
   // Configuration pour l'environnement de test
   static const String _testBaseUrl = 'http://localhost:8000';
   
-  // Détection automatique de l'environnement
+  // Utilise EnvironmentConfig en priorité, sinon détection automatique
   static String get baseUrl {
-    // En production (web), utiliser l'URL de production
+    // Priorité 1: Configuration explicite d'EnvironmentConfig
+    if (EnvironmentConfig.customApiUrl != null) {
+      return EnvironmentConfig.apiUrl;
+    }
+    
+    // Priorité 2: Détection automatique d'environnement
     if (const bool.fromEnvironment('dart.vm.product')) {
       return _productionBaseUrl;
     }
     
-    // En développement, utiliser l'URL locale
+    // Priorité 3: Développement par défaut
     return _developmentBaseUrl;
   }
   

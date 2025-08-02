@@ -119,6 +119,49 @@ class GemCollectionAdapter extends TypeAdapter<GemCollection> {
           typeId == other.typeId;
 }
 
+class GemRewardAdapter extends TypeAdapter<GemReward> {
+  @override
+  final int typeId = 40;
+
+  @override
+  GemReward read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return GemReward(
+      type: fields[0] as GemType,
+      count: fields[1] as int,
+      multiplier: fields[2] as double,
+      reason: fields[3] as String,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, GemReward obj) {
+    writer
+      ..writeByte(4)
+      ..writeByte(0)
+      ..write(obj.type)
+      ..writeByte(1)
+      ..write(obj.count)
+      ..writeByte(2)
+      ..write(obj.multiplier)
+      ..writeByte(3)
+      ..write(obj.reason);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GemRewardAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class VirelangueStatsAdapter extends TypeAdapter<VirelangueStats> {
   @override
   final int typeId = 35;

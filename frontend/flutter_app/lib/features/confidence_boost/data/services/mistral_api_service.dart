@@ -76,7 +76,7 @@ class MistralApiService implements IMistralApiService {
     }
     
     // Vérifier si la clé API est présente
-    if (_apiKey.isEmpty || _apiKey == 'your_mistral_api_key') {
+    if (_apiKey.isEmpty || _apiKey == 'your_mistral_api_key' || _apiKey == 'SCW_SECRET_KEY') {
       logger.w(_tag, 'Clé API Mistral invalide, utilisation du feedback simulé');
       const simulatedResult = 'Feedback simulé: Très bonne performance ! Votre élocution était claire et votre message était bien structuré.';
       await MistralCacheService.cacheResponse(
@@ -206,7 +206,7 @@ class MistralApiService implements IMistralApiService {
     }
     
     // Vérifier si la clé API est présente
-    if (_apiKey.isEmpty || _apiKey == 'your_mistral_api_key') {
+    if (_apiKey.isEmpty || _apiKey == 'your_mistral_api_key' || _apiKey == 'SCW_SECRET_KEY') {
       logger.w(_tag, 'Clé API Mistral invalide, utilisation de l\'analyse simulée');
       const fallbackAnalysis = {
         'content_score': 0.75,

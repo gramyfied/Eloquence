@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:hive/hive.dart';
 import '../../../confidence_boost/domain/entities/virelangue_models.dart';
 
@@ -503,6 +504,7 @@ class StoryExerciseSession {
   final List<AIIntervention> pendingInterventions;
   final StorySessionPhase phase;
   final StoryNarrativeAnalysis? analysisResult;
+  final Uint8List? recordedAudioData; // Données audio enregistrées
 
   const StoryExerciseSession({
     required this.sessionId,
@@ -519,6 +521,7 @@ class StoryExerciseSession {
     this.pendingInterventions = const [],
     this.phase = StorySessionPhase.elementSelection,
     this.analysisResult,
+    this.recordedAudioData,
   });
 
   /// Constructor pour session initiale
@@ -556,6 +559,7 @@ class StoryExerciseSession {
     List<AIIntervention>? pendingInterventions,
     StorySessionPhase? phase,
     StoryNarrativeAnalysis? analysisResult,
+    Uint8List? recordedAudioData,
   }) {
     return StoryExerciseSession(
       sessionId: sessionId ?? this.sessionId,
@@ -572,6 +576,7 @@ class StoryExerciseSession {
       pendingInterventions: pendingInterventions ?? this.pendingInterventions,
       phase: phase ?? this.phase,
       analysisResult: analysisResult ?? this.analysisResult,
+      recordedAudioData: recordedAudioData ?? this.recordedAudioData,
     );
   }
 }

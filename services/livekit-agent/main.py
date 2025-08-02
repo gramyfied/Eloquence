@@ -15,6 +15,7 @@ from livekit.agents import (
     llm,
 )
 from livekit.plugins import openai, silero
+from vosk_stt_interface import VoskSTT
 
 # Charger les variables d'environnement
 load_dotenv()

@@ -23,7 +23,7 @@ ENV LIVEKIT_URL=ws://livekit:7880
 ENV LIVEKIT_API_KEY=devkey
 ENV LIVEKIT_API_SECRET=secret
 ENV MISTRAL_BASE_URL=https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1
-ENV VOSK_SERVICE_URL=http://vosk-stt-analysis:2700
+ENV VOSK_SERVICE_URL=http://vosk-stt:8012
 
 # Commande de démarrage
 CMD ["python", "main.py", "start"]

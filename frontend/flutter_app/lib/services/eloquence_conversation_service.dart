@@ -85,7 +85,7 @@ class EloquenceConversationService {
   
   // Connexion WebSocket pour conversation
   WebSocketChannel connectToConversation(String sessionId) {
-    final wsUri = Uri.parse('$wsUrl/api/sessions/$sessionId/stream');
+    final wsUri = Uri.parse('$wsUrl/ws/voice-analysis/$sessionId');
     return WebSocketChannel.connect(wsUri);
   }
   
@@ -109,7 +109,7 @@ class EloquenceConversationService {
   Future<Map<String, dynamic>?> getSessionAnalysis(String sessionId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/sessions/$sessionId/analysis')
+        Uri.parse('$baseUrl/api/sessions/$sessionId')
       );
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -125,7 +125,7 @@ class EloquenceConversationService {
   Future<Map<String, dynamic>?> finalizeSession(String sessionId) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/sessions/$sessionId/end')
+        Uri.parse('$baseUrl/api/sessions/$sessionId/complete')
       );
       if (response.statusCode == 200) {
         return json.decode(response.body);

@@ -7,6 +7,7 @@ import '../../../confidence_boost/domain/entities/virelangue_models.dart';
 import '../../../confidence_boost/data/services/mistral_api_service.dart';
 import 'story_prompt_templates_service.dart';
 import '../../../../core/utils/logger_service.dart';
+import '../../../../core/config/app_config.dart';
 
 /// Service de génération d'éléments narratifs pour les histoires
 class StoryGenerationService {
@@ -424,7 +425,7 @@ class StoryGenerationService {
       
       // Appel à notre endpoint backend
       final response = await http.post(
-        Uri.parse('http://localhost:8000/api/story/generate-elements'),
+        Uri.parse('${AppConfig.exercisesApiUrl}/api/story/generate-elements'),
         headers: {
           'Content-Type': 'application/json',
         },

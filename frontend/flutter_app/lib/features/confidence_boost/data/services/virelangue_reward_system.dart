@@ -481,10 +481,15 @@ class VirelangueRewardSystem {
 // ========== CLASSES DE SUPPORT ==========
 
 /// Types d'événements spéciaux
+@HiveType(typeId: 39)
 enum SpecialEventType {
+  @HiveField(0)
   weekend,
+  @HiveField(1)
   happyHour,
+  @HiveField(2)
   newMonth,
+  @HiveField(3)
   perfectStreak,
 }
 
@@ -542,7 +547,7 @@ class VariableRewardResult {
 }
 
 /// État du pity timer pour garantir les récompenses rares
-@HiveType(typeId: 33)
+@HiveType(typeId: 38)
 class PityTimerState extends HiveObject {
   @HiveField(0)
   int emeraldTimer;

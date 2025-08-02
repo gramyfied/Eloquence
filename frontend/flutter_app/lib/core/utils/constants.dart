@@ -1,11 +1,20 @@
 /// Constantes globales pour l'application Eloquence
 class AppConstants {
-  // URLs des services backend (serveur distant)
-  static const String defaultApiBaseUrl = 'http://51.159.110.4:8000';
-  static const String defaultVoskUrl = 'http://51.159.110.4:2700';
-  static const String defaultMistralUrl = 'http://51.159.110.4:8001';
-  static const String defaultLivekitUrl = 'ws://51.159.110.4:7880';
-  static const String defaultEloquenceConversationUrl = 'http://51.159.110.4:8003';
+  // URLs des services backend (serveur local par défaut - IP locale)
+  static const String defaultApiBaseUrl = 'http://192.168.1.44:8000';
+  static const String defaultVoskUrl = 'http://192.168.1.44:8002';
+  static const String defaultMistralUrl = 'http://192.168.1.44:8001';
+  static const String defaultLivekitUrl = 'ws://192.168.1.44:7880';
+  static const String defaultEloquenceConversationUrl = 'http://192.168.1.44:8003';
+  static const String defaultExercisesUrl = 'http://192.168.1.44:8005';
+  
+  // URLs des services backend (serveur distant - sauvegardé)
+  static const String remoteApiBaseUrl = 'http://51.159.110.4:8000';
+  static const String remoteVoskUrl = 'http://51.159.110.4:2700';
+  static const String remoteMistralUrl = 'http://51.159.110.4:8001';
+  static const String remoteLivekitUrl = 'ws://51.159.110.4:7880';
+  static const String remoteEloquenceConversationUrl = 'http://51.159.110.4:8003';
+  static const String remoteExercisesUrl = 'http://51.159.110.4:8005';
   
   // Timeouts
   static const Duration defaultTimeout = Duration(seconds: 45);

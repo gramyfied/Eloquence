@@ -132,8 +132,12 @@ void _registerHiveAdapters(Logger log) {
     register(31, VirelangueAdapter());
     register(32, GemCollectionAdapter());
     register(33, VirelangueDifficultyAdapter());
+    register(34, RewardHistoryAdapter());
     register(35, VirelangueStatsAdapter());
     register(36, VirelangueUserProgressAdapter());
+    register(38, PityTimerStateAdapter());
+    register(39, SpecialEventTypeAdapter());
+    register(40, GemRewardAdapter());
 
     // Dragon Breath
     register(40, DragonLevelAdapter());

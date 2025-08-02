@@ -197,14 +197,26 @@ def convert_audio_to_wav(audio_data: bytes, original_filename: str) -> tuple[str
     """Convertit l'audio en WAV 16kHz mono pour VOSK avec gestion Flutter optimisée"""
     logger.info(f"🎵 Conversion audio: {original_filename} ({len(audio_data)} bytes)")
     
+    # Analyser les premiers bytes pour détecter le format réel
+    header_start = audio_data[:12] if len(audio_data) >= 12 else audio_data
+    logger.info(f"🔍 Header audio (hex): {header_start.hex()}")
+    
     # Détecter l'extension du fichier
     file_ext = os.path.splitext(original_filename)[1].lower()
-    logger.info(f"📄 Extension détectée: {file_ext}")
+    logger.info(f"📄 Extension déclarée: {file_ext}")
     
-    # Vérifier si c'est déjà du WAV Flutter
-    if audio_data.startswith(b'RIFF') and b'WAVE' in audio_data[:50]:
-        logger.info("🎯 Audio WAV détecté depuis Flutter")
-        file_ext = '.wav'
+    # Détection robuste WAV Flutter avec validation approfondie
+    is_wav_format = False
+    if audio_data.startswith(b'RIFF') and len(audio_data) >= 44:
+        # Vérifier structure WAV complète
+        if b'WAVE' in audio_data[8:12] and b'fmt ' in audio_data[12:20]:
+            logger.info("🎯 Audio WAV valide détecté depuis Flutter")
+            is_wav_format = True
+            file_ext = '.wav'
+        else:
+            logger.warning("⚠️ Header RIFF détecté mais structure WAV invalide")
+    elif audio_data.startswith(b'RIFF'):
+        logger.warning("⚠️ Header RIFF détecté mais fichier trop court ou corrompu")
     
     # Créer le fichier temporaire d'entrée
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext or '.audio') as tmp_input:
@@ -212,10 +224,10 @@ def convert_audio_to_wav(audio_data: bytes, original_filename: str) -> tuple[str
         tmp_input_path = tmp_input.name
     
     try:
-        # Tentative 1: Si c'est du WAV, vérifier s'il est déjà au bon format
-        if file_ext == '.wav' or audio_data.startswith(b'RIFF'):
+        # Tentative 1: Si c'est du WAV valide, vérifier s'il est déjà au bon format
+        if is_wav_format or file_ext == '.wav':
             try:
-                logger.info("🔄 Tentative de lecture directe WAV...")
+                logger.info("🔄 Tentative de lecture directe WAV Flutter...")
                 with wave.open(tmp_input_path, 'rb') as wav_file:
                     sample_rate = wav_file.getframerate()
                     channels = wav_file.getnchannels()
@@ -223,20 +235,23 @@ def convert_audio_to_wav(audio_data: bytes, original_filename: str) -> tuple[str
                     n_frames = wav_file.getnframes()
                     duration = n_frames / sample_rate
                     
-                    logger.info(f"📊 WAV info: {sample_rate}Hz, {channels}ch, {sample_width}bytes, {duration:.2f}s")
+                    logger.info(f"📊 WAV Flutter info: {sample_rate}Hz, {channels}ch, {sample_width}bytes, {duration:.2f}s")
                     
-                    # Si c'est déjà 16kHz mono 16-bit, copier vers un nouveau fichier temporaire
+                    # Si c'est déjà 16kHz mono 16-bit, utiliser directement
                     if sample_rate == SAMPLE_RATE and channels == 1 and sample_width == 2:
-                        logger.info("✅ WAV déjà au bon format, création d'une copie sécurisée")
+                        logger.info("✅ WAV Flutter au format parfait, création d'une copie propre")
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_output:
                             # Copier le contenu vers le nouveau fichier
                             with open(tmp_input_path, 'rb') as src:
                                 tmp_output.write(src.read())
-                            logger.info(f"🔒 Copie sécurisée créée: {tmp_output.name}")
+                            logger.info(f"🔒 Copie WAV Flutter prête: {tmp_output.name}")
                             return tmp_output.name, duration
+                    else:
+                        logger.info(f"🔄 WAV Flutter nécessite conversion: {sample_rate}Hz→{SAMPLE_RATE}Hz, {channels}ch→1ch")
                         
             except Exception as wav_error:
-                logger.warning(f"⚠️ Lecture WAV directe échouée: {wav_error}")
+                logger.warning(f"⚠️ Lecture WAV Flutter directe échouée: {wav_error}")
+                # Continuer avec les autres méthodes
         
         # Tentative 2: librosa avec paramètres optimisés
         try:

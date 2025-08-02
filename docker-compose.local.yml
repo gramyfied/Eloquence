@@ -1,0 +1,183 @@
+services:
+  # === SERVICES CORE ===
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:6380:6379"
+    networks:
+      - eloquence-local-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # === API PRINCIPALE UNIFIÉE ===
+  eloquence-api:
+    build:
+      context: ./services/eloquence-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:8080:8080"
+    networks:
+      - eloquence-local-network
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - VOSK_URL=http://vosk-stt:8002
+      - MISTRAL_URL=http://mistral-conversation:8001
+      - PORT=8080
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_healthy
+      vosk-stt:
+        condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === SERVICES SPÉCIALISÉS ===
+  livekit-server:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:7880:7880"
+      - "192.168.1.44:7881:7881"
+      - "192.168.1.44:40000-40100:40000-40100/udp"
+    networks:
+      - eloquence-local-network
+    environment:
+      LIVEKIT_KEYS: "devkey: dev-local-secret-32chars-min-req"
+      LIVEKIT_REDIS_HOST: redis
+      LIVEKIT_REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 7880 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-agent:
+    build:
+      context: ./services/livekit-agent
+    restart: unless-stopped
+    networks:
+      - eloquence-local-network
+    depends_on:
+      livekit-server:
+        condition: service_healthy
+      vosk-stt:
+        condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
+    environment:
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=dev-local-secret-32chars-min-req
+      - VOSK_SERVICE_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001
+    env_file:
+      - .env
+
+  vosk-stt:
+    build:
+      context: ./services/vosk-stt-analysis
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:8012:8002"
+    networks:
+      - eloquence-local-network
+    environment:
+      - PORT=8002
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mistral-conversation:
+    build:
+      context: ./services/mistral-conversation
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:8001:8001"
+    networks:
+      - eloquence-local-network
+    environment:
+      - PORT=8001
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  eloquence-exercises-api:
+    build:
+      context: ./services/eloquence-exercises-api # Assumed path
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:8005:8005"
+    networks:
+      - eloquence-local-network
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - VOSK_SERVICE_URL=http://vosk-stt:8002
+      - MISTRAL_SERVICE_URL=http://mistral-conversation:8001
+      - TOKEN_SERVICE_URL=http://livekit-token-service:8004
+      - PORT=8005
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_healthy
+      vosk-stt:
+        condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
+      livekit-token-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-token-service:
+    build:
+      context: ./services/livekit-token-service
+    restart: unless-stopped
+    ports:
+      - "192.168.1.44:8004:8004"
+    networks:
+      - eloquence-local-network
+    environment:
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=dev-local-secret-32chars-min-req
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - PORT=8004
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  eloquence-local-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  vosk-models:
