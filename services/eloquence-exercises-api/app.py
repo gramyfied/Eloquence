@@ -24,6 +24,22 @@ from models.exercise_models import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def safe_get(obj, key, default=None, context="unknown"):
+    """
+    Wrapper sécurisé pour .get() qui gère les cas où obj n'est pas un dict
+    """
+    try:
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        else:
+            logger.error(f"❌ SAFE_GET ERROR [{context}]: Tentative .get() sur {type(obj)}")
+            logger.error(f"❌ SAFE_GET ERROR [{context}]: Contenu = {obj}")
+            logger.error(f"❌ SAFE_GET ERROR [{context}]: Key demandée = '{key}'")
+            return default
+    except Exception as e:
+        logger.error(f"❌ SAFE_GET EXCEPTION [{context}]: {e}")
+        return default
+
 app = FastAPI(
     title="Eloquence Exercises API",
     description="API légère pour la gestion des exercices vocaux avec LiveKit",
@@ -50,7 +66,7 @@ LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://livekit:7880")
 TOKEN_SERVICE_URL = os.getenv("TOKEN_SERVICE_URL", "http://livekit-token-service:8004")
 
 # Configuration du service Vosk
-VOSK_SERVICE_URL = os.getenv("VOSK_SERVICE_URL", "http://vosk-stt:8002")
+VOSK_SERVICE_URL = os.getenv("VOSK_SERVICE_URL", "http://vosk-stt-analysis:8095")
 
 # Configuration du service Mistral
 MISTRAL_SERVICE_URL = os.getenv("MISTRAL_SERVICE_URL", "http://mistral-conversation:8001")
@@ -561,7 +577,7 @@ async def analyze_voice(
         analysis_result = {
             "session_id": session_id,
             "timestamp": datetime.now().isoformat(),
-            "transcription": vosk_result.get("transcription", {}).get("text", ""),
+            "transcription": vosk_result.get("transcription", ""),
             "confidence_score": vosk_result.get("confidence_score", 0.0),
             "metrics": {
                 "clarity": vosk_result.get("clarity_score", 0.0),
@@ -669,7 +685,7 @@ async def analyze_voice_detailed(
         analysis_result = {
             "session_id": session_id,
             "timestamp": datetime.now().isoformat(),
-            "transcription": vosk_result.get("transcription", {}).get("text", ""),
+            "transcription": vosk_result.get("transcription", ""),
             "confidence_score": vosk_result.get("confidence_score", 0.0),
             "metrics": {
                 "clarity": vosk_result.get("clarity_score", 0.0),
@@ -682,7 +698,7 @@ async def analyze_voice_detailed(
                 "articulation_score": vosk_result.get("confidence_score", 0.0)
             },
             "prosody": vosk_result.get("prosody", {}),
-            "word_analysis": vosk_result.get("transcription", {}).get("words", []),
+            "word_analysis": vosk_result.get("words", []),
             "feedback": vosk_result.get("feedback", ""),
             "detailed_feedback": detailed_feedback,
             "strengths": vosk_result.get("strengths", []),
@@ -754,8 +770,7 @@ async def _generate_detailed_feedback(vosk_result: Dict[str, Any], exercise_type
 
 def _calculate_vocabulary_richness(vosk_result: Dict[str, Any]) -> float:
     """Calcule la richesse du vocabulaire"""
-    transcription = vosk_result.get("transcription", {})
-    words = transcription.get("words", [])
+    words = vosk_result.get("words", [])
     
     if not words:
         return 0.5
@@ -802,8 +817,10 @@ async def analyze_virelangue_pronunciation(
     Endpoint spécialisé pour l'analyse de virelangues avec évaluation de prononciation
     """
     logger.info(f"🎭 Analyse virelangue reçue - texte cible: {target_text}")
+    logger.info("🔍 DEBUG-VERY-EARLY: Fonction analyze_virelangue démarrée")
     
     try:
+        logger.info("🔍 DEBUG-VERY-EARLY: Entrée dans le bloc try principal")
         # Générer un session_id si non fourni
         if not session_id:
             session_id = f"virelangue_{uuid.uuid4().hex[:8]}"
@@ -839,6 +856,17 @@ async def analyze_virelangue_pronunciation(
                     data=data
                 )
                 logger.info(f"✅ Connexion Vosk réussie, status: {vosk_response.status_code}")
+                
+                # 🔍 DIAGNOSTIC IMMÉDIAT: Identifier exactement où et pourquoi vosk_result devient une string
+                logger.info(f"🔍 DIAGNOSTIC IMMÉDIAT: vosk_response.status_code = {vosk_response.status_code}")
+                logger.info(f"🔍 DIAGNOSTIC IMMÉDIAT: vosk_response.headers = {dict(vosk_response.headers)}")
+                logger.info(f"🔍 DIAGNOSTIC IMMÉDIAT: vosk_response.text[:200] = '{vosk_response.text[:200]}'")
+                logger.info(f"🔍 DIAGNOSTIC IMMÉDIAT: vosk_response.text type = {type(vosk_response.text)}")
+                logger.info(f"🔍 DIAGNOSTIC IMMÉDIAT: vosk_response.text length = {len(vosk_response.text)}")
+                
+                # AVANT le parsing JSON
+                logger.info("🔍 DIAGNOSTIC: About to parse JSON")
+                
             except httpx.ConnectError as e:
                 logger.error(f"❌ Erreur de connexion vers Vosk (virelangue): {e}")
                 raise HTTPException(
@@ -858,22 +886,123 @@ async def analyze_virelangue_pronunciation(
                     detail=f"Erreur communication Vosk: {str(e)}"
                 )
             
+            # ✅ VÉRIFICATION STATUS CODE (sans duplication)
+            logger.info("🔍 ULTRA-DEBUG LINE 4: About to check status code")
             if vosk_response.status_code != 200:
+                logger.error(f"❌ Vosk erreur HTTP {vosk_response.status_code}: {vosk_response.text}")
                 raise HTTPException(
                     status_code=500,
                     detail=f"Erreur service Vosk: {vosk_response.text}"
                 )
             
-            vosk_result = vosk_response.json()
+            logger.info("🔍 ULTRA-DEBUG LINE 5: Status code check passed")
+            
+            # ✅ PARSING JSON ULTRA-SÉCURISÉ
+            try:
+                logger.info("🔍 PARSING: Début parsing JSON")
+                
+                # Vérification préalable du contenu
+                response_text = vosk_response.text.strip()
+                logger.info(f"🔍 PARSING: response_text length = {len(response_text)}")
+                logger.info(f"🔍 PARSING: response_text[:100] = '{response_text[:100]}'")
+                
+                if not response_text:
+                    logger.error("❌ ERREUR: Réponse Vosk vide")
+                    raise HTTPException(status_code=502, detail="Réponse Vosk vide")
+                
+                # Vérification que ça commence par { ou [
+                if not response_text.startswith(('{', '[')):
+                    logger.error(f"❌ ERREUR: Réponse Vosk n'est pas du JSON: '{response_text[:100]}'")
+                    raise HTTPException(status_code=502, detail=f"Réponse Vosk invalide: {response_text[:100]}")
+                
+                # Parsing JSON avec gestion d'erreur détaillée
+                vosk_result = vosk_response.json()
+                logger.info(f"✅ PARSING RÉUSSI: type = {type(vosk_result)}")
+                logger.info(f"✅ PARSING RÉUSSI: content = {vosk_result}")
+                
+                # VALIDATION CRITIQUE IMMÉDIATE
+                if not isinstance(vosk_result, dict):
+                    logger.error(f"❌ ERREUR CRITIQUE: vosk_result n'est pas un dict")
+                    logger.error(f"❌ Type reçu: {type(vosk_result)}")
+                    logger.error(f"❌ Contenu: {vosk_result}")
+                    
+                    # Tentative de conversion si c'est une string JSON
+                    if isinstance(vosk_result, str):
+                        logger.info("🔄 TENTATIVE: Conversion string JSON vers dict")
+                        try:
+                            vosk_result = json.loads(vosk_result)
+                            logger.info(f"✅ CONVERSION RÉUSSIE: {type(vosk_result)}")
+                        except json.JSONDecodeError as e:
+                            logger.error(f"❌ CONVERSION ÉCHOUÉE: {e}")
+                            raise HTTPException(status_code=502, detail=f"Vosk string non-JSON: {vosk_result[:100]}")
+                    else:
+                        raise HTTPException(status_code=502, detail=f"Vosk result type invalide: {type(vosk_result)}")
+                
+                logger.info("✅ VALIDATION: vosk_result est un dictionnaire valide")
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ ERREUR JSON DECODE: {e}")
+                logger.error(f"❌ Contenu problématique: '{vosk_response.text}'")
+                raise HTTPException(status_code=502, detail=f"JSON invalide de Vosk: {str(e)}")
+                
+            except httpx.ResponseNotRead as e:
+                logger.error(f"❌ ERREUR HTTPX: {e}")
+                raise HTTPException(status_code=502, detail=f"Erreur lecture réponse: {str(e)}")
+                
+            except Exception as e:
+                logger.error(f"❌ ERREUR INATTENDUE PARSING: {e}")
+                logger.error(f"❌ Type erreur: {type(e)}")
+                import traceback
+                logger.error(f"❌ Traceback: {traceback.format_exc()}")
+                raise HTTPException(status_code=500, detail=f"Erreur parsing Vosk: {str(e)}")
+        
+        # ✅ Debugging granulaire pour identifier l'erreur exacte
+        logger.info(f"🔍 STEP 1: About to access vosk_result")
+        logger.info(f"🔍 DEBUG: vosk_result type = {type(vosk_result)}")
+        logger.info(f"🔍 DEBUG: vosk_result content = {vosk_result}")
+        
+        # ✅ VALIDATION CRITIQUE: Vérifier que vosk_result est un dictionnaire
+        if not isinstance(vosk_result, dict):
+            logger.error(f"❌ ERREUR CRITIQUE: vosk_result n'est pas un dictionnaire")
+            logger.error(f"❌ Type reçu: {type(vosk_result)}")
+            logger.error(f"❌ Contenu: {vosk_result}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Erreur: vosk_result invalide (type: {type(vosk_result)})"
+            )
+        
+        # ✅ Debugging granulaire pour identifier l'erreur exacte
+        logger.info(f"🔍 STEP 1: About to access vosk_result")
+        logger.info(f"🔍 DEBUG: vosk_result type = {type(vosk_result)}")
+        logger.info(f"🔍 DEBUG: vosk_result content = {vosk_result}")
         
         # Calculer score de prononciation spécifique aux virelangues
-        transcribed_text = vosk_result.get("transcription", {}).get("text", "")
+        logger.info(f"🔍 STEP 2: About to get transcription")
+        transcribed_text = safe_get(vosk_result, "transcription", "", "transcription_extraction")
+        logger.info(f"🔍 STEP 3: transcribed_text = '{transcribed_text}'")
+        
+        logger.info(f"🔍 STEP 4: About to get confidence_score")
+        confidence_score = safe_get(vosk_result, "confidence_score", 0.0, "confidence_extraction")
+        logger.info(f"🔍 STEP 5: confidence_score = {confidence_score}")
+        
+        logger.info(f"🔍 STEP 6: About to call _calculate_virelangue_pronunciation_score")
         pronunciation_score = _calculate_virelangue_pronunciation_score(
-            target_text, transcribed_text, vosk_result.get("confidence_score", 0.0)
+            target_text, transcribed_text, confidence_score
         )
+        logger.info(f"🔍 STEP 7: pronunciation_score = {pronunciation_score}")
         
         # Analyser les sons difficiles
-        sound_analysis = _analyze_target_sounds(transcribed_text, target_sounds_list, vosk_result)
+        logger.info(f"🔍 STEP 8: About to call _analyze_target_sounds")
+        try:
+            sound_analysis = _analyze_target_sounds(transcribed_text, target_sounds_list, vosk_result)
+            # ✅ VALIDATION CRITIQUE: Vérifier que sound_analysis est un dictionnaire
+            if not isinstance(sound_analysis, dict):
+                logger.error(f"❌ _analyze_target_sounds a retourné un type invalide: {type(sound_analysis)}, contenu: {sound_analysis}")
+                sound_analysis = {"precision_score": 0.5, "sound_details": [], "overall_sound_quality": "erreur"}
+            logger.info(f"🔍 STEP 9: sound_analysis completed - Type: {type(sound_analysis)}")
+        except Exception as e:
+            logger.error(f"❌ Erreur dans _analyze_target_sounds: {e}")
+            sound_analysis = {"precision_score": 0.5, "sound_details": [], "overall_sound_quality": "erreur"}
         
         # Construire la réponse spécialisée pour virelangues
         analysis_result = {
@@ -886,18 +1015,18 @@ async def analyze_virelangue_pronunciation(
             "pronunciation_accuracy": pronunciation_score,
             "detailed_scores": {
                 "accuracy": pronunciation_score,
-                "clarity": vosk_result.get("clarity_score", 0.0),
-                "fluency": vosk_result.get("fluency_score", 0.0),
-                "confidence": vosk_result.get("confidence_score", 0.0),
-                "sound_precision": sound_analysis.get("precision_score", 0.0)
+                "clarity": safe_get(vosk_result, "clarity_score", 0.0, "clarity_score"),
+                "fluency": safe_get(vosk_result, "fluency_score", 0.0, "fluency_score"),
+                "confidence": safe_get(vosk_result, "confidence_score", 0.0, "confidence_score_2"),
+                "sound_precision": safe_get(sound_analysis, "precision_score", 0.0, "sound_precision")
             },
             "sound_analysis": sound_analysis,
-            "prosody_analysis": vosk_result.get("prosody", {}),
+            "prosody_analysis": safe_get(vosk_result, "prosody", {}, "prosody_analysis"),
             "feedback": _generate_virelangue_feedback(pronunciation_score, sound_analysis),
             "strengths": _extract_virelangue_strengths(pronunciation_score, sound_analysis),
             "improvements": _extract_virelangue_improvements(pronunciation_score, sound_analysis),
-            "phoneme_details": vosk_result.get("transcription", {}).get("words", []),
-            "processing_time": vosk_result.get("processing_time", 0.0),
+            "phoneme_details": safe_get(vosk_result, "words", [], "phoneme_details"),
+            "processing_time": safe_get(vosk_result, "processing_time", 0.0, "processing_time"),
             "exercise_type": "virelangue",
             "difficulty_assessment": _assess_virelangue_difficulty(target_text, pronunciation_score)
         }
@@ -972,6 +1101,12 @@ def _calculate_word_similarity(word1: str, word2: str) -> float:
 
 def _analyze_target_sounds(transcribed_text: str, target_sounds: List[str], vosk_result: Dict) -> Dict[str, Any]:
     """Analyse la prononciation des sons ciblés"""
+    
+    # ✅ VALIDATION CRITIQUE
+    if not isinstance(vosk_result, dict):
+        logger.error(f"❌ _analyze_target_sounds: vosk_result n'est pas un dict: {type(vosk_result)}")
+        return {"precision_score": 0.5, "sound_details": [], "overall_sound_quality": "erreur_type"}
+    
     if not target_sounds:
         return {"precision_score": 0.8, "sound_details": []}
     
@@ -1012,14 +1147,19 @@ def _extract_virelangue_strengths(pronunciation_score: float, sound_analysis: Di
     """Extrait les points forts de la prononciation"""
     strengths = []
     
+    # ✅ VALIDATION CRITIQUE
+    if not isinstance(sound_analysis, dict):
+        logger.error(f"❌ _extract_virelangue_strengths: sound_analysis invalide: {type(sound_analysis)}")
+        return ["Analyse en cours..."]
+    
     if pronunciation_score >= 0.7:
         strengths.append("Bonne articulation générale")
     
-    precision_score = sound_analysis.get("precision_score", 0.0)
+    precision_score = safe_get(sound_analysis, "precision_score", 0.0, "strengths_precision")
     if precision_score >= 0.8:
         strengths.append("Excellente maîtrise des sons ciblés")
     elif precision_score >= 0.6:
-        strengths.append("Bonne reconnaissance des sons difficiles")
+        strengths.append("Bonne maîtrise des sons ciblés")
     
     if not strengths:
         strengths.append("Courage dans la tentative de prononciation")
@@ -1030,10 +1170,15 @@ def _extract_virelangue_improvements(pronunciation_score: float, sound_analysis:
     """Extrait les axes d'amélioration"""
     improvements = []
     
+    # ✅ VALIDATION CRITIQUE
+    if not isinstance(sound_analysis, dict):
+        logger.error(f"❌ _extract_virelangue_improvements: sound_analysis invalide: {type(sound_analysis)}")
+        return ["Réessayer l'analyse"]
+    
     if pronunciation_score < 0.6:
         improvements.append("Améliorer l'articulation générale")
     
-    precision_score = sound_analysis.get("precision_score", 0.0)
+    precision_score = safe_get(sound_analysis, "precision_score", 0.0, "improvements_precision")
     if precision_score < 0.7:
         improvements.append("Travailler spécifiquement les sons difficiles")
     
@@ -1412,6 +1557,104 @@ async def websocket_voice_analysis_realtime(websocket: WebSocket, session_id: st
 # Endpoints pour l'analyse narrative d'histoires
 # ============================================
 
+async def call_mistral_with_retry(payload, max_retries=2):
+    """Appel Mistral avec retry et fallback intelligent - Gère son propre client httpx"""
+    
+    for attempt in range(max_retries + 1):
+        try:
+            logger.info(f"🔄 Tentative Mistral {attempt + 1}/{max_retries + 1}")
+            
+            # ✅ CORRECTION CRITIQUE : Créer un nouveau client pour chaque tentative
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=5.0, read=15.0, write=10.0, pool=2.0),
+                transport=httpx_async_transport
+            ) as mistral_client:
+                response = await mistral_client.post(
+                    f"{MISTRAL_SERVICE_URL}/v1/chat/completions",
+                    json=payload,
+                    timeout=15.0
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"✅ Mistral réponse OK - Tentative {attempt + 1}")
+                    return response
+                else:
+                    logger.warning(f"⚠️ Mistral HTTP {response.status_code} - Tentative {attempt + 1}")
+                
+        except httpx.ConnectError as e:
+            logger.warning(f"⚠️ Mistral connexion échouée - Tentative {attempt + 1}: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(1)  # Attendre 1s avant retry
+                continue
+                
+        except httpx.TimeoutException as e:
+            logger.warning(f"⚠️ Mistral timeout - Tentative {attempt + 1}: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(0.5)  # Attendre 0.5s avant retry
+                continue
+        
+        except Exception as e:
+            logger.warning(f"⚠️ Mistral erreur inattendue - Tentative {attempt + 1}: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(1)
+                continue
+    
+    # Si toutes les tentatives échouent
+    logger.error("❌ Toutes les tentatives Mistral ont échoué")
+    return None
+
+def _generate_vosk_only_analysis(session_id, story_title, transcription, elements_list):
+    """Génère une analyse basée uniquement sur Vosk quand Mistral échoue"""
+    
+    # Analyser la transcription avec des heuristiques simples
+    words = transcription.lower().split() if transcription else []
+    word_count = len(words)
+    
+    # Calculer des scores basés sur la longueur et le contenu
+    length_score = min(1.0, word_count / 50) if word_count > 0 else 0.3
+    
+    # Détecter l'utilisation des éléments
+    elements_used = 0
+    if elements_list and transcription:
+        for element in elements_list:
+            if element.lower() in transcription.lower():
+                elements_used += 1
+    
+    element_usage_score = elements_used / max(len(elements_list), 1) if elements_list else 0.7
+    
+    # Calculer un score global (légèrement pénalisé car pas d'IA)
+    overall_score = (length_score * 0.4 + element_usage_score * 0.6) * 0.75
+    
+    logger.info(f"📊 Analyse Vosk-only - Mots: {word_count}, Éléments: {elements_used}/{len(elements_list)}, Score: {overall_score:.2f}")
+    
+    return {
+        "success": True,
+        "analysis": {
+            "overall_score": overall_score,
+            "creativity_score": overall_score + 0.05,
+            "element_usage_score": element_usage_score,
+            "plot_coherence_score": overall_score,
+            "fluidity_score": 0.75,  # Score fixe pour la fluidité
+            "genre_consistency_score": 0.7,
+            "strengths": [
+                f"Histoire de {word_count} mots détectés",
+                f"Utilisation de {elements_used} éléments sur {len(elements_list)}" if elements_list else "Contenu détecté"
+            ],
+            "improvements": [
+                "Développer davantage les détails" if word_count < 30 else "Bonne longueur d'histoire",
+                "Utiliser tous les éléments imposés" if elements_used < len(elements_list) else "Bonne utilisation des éléments"
+            ],
+            "highlight_moments": ["Début de l'histoire", "Développement narratif"],
+            "narrative_feedback": f"Histoire analysée avec Vosk (IA temporairement indisponible). {word_count} mots détectés.",
+            "title_suggestion": story_title or "Histoire Créative",
+            "detected_keywords": words[:5] if words else ["histoire", "créativité"]
+        },
+        "transcription": transcription or "Transcription indisponible",
+        "session_id": session_id,
+        "analysis_method": "vosk_only",  # Indiquer la méthode utilisée
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.post("/api/story/analyze-narrative")
 async def analyze_story_narrative(
     audio: UploadFile = File(...),
@@ -1429,6 +1672,27 @@ async def analyze_story_narrative(
     try:
         # Préparer les données pour l'envoi vers Vosk STT
         audio_content = await audio.read()
+        
+        # ✅ VALIDATION LOG: Vérifier la taille du fichier audio
+        audio_size = len(audio_content)
+        logger.info(f"📊 VALIDATION AUDIO - Taille: {audio_size} bytes, Nom: {audio.filename}")
+        
+        # ✅ CORRECTION : Validation assouplie de la taille du fichier
+        if audio_size < 100:  # Moins de 100 bytes = fichier invalide
+            logger.error(f"❌ FICHIER AUDIO INVALIDE - Taille: {audio_size} bytes (minimum 100 bytes requis)")
+            return {
+                "success": False,
+                "error": "INVALID_AUDIO_FILE",
+                "details": f"Fichier audio trop petit: {audio_size} bytes. Minimum requis: 100 bytes",
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        elif audio_size < 1000:
+            # ✅ NOUVEAU : Avertissement pour fichiers petits mais valides
+            logger.warning(f"⚠️ FICHIER AUDIO PETIT - Taille: {audio_size} bytes - Analyse avec prudence")
+        
+        # Log des détails audio
+        logger.info(f"✅ AUDIO VALIDE - Format: {audio.content_type}, Taille: {audio_size} bytes")
         
         # Étape 1: Transcription via Vosk
         files = {"audio": (audio.filename, audio_content, audio.content_type)}
@@ -1453,7 +1717,7 @@ async def analyze_story_narrative(
                 
                 if vosk_response.status_code == 200:
                     vosk_result = vosk_response.json()
-                    transcription = vosk_result.get("transcription", {}).get("text", "")
+                    transcription = vosk_result.get("transcription", "")
                     logger.info(f"✅ Transcription réussie: {transcription[:100]}...")
                 else:
                     logger.warning(f"⚠️ Vosk STT erreur: {vosk_response.status_code}")
@@ -1502,45 +1766,89 @@ Analysez la créativité, l'utilisation des éléments, la cohérence narrative 
                     "max_tokens": 1000
                 }
                 
-                logger.info(f"🔗 Envoi vers Mistral AI: {MISTRAL_SERVICE_URL}/chat/completions")
-                mistral_response = await client.post(
-                    f"{MISTRAL_SERVICE_URL}/chat/completions",
-                    json=mistral_payload,
-                    headers={"Content-Type": "application/json"}
-                )
+                logger.info(f"🔗 Envoi vers Mistral AI: {MISTRAL_SERVICE_URL}/v1/chat/completions")
+                
+                # ✅ MONITORING CONNEXION MISTRAL
+                mistral_start_time = datetime.now()
+                logger.info(f"🔍 MISTRAL CONNEXION - Début: {mistral_start_time.isoformat()}")
+                
+                # ✅ UTILISATION DU SYSTÈME DE RETRY INTELLIGENT
+                mistral_response = await call_mistral_with_retry(mistral_payload)
+                
+                if mistral_response is None:
+                    logger.warning("⚠️ Mistral indisponible - Utilisation analyse Vosk seule")
+                    return _generate_vosk_only_analysis(session_id, story_title, transcription, elements_list)
+                
+                mistral_duration = (datetime.now() - mistral_start_time).total_seconds()
+                logger.info(f"⏱️ MISTRAL RESPONSE - Durée: {mistral_duration:.2f}s, Status: {mistral_response.status_code}")
                 
                 if mistral_response.status_code == 200:
                     mistral_result = mistral_response.json()
                     analysis_text = mistral_result.get("choices", [{}])[0].get("message", {}).get("content", "")
                     
-                    # Parser le JSON de l'analyse
-                    try:
-                        # Nettoyer le texte pour extraire le JSON
-                        if "```json" in analysis_text:
-                            analysis_text = analysis_text.split("```json")[1].split("```")[0]
-                        elif "```" in analysis_text:
-                            analysis_text = analysis_text.split("```")[1]
+                    # 🧠 SYSTÈME HYBRIDE INTELLIGENT : Analyse préliminaire du contenu
+                    transcription_clean = transcription.lower().strip()
+                    words = transcription_clean.split()
+                    
+                    # Détecter le contenu non significatif
+                    nonsense_patterns = [
+                        "bla", "blabla", "euh", "hum", "ah", "oh", "mmm",
+                        "test", "testing", "allo", "hello", "bonjour"
+                    ]
+                    
+                    nonsense_count = 0
+                    for word in words:
+                        if any(pattern in word for pattern in nonsense_patterns):
+                            nonsense_count += 1
+                    
+                    nonsense_ratio = nonsense_count / max(len(words), 1)
+                    
+                    logger.info(f"🔍 ANALYSE HYBRIDE - Ratio charabia: {nonsense_ratio:.2f}, Mots: {len(words)}")
+                    
+                    # Si le contenu est de qualité, utiliser Mistral IA + ajustements intelligents
+                    if len(words) >= 5 and nonsense_ratio < 0.3:
+                        logger.info("✅ Contenu de qualité détecté - Utilisation Mistral + ajustements")
                         
-                        analysis_data = json.loads(analysis_text.strip())
-                        logger.info("✅ Analyse Mistral réussie et parsée")
-                        
-                        # Construire la réponse finale
-                        return {
-                            "success": True,
-                            "analysis": analysis_data,
-                            "transcription": transcription,
-                            "session_id": session_id,
-                            "story_title": story_title,
-                            "genre": genre,
-                            "elements": elements_list,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                        
-                    except json.JSONDecodeError as e:
-                        logger.error(f"❌ Erreur parsing JSON Mistral: {e}")
-                        logger.error(f"Contenu reçu: {analysis_text}")
-                        
-                        # Fallback avec données génériques
+                        # Parser le JSON de l'analyse Mistral
+                        try:
+                            # Nettoyer le texte pour extraire le JSON
+                            if "```json" in analysis_text:
+                                analysis_text = analysis_text.split("```json")[1].split("```")[0]
+                            elif "```" in analysis_text:
+                                analysis_text = analysis_text.split("```")[1]
+                            
+                            mistral_analysis = json.loads(analysis_text.strip())
+                            
+                            # Appliquer des ajustements intelligents aux scores Mistral
+                            adjusted_analysis = _apply_intelligent_adjustments(
+                                mistral_analysis, transcription, elements_list, nonsense_ratio
+                            )
+                            
+                            logger.info("✅ Analyse Mistral + ajustements intelligents appliquée")
+                            
+                            # Construire la réponse finale avec Mistral amélioré
+                            return {
+                                "success": True,
+                                "analysis": adjusted_analysis,
+                                "transcription": transcription,
+                                "session_id": session_id,
+                                "story_title": story_title,
+                                "genre": genre,
+                                "elements": elements_list,
+                                "analysis_method": "mistral_intelligent",
+                                "content_quality": "good",
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            
+                        except json.JSONDecodeError as e:
+                            logger.error(f"❌ Erreur parsing JSON Mistral: {e}")
+                            # Fallback vers analyse intelligente
+                            return _generate_fallback_narrative_analysis(
+                                session_id, story_title, transcription, elements_list
+                            )
+                    else:
+                        # Contenu de mauvaise qualité ou charabia - utiliser analyse intelligente
+                        logger.info(f"⚠️ Contenu de mauvaise qualité détecté (ratio: {nonsense_ratio:.2f}) - Utilisation analyse intelligente")
                         return _generate_fallback_narrative_analysis(
                             session_id, story_title, transcription, elements_list
                         )
@@ -1609,71 +1917,229 @@ Adaptez le vocabulaire à la difficulté {difficulty}."""
             "max_tokens": 800
         }
         
-        async with httpx.AsyncClient(
-            timeout=httpx_timeout,
-            transport=httpx_async_transport
-        ) as client:
-            mistral_response = await client.post(
-                f"{MISTRAL_SERVICE_URL}/chat/completions",
-                json=mistral_payload,
-                headers={"Content-Type": "application/json"}
-            )
+        # ✅ CORRECTION CRITIQUE : Utiliser le système de retry intelligent
+        mistral_response = await call_mistral_with_retry(mistral_payload)
+        
+        if mistral_response and mistral_response.status_code == 200:
+            mistral_result = mistral_response.json()
+            content = mistral_result.get("choices", [{}])[0].get("message", {}).get("content", "")
             
-            if mistral_response.status_code == 200:
-                mistral_result = mistral_response.json()
-                content = mistral_result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            # Parser le JSON
+            try:
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1]
                 
-                # Parser le JSON
-                try:
-                    if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0]
-                    elif "```" in content:
-                        content = content.split("```")[1]
-                    
-                    elements_data = json.loads(content.strip())
-                    
-                    return {
-                        "success": True,
-                        "elements": elements_data.get("elements", []),
-                        "element_type": element_type,
-                        "theme": theme,
-                        "difficulty": difficulty,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    
-                except json.JSONDecodeError:
-                    logger.error(f"❌ Erreur parsing JSON génération: {content}")
-                    return _generate_fallback_elements(element_type, count)
-            else:
-                logger.error(f"❌ Mistral génération erreur: {mistral_response.status_code}")
+                elements_data = json.loads(content.strip())
+                
+                return {
+                    "success": True,
+                    "elements": elements_data.get("elements", []),
+                    "element_type": element_type,
+                    "theme": theme,
+                    "difficulty": difficulty,
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+            except json.JSONDecodeError:
+                logger.error(f"❌ Erreur parsing JSON génération: {content}")
                 return _generate_fallback_elements(element_type, count)
+        else:
+            logger.error(f"❌ Mistral génération erreur: {mistral_response.status_code if mistral_response else 'No response'}")
+            return _generate_fallback_elements(element_type, count)
                 
     except Exception as e:
         logger.error(f"❌ Erreur génération éléments: {e}")
         return _generate_fallback_elements(element_type, count)
 
+def _apply_intelligent_adjustments(mistral_analysis: Dict[str, Any], transcription: str, elements: List[str], nonsense_ratio: float) -> Dict[str, Any]:
+    """Applique des ajustements intelligents aux scores Mistral basés sur l'analyse réelle du contenu"""
+    
+    # Copier l'analyse Mistral pour modification
+    adjusted_analysis = mistral_analysis.copy()
+    
+    # Analyse du contenu pour ajustements
+    words = transcription.lower().strip().split()
+    word_count = len(words)
+    
+    # Facteur d'ajustement basé sur la qualité du contenu
+    content_quality_factor = 1.0 - (nonsense_ratio * 0.5)  # Réduction max de 50% pour 100% charabia
+    length_factor = min(1.0, word_count / 15.0)  # Bonus pour contenu plus long
+    
+    # Analyse de l'utilisation des éléments
+    element_usage_factor = 1.0
+    if elements:
+        elements_found = 0
+        for element in elements:
+            if element.lower() in transcription.lower():
+                elements_found += 1
+        element_usage_factor = 0.8 + (elements_found / len(elements)) * 0.4  # Entre 0.8 et 1.2
+    
+    # Appliquer les ajustements aux scores Mistral
+    original_scores = {
+        "overall_score": mistral_analysis.get("overall_score", 0.5),
+        "creativity_score": mistral_analysis.get("creativity_score", 0.5),
+        "element_usage_score": mistral_analysis.get("element_usage_score", 0.5),
+        "plot_coherence_score": mistral_analysis.get("plot_coherence_score", 0.5),
+        "fluidity_score": mistral_analysis.get("fluidity_score", 0.5),
+        "genre_consistency_score": mistral_analysis.get("genre_consistency_score", 0.5)
+    }
+    
+    # Ajuster chaque score
+    adjusted_analysis["overall_score"] = min(1.0, max(0.0,
+        original_scores["overall_score"] * content_quality_factor * length_factor))
+    
+    adjusted_analysis["creativity_score"] = min(1.0, max(0.0,
+        original_scores["creativity_score"] * content_quality_factor))
+    
+    adjusted_analysis["element_usage_score"] = min(1.0, max(0.0,
+        original_scores["element_usage_score"] * element_usage_factor))
+    
+    adjusted_analysis["plot_coherence_score"] = min(1.0, max(0.0,
+        original_scores["plot_coherence_score"] * content_quality_factor * length_factor))
+    
+    adjusted_analysis["fluidity_score"] = min(1.0, max(0.0,
+        original_scores["fluidity_score"] * content_quality_factor))
+    
+    adjusted_analysis["genre_consistency_score"] = min(1.0, max(0.0,
+        original_scores["genre_consistency_score"] * content_quality_factor))
+    
+    # Ajouter des informations sur les ajustements
+    if nonsense_ratio > 0.1:
+        if "improvements" not in adjusted_analysis:
+            adjusted_analysis["improvements"] = []
+        adjusted_analysis["improvements"].append("Réduire les mots de remplissage et hésitations")
+    
+    if word_count < 10:
+        if "improvements" not in adjusted_analysis:
+            adjusted_analysis["improvements"] = []
+        adjusted_analysis["improvements"].append("Développer davantage l'histoire")
+    
+    # Arrondir les scores
+    for score_key in ["overall_score", "creativity_score", "element_usage_score",
+                      "plot_coherence_score", "fluidity_score", "genre_consistency_score"]:
+        if score_key in adjusted_analysis:
+            adjusted_analysis[score_key] = round(adjusted_analysis[score_key], 2)
+    
+    logger.info(f"🔧 AJUSTEMENTS APPLIQUÉS - Facteur qualité: {content_quality_factor:.2f}, "
+                f"Facteur longueur: {length_factor:.2f}, Score final: {adjusted_analysis.get('overall_score', 0):.2f}")
+    
+    return adjusted_analysis
+
 def _generate_fallback_narrative_analysis(session_id: str, title: str, transcription: str, elements: List[str]) -> Dict[str, Any]:
-    """Génère une analyse de fallback"""
+    """Génère une analyse de fallback basée sur le contenu réel"""
+    
+    # ✅ ANALYSE RÉELLE DU CONTENU DE LA TRANSCRIPTION
+    transcription_clean = transcription.lower().strip()
+    words = transcription_clean.split()
+    
+    logger.info(f"🔍 ANALYSE CONTENU - Transcription: '{transcription_clean}', Mots: {len(words)}")
+    
+    # Détection de contenu non significatif
+    nonsense_patterns = [
+        "bla", "blabla", "euh", "hum", "ah", "oh", "mmm",
+        "test", "testing", "allo", "hello", "bonjour"
+    ]
+    
+    # Calculer le pourcentage de mots non significatifs
+    nonsense_count = 0
+    for word in words:
+        if any(pattern in word for pattern in nonsense_patterns):
+            nonsense_count += 1
+    
+    nonsense_ratio = nonsense_count / max(len(words), 1)
+    meaningful_ratio = 1.0 - nonsense_ratio
+    
+    logger.info(f"📊 ANALYSE QUALITÉ - Mots non significatifs: {nonsense_count}/{len(words)} ({nonsense_ratio:.2f})")
+    
+    # Analyse de la longueur du contenu
+    content_length_score = min(1.0, len(words) / 20.0)  # Score basé sur 20 mots minimum
+    
+    # Calcul des scores basés sur le contenu réel
+    if len(words) < 3:
+        # Très peu de contenu
+        overall_score = 0.1
+        creativity_score = 0.1
+        plot_coherence_score = 0.0
+        fluidity_score = 0.2
+        strengths = ["Tentative d'expression"]
+        improvements = ["Développer le contenu", "Raconter une véritable histoire", "Utiliser plus de mots"]
+        feedback = "Il semble qu'il n'y ait pas assez de contenu pour évaluer l'histoire. Essayez de raconter une histoire plus développée."
+        
+    elif nonsense_ratio > 0.7:
+        # Majoritairement du charabia
+        overall_score = 0.15
+        creativity_score = 0.2
+        plot_coherence_score = 0.1
+        fluidity_score = 0.3
+        strengths = ["Expression orale tentée"]
+        improvements = ["Raconter une vraie histoire", "Utiliser des mots significatifs", "Développer une intrigue"]
+        feedback = "Le contenu semble principalement composé de sons ou mots non significatifs. Essayez de raconter une véritable histoire avec des personnages et une intrigue."
+        
+    elif nonsense_ratio > 0.4:
+        # Partiellement intelligible
+        overall_score = 0.35
+        creativity_score = 0.4
+        plot_coherence_score = 0.3
+        fluidity_score = 0.5
+        strengths = ["Quelques éléments narratifs identifiables"]
+        improvements = ["Clarifier l'histoire", "Réduire les hésitations", "Développer les personnages"]
+        feedback = "Il y a quelques éléments d'histoire, mais le contenu pourrait être plus clair et développé."
+        
+    else:
+        # Contenu décent, scores basés sur la qualité
+        base_score = meaningful_ratio * content_length_score
+        overall_score = max(0.4, min(0.9, base_score))
+        creativity_score = max(0.4, min(0.9, base_score + 0.1))
+        plot_coherence_score = max(0.3, min(0.9, base_score - 0.1))
+        fluidity_score = max(0.4, min(0.9, base_score))
+        strengths = ["Histoire cohérente", "Bon niveau d'expression"]
+        improvements = ["Développer davantage les détails", "Enrichir le vocabulaire"]
+        feedback = "Belle tentative narrative ! Continuez à développer vos histoires."
+    
+    # Analyse de l'utilisation des éléments
+    element_usage_score = 0.0
+    if elements:
+        elements_found = 0
+        for element in elements:
+            if element.lower() in transcription_clean:
+                elements_found += 1
+        element_usage_score = elements_found / len(elements)
+    else:
+        element_usage_score = overall_score  # Score par défaut si pas d'éléments
+    
+    # Score de consistance de genre (évaluation basique)
+    genre_consistency_score = overall_score * 0.9  # Légèrement inférieur au score global
+    
+    logger.info(f"✅ SCORES CALCULÉS - Overall: {overall_score:.2f}, Creativity: {creativity_score:.2f}")
+    
     return {
         "success": True,
         "analysis": {
-            "overall_score": 0.75,
-            "creativity_score": 0.8,
-            "element_usage_score": 0.7,
-            "plot_coherence_score": 0.75,
-            "fluidity_score": 0.8,
-            "genre_consistency_score": 0.7,
-            "strengths": ["Utilisation créative des éléments", "Bonne énergie narrative"],
-            "improvements": ["Développer davantage l'intrigue", "Varier le rythme"],
-            "highlight_moments": ["Moment d'introduction", "Développement central"],
-            "narrative_feedback": "Excellente performance ! Votre histoire était captivante et bien structurée.",
-            "title_suggestion": title if title != "Histoire sans titre" else "Histoire Créative",
-            "detected_keywords": elements[:3] if elements else ["aventure", "créativité", "imagination"]
+            "overall_score": round(overall_score, 2),
+            "creativity_score": round(creativity_score, 2),
+            "element_usage_score": round(element_usage_score, 2),
+            "plot_coherence_score": round(plot_coherence_score, 2),
+            "fluidity_score": round(fluidity_score, 2),
+            "genre_consistency_score": round(genre_consistency_score, 2),
+            "strengths": strengths,
+            "improvements": improvements,
+            "highlight_moments": ["Début de l'histoire"] if overall_score > 0.3 else [],
+            "narrative_feedback": feedback,
+            "title_suggestion": title if title != "Histoire sans titre" else "Histoire à développer",
+            "detected_keywords": elements[:3] if elements and overall_score > 0.3 else ["pratique", "expression", "développement"]
         },
         "transcription": transcription,
         "session_id": session_id,
         "story_title": title,
         "fallback": True,
+        "content_analysis": {
+            "word_count": len(words),
+            "nonsense_ratio": round(nonsense_ratio, 2),
+            "meaningful_content": round(meaningful_ratio, 2),
+            "content_quality": "faible" if overall_score < 0.3 else "moyenne" if overall_score < 0.6 else "bonne"
+        },
         "timestamp": datetime.now().isoformat()
     }
 
