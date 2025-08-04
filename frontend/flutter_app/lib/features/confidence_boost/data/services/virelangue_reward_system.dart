@@ -395,17 +395,28 @@ class VirelangueRewardSystem {
     );
   }
 
-  /// Récupère l'état du pity timer pour un utilisateur
+  /// Récupère l'état du pity timer pour un utilisateur avec lazy initialization
   Future<PityTimerState> _getPityTimerState(String userId) async {
     try {
+      _logger.w('🚨 DIAGNOSTIC: _getPityTimerState appelé pour userId: $userId');
+      
+      // SOLUTION: Lazy initialization automatique
+      if (!Hive.isBoxOpen(_pityTimerBoxName)) {
+        _logger.w('🔧 CORRECTION: Box $_pityTimerBoxName fermée - Ouverture automatique (lazy init)');
+        await Hive.openBox<PityTimerState>(_pityTimerBoxName);
+        _logger.i('✅ CORRECTION: Box $_pityTimerBoxName ouverte automatiquement');
+      }
+      
       final box = Hive.box<PityTimerState>(_pityTimerBoxName);
+      _logger.i('✅ DIAGNOSTIC: Box $_pityTimerBoxName accessible');
+      
       return box.get(userId) ?? PityTimerState(
         emeraldTimer: 0,
         diamondTimer: 0,
         lastUpdated: DateTime.now(),
       );
     } catch (e) {
-      _logger.e('❌ Erreur récupération pity timer: $e');
+      _logger.e('❌ DIAGNOSTIC: Erreur récupération pity timer: $e');
       return PityTimerState(
         emeraldTimer: 0,
         diamondTimer: 0,
@@ -414,23 +425,42 @@ class VirelangueRewardSystem {
     }
   }
 
-  /// Sauvegarde l'état du pity timer
+  /// Sauvegarde l'état du pity timer avec lazy initialization
   Future<void> _savePityTimerState(String userId, PityTimerState state) async {
     try {
+      _logger.w('🚨 DIAGNOSTIC: _savePityTimerState appelé pour userId: $userId');
+      
+      // SOLUTION: Lazy initialization automatique
+      if (!Hive.isBoxOpen(_pityTimerBoxName)) {
+        _logger.w('🔧 CORRECTION: Box $_pityTimerBoxName fermée - Ouverture automatique (lazy init)');
+        await Hive.openBox<PityTimerState>(_pityTimerBoxName);
+        _logger.i('✅ CORRECTION: Box $_pityTimerBoxName ouverte automatiquement');
+      }
+      
       final box = Hive.box<PityTimerState>(_pityTimerBoxName);
       await box.put(userId, state);
+      _logger.d('💾 DIAGNOSTIC: État pity timer sauvegardé avec succès');
     } catch (e) {
-      _logger.e('❌ Erreur sauvegarde pity timer: $e');
+      _logger.e('❌ DIAGNOSTIC: Erreur sauvegarde pity timer: $e');
     }
   }
 
-  /// Enregistre l'historique des récompenses
+  /// Enregistre l'historique des récompenses avec lazy initialization
   Future<void> _recordRewardHistory(
     String userId,
     RewardDistribution distribution,
     List<SpecialEventType> activeEvents,
   ) async {
     try {
+      _logger.w('🚨 DIAGNOSTIC: _recordRewardHistory appelé pour userId: $userId');
+      
+      // SOLUTION: Lazy initialization automatique
+      if (!Hive.isBoxOpen(_rewardHistoryBoxName)) {
+        _logger.w('🔧 CORRECTION: Box $_rewardHistoryBoxName fermée - Ouverture automatique (lazy init)');
+        await Hive.openBox<RewardHistory>(_rewardHistoryBoxName);
+        _logger.i('✅ CORRECTION: Box $_rewardHistoryBoxName ouverte automatiquement');
+      }
+      
       final box = Hive.box<RewardHistory>(_rewardHistoryBoxName);
       final history = RewardHistory(
         userId: userId,
@@ -442,8 +472,9 @@ class VirelangueRewardSystem {
       
       final key = '${userId}_${DateTime.now().millisecondsSinceEpoch}';
       await box.put(key, history);
+      _logger.d('💾 DIAGNOSTIC: Historique récompenses sauvegardé avec succès');
     } catch (e) {
-      _logger.e('❌ Erreur enregistrement historique: $e');
+      _logger.e('❌ DIAGNOSTIC: Erreur enregistrement historique: $e');
     }
   }
 

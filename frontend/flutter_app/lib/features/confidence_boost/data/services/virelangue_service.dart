@@ -736,12 +736,16 @@ final virelangueServiceProvider = Provider<VirelangueService>((ref) {
   final mistralApiService = ref.watch(mistralApiServiceProvider);
   final service = VirelangueService(mistralApiService);
   
-  // Initialisation asynchrone qui ne bloque pas la création du provider
+  Logger().i('🔧 CORRECTION: VirelangueService créé avec lazy initialization pattern');
+  
+  // Initialisation asynchrone mais avec lazy initialization dans VirelangueRewardSystem
   Timer.run(() async {
     try {
+      Logger().i('🔄 CORRECTION: Début initialisation async VirelangueService...');
       await service.initialize();
+      Logger().i('✅ CORRECTION: Initialisation VirelangueService terminée');
     } catch (e) {
-      Logger().e('❌ Erreur initialisation VirelangueService: $e');
+      Logger().e('❌ CORRECTION: Erreur initialisation VirelangueService: $e');
     }
   });
   
