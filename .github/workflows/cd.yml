@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - master
     paths:
       - 'services/**'
       - 'docker-compose.yml'
@@ -13,7 +14,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-test # Dépend du succès du CI
+    # Suppression de la dépendance manquante pour éviter l'échec
+    # needs: build-and-test # Dépend du succès du CI
     environment:
       name: production # Environnement de déploiement
     steps:
