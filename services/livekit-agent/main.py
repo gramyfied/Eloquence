@@ -15,6 +15,7 @@ from livekit.agents import (
     llm,
 )
 from livekit.plugins import openai, silero
+from vosk_stt_interface import VoskSTT
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -33,6 +34,7 @@ logger.info(f"   MISTRAL_BASE_URL: {os.getenv('MISTRAL_BASE_URL', 'Non définie'
 
 # URLs des services
 MISTRAL_API_URL = os.getenv('MISTRAL_BASE_URL', 'http://mistral-conversation:8001/v1/chat/completions')
+VOSK_STT_URL = os.getenv('VOSK_STT_URL', 'http://vosk-stt:8002')
 
 # ==========================================
 # FRAMEWORK RÉUTILISABLE POUR EXERCICES AUDIO
@@ -106,6 +108,7 @@ class RobustLiveKitAgent:
         self.exercise_config = exercise_config
         self.session: Optional[AgentSession] = None
         self.agent: Optional[Agent] = None
+        self.room = None  # Stockage de ctx.room pour LiveKit 1.2.3
         self.last_heartbeat = datetime.now()
         self.is_running = False
         self.reconnect_attempts = 0
@@ -117,16 +120,20 @@ class RobustLiveKitAgent:
         while self.is_running:
             try:
                 await asyncio.sleep(self.heartbeat_interval)
-                if self.session and self.session.room:
+                # CORRIGÉ LIVEKIT 1.2.3 - Utiliser self.room au lieu de session.room
+                if self.session and self.room:
                     # Envoyer un ping discret
                     self.last_heartbeat = datetime.now()
                     logger.debug(f"💓 Heartbeat - Session active: {self.exercise_config.exercise_id}")
                     
                     # Vérifier la santé de la connexion
-                    if hasattr(self.session.room, 'connection_state'):
-                        state = self.session.room.connection_state
-                        if state != rtc.ConnectionState.CONNECTED:
+                    if hasattr(self.room, 'connection_state'):
+                        state = self.room.connection_state
+                        # CORRIGÉ LIVEKIT 1.2.3 - CONNECTED devient CONN_CONNECTED
+                        if state != rtc.ConnectionState.CONN_CONNECTED:
                             logger.warning(f"⚠️  Connexion dégradée: {state}")
+                else:
+                    logger.debug(f"⚠️ Heartbeat en attente - Session: {self.session is not None}, Room: {self.room is not None}")
                             
             except Exception as e:
                 logger.error(f"❌ Erreur heartbeat: {e}")
@@ -172,11 +179,11 @@ class RobustLiveKitAgent:
             logger.error(f"❌ Erreur VAD: {e}")
             raise
             
-        # STT avec fallback
+        # STT avec fallback Vosk → OpenAI
         try:
-            stt = create_openai_stt()
+            stt = create_vosk_stt_with_fallback()
             components['stt'] = stt
-            logger.info("✅ STT OpenAI créé")
+            logger.info("✅ STT avec fallback créé")
         except Exception as e:
             logger.error(f"❌ Erreur STT: {e}")
             raise
@@ -241,6 +248,10 @@ class RobustLiveKitAgent:
             # Connexion avec retry
             await self.connect_with_retry(ctx)
             
+            # CORRIGÉ LIVEKIT 1.2.3 - Stocker ctx.room pour le heartbeat
+            self.room = ctx.room
+            logger.info("✅ Room stockée pour compatibilité LiveKit 1.2.3")
+            
             # Initialisation des composants
             components = await self.initialize_components()
             
@@ -291,10 +302,10 @@ class RobustLiveKitAgent:
             try:
                 await asyncio.sleep(5)  # Check toutes les 5 secondes
                 
-                # Vérifications de santé
-                if self.session and hasattr(self.session, 'room'):
-                    # Session active, continuer
-                    pass
+                # Vérifications de santé - CORRIGÉ LIVEKIT 1.2.3
+                if self.session and self.room:
+                    # Session et room actives, continuer
+                    logger.debug("✅ Session et room actives")
                 else:
                     logger.warning("⚠️ Session dégradée détectée")
                     
@@ -363,6 +374,45 @@ async def send_confidence_feedback(
 # ==========================================
 # FONCTIONS DE CRÉATION DES COMPOSANTS
 # ==========================================
+
+def create_vosk_stt_with_fallback():
+    """Crée une interface STT avec Vosk en principal et OpenAI en fallback"""
+    logger.info("🔄 [STT-TRACE] Initialisation STT avec logique de fallback (Vosk → OpenAI)")
+    logger.info(f"🔄 [STT-TRACE] URL Vosk configurée: {VOSK_STT_URL}")
+    
+    # Tentative 1: Vosk (rapide et économique)
+    try:
+        logger.info("🎯 [STT-TRACE] Tentative de création STT Vosk...")
+        vosk_stt = VoskSTT(
+            vosk_url=VOSK_STT_URL,
+            language="fr",
+            sample_rate=16000
+        )
+        logger.info("✅ [STT-TRACE] *** VOSK STT ACTIVÉ AVEC SUCCÈS (PRINCIPAL) ***")
+        logger.info(f"✅ [STT-TRACE] Service Vosk URL: {VOSK_STT_URL}")
+        logger.info("✅ [STT-TRACE] Configuration: langue=fr, sample_rate=16000")
+        return vosk_stt
+    except Exception as vosk_error:
+        logger.error(f"❌ [STT-TRACE] ÉCHEC STT Vosk: {vosk_error}")
+        logger.error(f"❌ [STT-TRACE] URL testée: {VOSK_STT_URL}")
+        
+    # Fallback: OpenAI Whisper
+    try:
+        logger.warning("⚠️ [STT-TRACE] Basculement vers OpenAI Whisper (fallback)")
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY manquante pour le fallback")
+            
+        openai_stt = openai.STT(
+            model="whisper-1",
+            language="fr",
+            api_key=api_key,
+        )
+        logger.warning("⚠️ [STT-TRACE] *** OPENAI STT ACTIVÉ (FALLBACK) ***")
+        return openai_stt
+    except Exception as openai_error:
+        logger.error(f"❌ [STT-TRACE] Échec STT OpenAI fallback: {openai_error}")
+        raise RuntimeError(f"Impossible de créer STT (Vosk: {vosk_error}, OpenAI: {openai_error})")
 
 def create_openai_stt():
     """Crée une interface STT utilisant OpenAI Whisper (natif LiveKit agents)"""
@@ -442,8 +492,8 @@ async def legacy_entrypoint(ctx: JobContext):
             raise
             
         try:
-            stt = create_openai_stt()
-            logger.info("✅ STT OpenAI créé")
+            stt = create_vosk_stt_with_fallback()
+            logger.info("✅ STT avec fallback créé")
         except Exception as e:
             logger.error(f"❌ Erreur STT: {e}")
             raise
@@ -513,11 +563,12 @@ async def maintain_session_health(session: AgentSession, ctx: JobContext):
         try:
             await asyncio.sleep(heartbeat_interval)
             
-            # Vérifier l'état de la connexion
+            # Vérifier l'état de la connexion avec ctx.room (compatible LiveKit 1.2.3)
             if hasattr(ctx, 'room') and ctx.room:
                 if hasattr(ctx.room, 'connection_state'):
                     state = ctx.room.connection_state
-                    if state != rtc.ConnectionState.CONNECTED:
+                    # CORRIGÉ LIVEKIT 1.2.3 - CONNECTED devient CONN_CONNECTED
+                    if state != rtc.ConnectionState.CONN_CONNECTED:
                         logger.warning(f"⚠️ État de connexion dégradé: {state}")
                         
                 # Vérifier l'activité récente

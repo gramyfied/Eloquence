@@ -116,56 +116,47 @@ class VoskSTT(stt.STT):
                 processing_time = asyncio.get_event_loop().time() - start_time
                 logger.info(f"✅ Vosk STT - {processing_time:.3f}s - '{result.get('text', '')}'")
                 
-                # Structure compatible avec livekit-agents 1.0.x
-                # Pas besoin de SpeechEventAlternative, utiliser directement le texte
+                # Structure compatible avec livekit-agents - Le problème était les alternatives
+                # LiveKit s'attend à alternatives[0].text (objet) et non alternatives[0]['text'] (dict)
                 text = result.get('text', '').strip()
                 confidence = result.get('confidence', 0.0)
                 
                 logger.info(f"🔍 DIAGNOSTIC: Création SpeechEvent avec text='{text}', confidence={confidence}")
                 
-                # Dans livekit-agents 1.0.x, SpeechEvent prend des alternatives directement
-                # Vérifier d'abord la structure disponible
+                # Créer une classe simple pour l'alternative compatible LiveKit 1.2.3
+                class SpeechAlternative:
+                    def __init__(self, text: str, confidence: float, speaker_id: Optional[str] = None, language: str = "fr"):
+                        self.text = text
+                        self.confidence = confidence
+                        self.speaker_id = speaker_id  # Attribut requis par LiveKit 1.2.3
+                        self.language = language  # AJOUTÉ LIVEKIT 1.2.3 - Attribut language maintenant requis
+                
+                # Créer l'alternative comme objet avec attributs (pas dictionnaire)
+                alternative = SpeechAlternative(text=text, confidence=confidence, speaker_id=None, language=self._language)
+                
                 try:
-                    # Tentative 1: Avec alternatives comme liste de dictionnaires
+                    # Structure correcte: alternatives comme liste d'objets avec attributs
                     speech_event = stt.SpeechEvent(
                         type=stt.SpeechEventType.FINAL_TRANSCRIPT,
-                        alternatives=[{
-                            'text': text,
-                            'confidence': confidence
-                        }]
+                        alternatives=[alternative]  # Objet avec attributs, pas dictionnaire
                     )
-                    logger.info("✅ SpeechEvent créé avec structure dict")
+                    logger.debug("✅ SpeechEvent créé avec structure compatible LiveKit 1.2.3")
                     return speech_event
                 except Exception as e1:
-                    logger.warning(f"⚠️  Structure dict échouée: {e1}")
+                    logger.warning(f"⚠️ Structure objets échouée: {e1}")
                     
                     try:
-                        # Tentative 2: Directement avec text (API simplifiée)
+                        # Fallback: API directe avec text
                         speech_event = stt.SpeechEvent(
                             type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                             text=text,
                             confidence=confidence
                         )
-                        logger.info("✅ SpeechEvent créé avec text direct")
+                        logger.info("✅ SpeechEvent créé avec API directe")
                         return speech_event
                     except Exception as e2:
-                        logger.warning(f"⚠️  Structure text directe échouée: {e2}")
-                        
-                        try:
-                            # Tentative 3: Minimal avec juste le type
-                            speech_event = stt.SpeechEvent(
-                                type=stt.SpeechEventType.FINAL_TRANSCRIPT
-                            )
-                            # Ajouter le texte en attribut après création
-                            if hasattr(speech_event, 'text'):
-                                speech_event.text = text
-                            if hasattr(speech_event, 'confidence'):
-                                speech_event.confidence = confidence
-                            logger.info("✅ SpeechEvent créé avec structure minimale")
-                            return speech_event
-                        except Exception as e3:
-                            logger.error(f"❌ Toutes les structures échouées: {e3}")
-                            raise e3
+                        logger.error(f"❌ Toutes les structures échouées: {e2}")
+                        raise e2
                 
         except Exception as e:
             processing_time = asyncio.get_event_loop().time() - start_time
