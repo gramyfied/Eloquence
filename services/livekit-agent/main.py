@@ -15,7 +15,7 @@ from livekit.agents import (
     llm,
 )
 from livekit.plugins import openai, silero
-from vosk_stt_interface import VoskSTT
+from vosk_stt_interface import VoskSTTFixed as VoskSTT
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -388,9 +388,18 @@ def create_vosk_stt_with_fallback():
             language="fr",
             sample_rate=16000
         )
-        logger.info("✅ [STT-TRACE] *** VOSK STT ACTIVÉ AVEC SUCCÈS (PRINCIPAL) ***")
+        # CORRECTION 3: Ajouter le reset STT automatique (clear_user_turn)
+        def enhanced_clear_user_turn():
+            logger.debug("🔄 [STT-TRACE] Clear user turn avec reset Vosk")
+            if hasattr(vosk_stt, '_reset_recognizer'):
+                vosk_stt._reset_recognizer()
+        
+        vosk_stt.clear_user_turn = enhanced_clear_user_turn
+        
+        logger.info("✅ [STT-TRACE] *** VOSK STT CORRIGÉ ACTIVÉ AVEC SUCCÈS ***")
         logger.info(f"✅ [STT-TRACE] Service Vosk URL: {VOSK_STT_URL}")
         logger.info("✅ [STT-TRACE] Configuration: langue=fr, sample_rate=16000")
+        logger.info("✅ [STT-TRACE] Reset automatique configuré via clear_user_turn")
         return vosk_stt
     except Exception as vosk_error:
         logger.error(f"❌ [STT-TRACE] ÉCHEC STT Vosk: {vosk_error}")
