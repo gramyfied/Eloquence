@@ -8,7 +8,7 @@ part of 'virelangue_reward_system.dart';
 
 class PityTimerStateAdapter extends TypeAdapter<PityTimerState> {
   @override
-  final int typeId = 33;
+  final int typeId = 66;
 
   @override
   PityTimerState read(BinaryReader reader) {

@@ -573,7 +573,7 @@ class VariableRewardResult {
 }
 
 /// État du pity timer pour garantir les récompenses rares
-@HiveType(typeId: 33)
+@HiveType(typeId: 66)
 class PityTimerState extends HiveObject {
   @HiveField(0)
   int emeraldTimer;

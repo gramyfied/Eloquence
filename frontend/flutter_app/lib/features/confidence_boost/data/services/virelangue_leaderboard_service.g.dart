@@ -81,7 +81,7 @@ class LeaderboardEntryAdapter extends TypeAdapter<LeaderboardEntry> {
 
 class UserRankHistoryAdapter extends TypeAdapter<UserRankHistory> {
   @override
-  final int typeId = 57;
+  final int typeId = 67;
 
   @override
   UserRankHistory read(BinaryReader reader) {
@@ -118,7 +118,7 @@ class UserRankHistoryAdapter extends TypeAdapter<UserRankHistory> {
 
 class RankSnapshotAdapter extends TypeAdapter<RankSnapshot> {
   @override
-  final int typeId = 58;
+  final int typeId = 68;
 
   @override
   RankSnapshot read(BinaryReader reader) {
@@ -167,7 +167,7 @@ class RankSnapshotAdapter extends TypeAdapter<RankSnapshot> {
 
 class SeasonStatsAdapter extends TypeAdapter<SeasonStats> {
   @override
-  final int typeId = 59;
+  final int typeId = 69;
 
   @override
   SeasonStats read(BinaryReader reader) {
@@ -220,7 +220,7 @@ class SeasonStatsAdapter extends TypeAdapter<SeasonStats> {
 class LeaderboardAchievementAdapter
     extends TypeAdapter<LeaderboardAchievement> {
   @override
-  final int typeId = 60;
+  final int typeId = 61;
 
   @override
   LeaderboardAchievement read(BinaryReader reader) {

@@ -13,8 +13,10 @@ import 'features/confidence_boost/domain/entities/gamification_models.dart';
 import 'features/confidence_boost/domain/entities/confidence_scenario.dart';
 import 'features/confidence_boost/domain/entities/virelangue_models.dart';
 import 'features/confidence_boost/data/services/virelangue_reward_system.dart';
+import 'features/confidence_boost/data/services/virelangue_leaderboard_service.dart';
 import 'features/confidence_boost/data/services/mistral_cache_service.dart';
 import 'features/confidence_boost/domain/entities/dragon_breath_models.dart';
+import 'features/story_generator/domain/entities/story_models.dart';
 import 'core/utils/hive_adapters.dart';
 
 import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
@@ -99,10 +101,43 @@ Future<void> _initializeHiveBoxes(Logger log) async {
       await Hive.deleteBoxFromDisk('dragonProgressBox'); // Assurons-nous que celle-ci est aussi nettoyée
     }
     
-    // On ouvre les boîtes essentielles ici
-    await Hive.openBox('userGamificationProfileBox');
-    await Hive.openBox('confidenceScenariosBox');
-    log.info("   -> Boîtes principales ouvertes.");
+    // ✅ CORRECTION CRITIQUE: Nettoyage des boîtes corrompues (TypeId 66/70)
+    final shouldCleanCorrupted = dotenv.env['CLEAN_CORRUPTED_BOXES'] == 'true';
+    if (shouldCleanCorrupted) {
+      log.warning("   -> 🚨 NETTOYAGE des boîtes corrompues (TypeId 66/70) activé.");
+      try {
+        await Hive.deleteBoxFromDisk('virelanguePityTimerBox');
+        await Hive.deleteBoxFromDisk('virelangueRewardHistoryBox');
+        await Hive.deleteBoxFromDisk('virelangueLeaderboardBox');
+        await Hive.deleteBoxFromDisk('virelangueUserRankHistoryBox');
+        await Hive.deleteBoxFromDisk('virelangueSeasonStatsBox');
+        await Hive.deleteBoxFromDisk('virelangueAchievementsBox');
+        log.info("   -> ✅ Boîtes corrompues nettoyées avec succès");
+      } catch (e) {
+        log.warning("   -> ⚠️ Erreur lors du nettoyage: $e (non critique)");
+      }
+    }
+    
+    // On ouvre les boîtes essentielles ici avec gestion d'erreur robuste
+    try {
+      await Hive.openBox('userGamificationProfileBox');
+      await Hive.openBox('confidenceScenariosBox');
+      log.info("   -> Boîtes principales ouvertes.");
+    } catch (e) {
+      log.severe("   -> ❌ Erreur ouverture boîtes principales: $e");
+      // En cas d'erreur, nettoyer et recréer
+      log.warning("   -> 🔧 Tentative de réparation automatique...");
+      try {
+        await Hive.deleteBoxFromDisk('userGamificationProfileBox');
+        await Hive.deleteBoxFromDisk('confidenceScenariosBox');
+        await Hive.openBox('userGamificationProfileBox');
+        await Hive.openBox('confidenceScenariosBox');
+        log.info("   -> ✅ Boîtes principales recréées après réparation.");
+      } catch (e2) {
+        log.severe("   -> ❌ ÉCHEC de la réparation: $e2");
+        rethrow;
+      }
+    }
   } catch (e, stack) {
     log.severe("   -> ERREUR CRITIQUE lors de l'initialisation des boîtes Hive.", e, stack);
     rethrow;
@@ -131,9 +166,11 @@ void _registerHiveAdapters(Logger log) {
     register(30, GemTypeAdapter());
     register(31, VirelangueAdapter());
     register(32, GemCollectionAdapter());
-    register(33, VirelangueDifficultyAdapter());
-    register(35, VirelangueStatsAdapter());
-    register(36, VirelangueUserProgressAdapter());
+    register(66, PityTimerStateAdapter());
+    register(34, RewardHistoryAdapter());
+    register(35, VirelangueDifficultyAdapter());
+    register(36, VirelangueStatsAdapter());
+    register(37, VirelangueUserProgressAdapter());
 
     // Dragon Breath
     register(40, DragonLevelAdapter());
@@ -143,6 +180,26 @@ void _registerHiveAdapters(Logger log) {
     register(44, DragonAchievementAdapter());
     register(45, BreathingSessionAdapter());
     register(46, DragonProgressAdapter());
+    
+    // Story Generator Models
+    register(50, StoryElementTypeAdapter());
+    register(51, StoryGenreAdapter());
+    register(52, StoryElementAdapter());
+    register(53, AIInterventionAdapter());
+    register(54, StoryMetricsAdapter());
+    register(55, StoryAdapter());
+    register(71, StoryBadgeTypeAdapter());
+    register(72, StoryUserStatsAdapter());
+    register(73, InterventionTypeAdapter());
+    register(74, AudioMetricsAdapter());
+    register(75, StoryNarrativeAnalysisAdapter());
+    
+    // Leaderboard Models
+    register(61, LeaderboardAchievementAdapter());
+    register(67, UserRankHistoryAdapter());
+    register(68, RankSnapshotAdapter());
+    register(69, SeasonStatsAdapter());
+    register(70, LeaderboardEntryAdapter());
     
     // Adaptateurs pour types complexes
     register(100, DurationAdapter());
