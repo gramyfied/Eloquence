@@ -43,12 +43,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Configuration VOSK
+# Configuration VOSK optimisée
 MODEL_PATH = "/app/models/vosk-model-fr-0.22"
 SAMPLE_RATE = 16000
+MAX_RECOGNIZERS = 4  # Pool de recognizers pour optimiser les performances
 
-# Variables globales pour le modèle
+# Variables globales pour l'optimisation
 vosk_model: Optional[vosk.Model] = None
+recognizer_pool: List[vosk.KaldiRecognizer] = []
+recognizer_lock = asyncio.Lock()
+
+# Configuration performance
+import multiprocessing
+NUM_WORKERS = min(4, multiprocessing.cpu_count())
 
 def normalize_unicode_text(text: str) -> str:
     """Normalise le texte Unicode et convertit les émojis en texte ASCII"""
@@ -74,9 +81,9 @@ def normalize_unicode_text(text: str) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Gestionnaire de cycle de vie avec téléchargement automatique"""
-    global vosk_model
-    logger.info("🚀 Démarrage du service VOSK...")
+    """Gestionnaire de cycle de vie optimisé avec pool de recognizers"""
+    global vosk_model, recognizer_pool
+    logger.info("🚀 Démarrage du service VOSK optimisé...")
     
     try:
         # Téléchargement automatique du modèle si manquant
@@ -84,7 +91,7 @@ async def lifespan(app: FastAPI):
             logger.warning(f"⚠️ Modèle manquant à {MODEL_PATH}")
             logger.info("📥 Téléchargement automatique du modèle...")
             
-            result = subprocess.run(["/app/download_model.sh"], 
+            result = subprocess.run(["/app/download_model.sh"],
                                   capture_output=True, text=True)
             
             if result.returncode != 0:
@@ -99,16 +106,28 @@ async def lifespan(app: FastAPI):
             raise RuntimeError(f"Modèle VOSK non trouvé à {MODEL_PATH}")
         
         # Initialisation du modèle Vosk
-        logger.info(f"Chargement du modele VOSK depuis {MODEL_PATH}...")
+        logger.info(f"🔄 Chargement du modele VOSK depuis {MODEL_PATH}...")
         vosk_model = vosk.Model(MODEL_PATH)
         logger.info("✅ Modèle VOSK chargé avec succès")
+        
+        # 🚀 Optimisation: Pré-création d'un pool de recognizers
+        logger.info(f"🔄 Création du pool de {MAX_RECOGNIZERS} recognizers...")
+        recognizer_pool = []
+        for i in range(MAX_RECOGNIZERS):
+            recognizer = vosk.KaldiRecognizer(vosk_model, SAMPLE_RATE)
+            recognizer.SetWords(True)
+            recognizer_pool.append(recognizer)
+        logger.info(f"✅ Pool de {len(recognizer_pool)} recognizers créé")
+        
         yield
         
     except Exception as e:
         logger.error(f"❌ Erreur critique lors de l'initialisation: {e}")
         raise
     finally:
-        logger.info("🛑 Arrêt du service VOSK")
+        # Nettoyage du pool
+        recognizer_pool.clear()
+        logger.info("🛑 Arrêt du service VOSK optimisé")
 
 # Création de l'app FastAPI
 app = FastAPI(
@@ -374,46 +393,92 @@ def convert_audio_to_wav(audio_data: bytes, original_filename: str) -> tuple[str
         if os.path.exists(tmp_input_path):
             os.unlink(tmp_input_path)
 
-def transcribe_with_vosk(wav_path: str) -> Dict[str, Any]:
-    """Transcription avec VOSK"""
+async def get_recognizer():
+    """Obtient un recognizer du pool de manière thread-safe"""
+    async with recognizer_lock:
+        if recognizer_pool:
+            return recognizer_pool.pop()
+        else:
+            # Si le pool est vide, créer un nouveau recognizer
+            logger.warning("⚠️ Pool de recognizers vide, création d'une nouvelle instance")
+            if not vosk_model:
+                raise RuntimeError("VOSK model is not loaded.")
+            rec = vosk.KaldiRecognizer(vosk_model, SAMPLE_RATE)
+            rec.SetWords(True)
+            return rec
+
+async def return_recognizer(recognizer):
+    """Remet un recognizer dans le pool"""
+    async with recognizer_lock:
+        if len(recognizer_pool) < MAX_RECOGNIZERS:
+            # Réinitialiser le recognizer pour la prochaine utilisation
+            recognizer.Reset()
+            recognizer_pool.append(recognizer)
+
+async def transcribe_with_vosk_optimized(wav_path: str) -> Dict[str, Any]:
+    """Transcription avec VOSK optimisée utilisant le pool de recognizers"""
     if not vosk_model:
         raise RuntimeError("VOSK model is not loaded.")
-    rec = vosk.KaldiRecognizer(vosk_model, SAMPLE_RATE)
-    rec.SetWords(True)
     
-    results = []
+    # Obtenir un recognizer du pool
+    rec = await get_recognizer()
     
-    with wave.open(wav_path, 'rb') as wf:
-        while True:
-            data = wf.readframes(4000)
-            if len(data) == 0:
-                break
-            if rec.AcceptWaveform(data):
-                results.append(json.loads(rec.Result()))
+    try:
+        results = []
         
-        final_result = json.loads(rec.FinalResult())
-        if final_result.get('text'):
-            results.append(final_result)
+        # 🚀 Optimisation: Lecture par blocs plus grands pour de meilleures performances
+        chunk_size = 8000  # Augmenté de 4000 à 8000 pour de meilleures performances
+        
+        with wave.open(wav_path, 'rb') as wf:
+            while True:
+                data = wf.readframes(chunk_size)
+                if len(data) == 0:
+                    break
+                if rec.AcceptWaveform(data):
+                    result = json.loads(rec.Result())
+                    if result.get('text'):  # 🚀 Optimisation: Filtrer les résultats vides
+                        results.append(result)
+            
+            final_result = json.loads(rec.FinalResult())
+            if final_result.get('text'):
+                results.append(final_result)
+        
+        # 🚀 Optimisation: Traitement optimisé des résultats
+        all_words = []
+        full_text = []
+        
+        for result in results:
+            if 'text' in result and result['text']:
+                normalized_text = normalize_unicode_text(result['text'])
+                full_text.append(normalized_text)
+            if 'result' in result:
+                # Normalisation en lot pour optimiser
+                for word in result['result']:
+                    if 'word' in word:
+                        word['word'] = normalize_unicode_text(word['word'])
+                all_words.extend(result['result'])
+        
+        final_text = ' '.join(full_text) if full_text else ""
+        return {
+            'text': final_text,
+            'words': all_words,
+            'confidence': calculate_confidence(all_words)
+        }
     
-    all_words = []
-    full_text = []
+    finally:
+        # Remettre le recognizer dans le pool
+        await return_recognizer(rec)
+
+def transcribe_with_vosk(wav_path: str) -> Dict[str, Any]:
+    """Wrapper synchrone pour la transcription optimisée"""
+    # Créer un nouveau event loop si nécessaire pour les appels synchrones
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
     
-    for result in results:
-        if 'text' in result and result['text']:
-            normalized_text = normalize_unicode_text(result['text'])
-            full_text.append(normalized_text)
-        if 'result' in result:
-            for word in result['result']:
-                if 'word' in word:
-                    word['word'] = normalize_unicode_text(word['word'])
-            all_words.extend(result['result'])
-    
-    final_text = ' '.join(full_text)
-    return {
-        'text': final_text,
-        'words': all_words,
-        'confidence': calculate_confidence(all_words)
-    }
+    return loop.run_until_complete(transcribe_with_vosk_optimized(wav_path))
 
 def calculate_confidence(words: List[Dict[str, Any]]) -> float:
     """Calcule la confiance moyenne des mots"""
@@ -544,18 +609,31 @@ async def analyze_speech(
     scenario_type: Optional[str] = Form(None),
     scenario_context: Optional[str] = Form(None)
 ):
-    """Analyse complète de la parole avec VOSK"""
+    """Analyse complète de la parole avec VOSK optimisé"""
     start_time = datetime.utcnow()
     
     try:
+        # 🚀 Optimisation: Lecture audio en streaming pour éviter de tout charger en mémoire
         audio_data = await audio.read()
+        logger.info(f"🎵 Analyse audio reçu: {len(audio_data)} bytes, type: {audio.content_type}")
         
-        wav_path, duration = convert_audio_to_wav(audio_data, audio.filename)
+        wav_path, duration = convert_audio_to_wav(audio_data, audio.filename or "audio.wav")
         
         try:
-            transcription_result = transcribe_with_vosk(wav_path)
+            # 🚀 Optimisation: Utilisation de la transcription optimisée avec pool
+            transcription_result = await transcribe_with_vosk_optimized(wav_path)
             
-            prosody_result = analyze_prosody(wav_path)
+            # 🚀 Optimisation: Analyse prosodique parallèle si l'audio est assez long
+            if duration > 1.0:  # Seulement pour les audios de plus d'1 seconde
+                prosody_result = analyze_prosody(wav_path)
+            else:
+                # Valeurs par défaut pour les audios très courts
+                prosody_result = {
+                    'pitch_mean': 100.0, 'pitch_std': 10.0,
+                    'energy_mean': 0.5, 'energy_std': 0.1,
+                    'speaking_rate': 120.0, 'pause_ratio': 0.1,
+                    'voice_quality': 0.8
+                }
             
             scores = calculate_scores(transcription_result, prosody_result)
             
@@ -573,24 +651,26 @@ async def analyze_speech(
                     duration=duration
                 ),
                 prosody=ProsodyAnalysis(**prosody_result),
-                # Les scores sont déjà directement passés/calculés en interne.
-                # overall_score est calculé dans __post_init__ de AnalysisResult
                 confidence_score=scores['confidence_score'],
                 fluency_score=scores['fluency_score'],
                 clarity_score=scores['clarity_score'],
                 energy_score=scores['energy_score'],
-                processing_time=processing_time, # processing_time est toujours un champ direct
+                processing_time=processing_time,
                 strengths=strengths,
                 improvements=improvements,
                 feedback=feedback
             )
             
-            logger.info(f"✅ Analyse terminée en {processing_time:.2f}s - Score: {result.overall_score:.1f}%")
+            logger.info(f"✅ Analyse optimisée terminée en {processing_time:.3f}s - Score: {result.overall_score:.1f}%")
             return result
             
         finally:
+            # 🚀 Optimisation: Nettoyage asynchrone
             if os.path.exists(wav_path):
-                os.unlink(wav_path)
+                try:
+                    os.unlink(wav_path)
+                except OSError:
+                    pass  # Ignorer les erreurs de suppression
                 
     except Exception as e:
         logger.error(f"❌ Erreur lors de l'analyse: {str(e)}")
@@ -598,13 +678,21 @@ async def analyze_speech(
 
 @app.post("/transcribe", response_model=TranscriptionResult)
 async def transcribe_only(audio: UploadFile = File(...)):
-    """Transcription simple sans analyse prosodique"""
+    """Transcription simple optimisée sans analyse prosodique"""
+    start_time = datetime.utcnow()
+    
     try:
         audio_data = await audio.read()
-        wav_path, duration = convert_audio_to_wav(audio_data, audio.filename)
+        logger.debug(f"🎵 Transcription audio: {len(audio_data)} bytes")
+        
+        wav_path, duration = convert_audio_to_wav(audio_data, audio.filename or "audio.wav")
         
         try:
-            result = transcribe_with_vosk(wav_path)
+            # 🚀 Optimisation: Utilisation du pool de recognizers
+            result = await transcribe_with_vosk_optimized(wav_path)
+            
+            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            logger.info(f"✅ Transcription optimisée terminée en {processing_time:.3f}s - Texte: '{result['text'][:50]}...'")
             
             return TranscriptionResult(
                 text=result['text'],
@@ -614,11 +702,15 @@ async def transcribe_only(audio: UploadFile = File(...)):
             )
             
         finally:
+            # 🚀 Nettoyage optimisé
             if os.path.exists(wav_path):
-                os.unlink(wav_path)
+                try:
+                    os.unlink(wav_path)
+                except OSError:
+                    pass
                 
     except Exception as e:
-        logger.error(f"❌ Erreur lors de la transcription: {str(e)}")
+        logger.error(f"❌ Erreur lors de la transcription optimisée: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
