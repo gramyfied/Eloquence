@@ -676,7 +676,7 @@ class UserLeaderboardPosition {
 }
 
 /// Historique des rangs d'un utilisateur
-@HiveType(typeId: 57)
+@HiveType(typeId: 67)
 class UserRankHistory extends HiveObject {
   @HiveField(0)
   String userId;
@@ -691,7 +691,7 @@ class UserRankHistory extends HiveObject {
 }
 
 /// Snapshot d'un rang à un moment donné
-@HiveType(typeId: 58)
+@HiveType(typeId: 68)
 class RankSnapshot extends HiveObject {
   @HiveField(0)
   DateTime timestamp;
@@ -722,7 +722,7 @@ class RankSnapshot extends HiveObject {
 }
 
 /// Statistiques de saison
-@HiveType(typeId: 59)
+@HiveType(typeId: 69)
 class SeasonStats extends HiveObject {
   @HiveField(0)
   int seasonNumber;
@@ -757,7 +757,7 @@ class SeasonStats extends HiveObject {
 }
 
 /// Achievement de leaderboard
-@HiveType(typeId: 60)
+@HiveType(typeId: 61)
 class LeaderboardAchievement extends HiveObject {
   @HiveField(0)
   String userId;

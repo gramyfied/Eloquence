@@ -180,7 +180,7 @@ class StoryElement extends HiveObject {
 }
 
 /// Types d'interventions IA dans les histoires
-@HiveType(typeId: 58)
+@HiveType(typeId: 73)
 enum InterventionType {
   @HiveField(0)
   plotTwist,          // Rebondissement d'intrigue
@@ -586,7 +586,7 @@ enum StorySessionPhase {
 }
 
 /// Badge spécifique aux histoires
-@HiveType(typeId: 56)
+@HiveType(typeId: 71)
 enum StoryBadgeType {
   @HiveField(0)
   improvisationMaster,    // Maître de l'Improvisation
@@ -693,7 +693,7 @@ extension StoryBadgeTypeExtension on StoryBadgeType {
 }
 
 /// Collection de statistiques utilisateur pour les histoires
-@HiveType(typeId: 57)
+@HiveType(typeId: 72)
 class StoryUserStats extends HiveObject {
   @HiveField(0)
   String userId;
@@ -747,7 +747,7 @@ class StoryUserStats extends HiveObject {
 
 
 /// Métriques audio détaillées
-@HiveType(typeId: 59)
+@HiveType(typeId: 74)
 class AudioMetrics extends HiveObject {
   @HiveField(0)
   final double articulationScore;
@@ -784,7 +784,7 @@ class AudioMetrics extends HiveObject {
 }
 
 /// Analyse complète de la narration
-@HiveType(typeId: 60)
+@HiveType(typeId: 75)
 class StoryNarrativeAnalysis extends HiveObject {
   @HiveField(0)
   final String storyId;

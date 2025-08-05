@@ -249,7 +249,7 @@ class StoryAdapter extends TypeAdapter<Story> {
 
 class StoryUserStatsAdapter extends TypeAdapter<StoryUserStats> {
   @override
-  final int typeId = 57;
+  final int typeId = 72;
 
   @override
   StoryUserStats read(BinaryReader reader) {
@@ -313,7 +313,7 @@ class StoryUserStatsAdapter extends TypeAdapter<StoryUserStats> {
 
 class AudioMetricsAdapter extends TypeAdapter<AudioMetrics> {
   @override
-  final int typeId = 59;
+  final int typeId = 74;
 
   @override
   AudioMetrics read(BinaryReader reader) {
@@ -363,7 +363,7 @@ class AudioMetricsAdapter extends TypeAdapter<AudioMetrics> {
 class StoryNarrativeAnalysisAdapter
     extends TypeAdapter<StoryNarrativeAnalysis> {
   @override
-  final int typeId = 60;
+  final int typeId = 75;
 
   @override
   StoryNarrativeAnalysis read(BinaryReader reader) {
@@ -535,7 +535,7 @@ class StoryGenreAdapter extends TypeAdapter<StoryGenre> {
 
 class InterventionTypeAdapter extends TypeAdapter<InterventionType> {
   @override
-  final int typeId = 58;
+  final int typeId = 73;
 
   @override
   InterventionType read(BinaryReader reader) {
@@ -599,7 +599,7 @@ class InterventionTypeAdapter extends TypeAdapter<InterventionType> {
 
 class StoryBadgeTypeAdapter extends TypeAdapter<StoryBadgeType> {
   @override
-  final int typeId = 56;
+  final int typeId = 71;
 
   @override
   StoryBadgeType read(BinaryReader reader) {
