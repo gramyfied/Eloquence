@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/navigation/navigation_state.dart';
-import '../../utils/constants.dart';
+import '../../core/theme/eloquence_unified_theme.dart';
 
 class MainNavigation extends ConsumerStatefulWidget {
   final Function(String) onNavigationChanged;
@@ -60,43 +60,60 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
           margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
-            color: EloquenceColors.navy.withAlpha((255 * 0.5).round()),
+            color: EloquenceTheme.navy.withAlpha((255 * 0.5).round()),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
+              color: EloquenceTheme.cyan.withAlpha((255 * 0.3).round()),
               width: 1,
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                context,
-                icon: Icons.home_rounded,
-                label: 'Accueil',
-                route: '/home',
-                isActive: currentRoute == '/home',
+              Expanded(
+                child: _buildNavItem(
+                  context,
+                  icon: Icons.home_rounded,
+                  label: 'Accueil',
+                  route: '/home',
+                  isActive: currentRoute == '/home',
+                ),
               ),
-              _buildNavItem(
-                context,
-                icon: Icons.fitness_center_rounded,
-                label: 'Exercices',
-                route: '/exercises',
-                isActive: currentRoute == '/exercises',
+              Expanded(
+                child: _buildNavItem(
+                  context,
+                  icon: Icons.fitness_center_rounded,
+                  label: 'Exercices',
+                  route: '/exercises',
+                  isActive: currentRoute == '/exercises',
+                ),
               ),
-              _buildNavItem(
-                context,
-                icon: Icons.person_rounded,
-                label: 'Profil',
-                route: '/profile',
-                isActive: currentRoute == '/profile',
+              Expanded(
+                child: _buildNavItem(
+                  context,
+                  icon: Icons.person_rounded,
+                  label: 'Profil',
+                  route: '/profile',
+                  isActive: currentRoute == '/profile',
+                ),
               ),
-              _buildNavItem(
-                context,
-                icon: Icons.movie_filter_rounded,
-                label: 'Scénario',
-                route: '/scenarios',
-                isActive: currentRoute == '/scenarios',
+              Expanded(
+                child: _buildNavItem(
+                  context,
+                  icon: Icons.movie_filter_rounded,
+                  label: 'Scénario',
+                  route: '/scenarios',
+                  isActive: currentRoute == '/scenarios',
+                ),
+              ),
+              Expanded(
+                child: _buildNavItem(
+                  context,
+                  icon: Icons.business_center_rounded,
+                  label: 'Studio Pro',
+                  route: '/studio_situations_pro',
+                  isActive: currentRoute == '/studio_situations_pro',
+                ),
               ),
             ],
           ),
@@ -150,32 +167,32 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                 });
               },
               borderRadius: BorderRadius.circular(20),
-              splashColor: EloquenceColors.cyan.withAlpha((255 * 0.3).round()),
-              highlightColor: EloquenceColors.cyan.withAlpha((255 * 0.1).round()),
+              splashColor: EloquenceTheme.cyan.withAlpha((255 * 0.3).round()),
+              highlightColor: EloquenceTheme.cyan.withAlpha((255 * 0.1).round()),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: isActive
-                    ? EloquenceColors.cyan.withAlpha((255 * 0.2).round())
+                    ? EloquenceTheme.cyan.withAlpha((255 * 0.2).round())
                     : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   border: isActive
                     ? Border.all(
-                        color: EloquenceColors.cyan.withAlpha((255 * 0.5).round()),
+                        color: EloquenceTheme.cyan.withAlpha((255 * 0.5).round()),
                         width: 1,
                       )
                     : null,
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         icon,
-                        color: isActive ? EloquenceColors.cyan : Colors.white,
+                        color: isActive ? EloquenceTheme.cyan : EloquenceTheme.white,
                         size: 24,
                       ),
                     ),
@@ -185,16 +202,18 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                         width: 8,
                       ),
                     if (isActive)
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: 1.0,
-                        child: Text(
-                          label,
-                          style: const TextStyle(
-                            color: EloquenceColors.cyan,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Inter',
-                            fontSize: 14,
+                      Expanded(
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 200),
+                          opacity: 1.0,
+                          child: Text(
+                            label,
+                            style: EloquenceTheme.bodySmall.copyWith(
+                              color: EloquenceTheme.cyan,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                       ),

@@ -18,6 +18,8 @@ import 'features/confidence_boost/data/services/mistral_cache_service.dart';
 import 'features/confidence_boost/domain/entities/dragon_breath_models.dart';
 import 'features/story_generator/domain/entities/story_models.dart';
 import 'core/utils/hive_adapters.dart';
+import 'package:flutter/foundation.dart';
+import 'package:eloquence_2_0/features/studio_situations_pro/data/models/simulation_configs.dart'; // Ajouté pour le test
 
 import 'features/confidence_boost/presentation/providers/confidence_boost_provider.dart';
 
@@ -64,9 +66,16 @@ void main() async {
     hiveInitializationCompleter.complete();
     log.info("✅ 2.4. Hive est entièrement prêt (Completer terminé).");
     // --- FIN GESTION HIVE ---
-
+    
     await SupabaseConfig.initialize();
     log.info("✅ 3. Supabase initialized.");
+
+    // TEST ÉTAPE 1: Afficher la liste des simulations
+    debugPrint('Liste des simulations disponibles:');
+    for (final config in SimulationConfigs.all) {
+      debugPrint(' - ${config.title} (${config.type})');
+    }
+    // FIN TEST ÉTAPE 1
 
     final sharedPreferences = await SharedPreferences.getInstance();
     log.info("✅ 4. SharedPreferences initialized.");
