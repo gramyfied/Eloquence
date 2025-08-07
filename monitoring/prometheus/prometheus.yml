@@ -1,0 +1,119 @@
+# Configuration Prometheus pour le système multi-agents Eloquence
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'eloquence-multiagent'
+    environment: 'production'
+
+# Configuration des alertes
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - 'alertmanager:9093'
+
+# Règles d'alertes
+rule_files:
+  - "alerts/*.yml"
+
+# Configuration des targets à scraper
+scrape_configs:
+  # Métriques Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Métriques des agents LiveKit
+  - job_name: 'livekit-agents'
+    static_configs:
+      - targets:
+          - 'livekit-agent-1:9091'
+          - 'livekit-agent-2:9092'
+          - 'livekit-agent-3:9093'
+          - 'livekit-agent-4:9094'
+        labels:
+          service: 'livekit-agent'
+          environment: 'production'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Métriques du serveur LiveKit
+  - job_name: 'livekit-server'
+    static_configs:
+      - targets: ['livekit-server:7881']
+        labels:
+          service: 'livekit-server'
+    metrics_path: '/metrics'
+
+  # Métriques HAProxy
+  - job_name: 'haproxy'
+    static_configs:
+      - targets: ['haproxy:8404']
+        labels:
+          service: 'haproxy'
+    metrics_path: '/stats;csv'
+
+  # Métriques Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: 'redis'
+
+  # Métriques Node Exporter (système)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+
+  # Métriques cAdvisor (Docker)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+    metrics_path: '/metrics'
+
+  # Métriques de performance multi-agents spécifiques
+  - job_name: 'multiagent-performance'
+    static_configs:
+      - targets:
+          - 'livekit-agent-1:8080'
+          - 'livekit-agent-2:8080'
+          - 'livekit-agent-3:8080'
+          - 'livekit-agent-4:8080'
+        labels:
+          service: 'multiagent'
+          metric_type: 'performance'
+    metrics_path: '/api/metrics/performance'
+    scrape_interval: 30s
+
+  # Métriques de sessions multi-agents
+  - job_name: 'multiagent-sessions'
+    static_configs:
+      - targets:
+          - 'livekit-agent-1:8080'
+          - 'livekit-agent-2:8080'
+          - 'livekit-agent-3:8080'
+          - 'livekit-agent-4:8080'
+        labels:
+          service: 'multiagent'
+          metric_type: 'sessions'
+    metrics_path: '/api/metrics/sessions'
+    scrape_interval: 30s
+
+  # Métriques IA (OpenAI/Mistral usage)
+  - job_name: 'ai-metrics'
+    static_configs:
+      - targets:
+          - 'livekit-agent-1:8080'
+          - 'livekit-agent-2:8080'
+          - 'livekit-agent-3:8080'
+          - 'livekit-agent-4:8080'
+        labels:
+          service: 'multiagent'
+          metric_type: 'ai_usage'
+    metrics_path: '/api/metrics/ai'
+    scrape_interval: 60s

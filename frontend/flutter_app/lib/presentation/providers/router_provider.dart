@@ -14,6 +14,7 @@ import '../screens/scenario/scenario_screen.dart';
 import '../../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
 import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
+import '../../features/studio_situations_pro/data/models/simulation_models.dart';
 import '../../features/confidence_boost/presentation/screens/virelangue_roulette_screen.dart';
 import '../../features/confidence_boost/presentation/screens/dragon_breath_screen.dart';
 import '../../features/confidence_boost/presentation/screens/cosmic_voice_screen.dart';
@@ -22,6 +23,10 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/widgets/auth_wrapper.dart';
 import '../../features/confidence_boost/presentation/screens/tribunal_idees_screen.dart';
+
+import '../../features/studio_situations_pro/presentation/screens/simulation_selection_screen.dart'; // NOUVEAU
+import '../../features/studio_situations_pro/presentation/screens/preparation_screen.dart';      // NOUVEAU
+import '../../features/studio_situations_pro/presentation/screens/simulation_screen.dart';       // NOUVEAU
 
 // Définir une GlobalKey pour le navigateur racine, après les imports
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -213,6 +218,32 @@ final routerProvider = Provider<GoRouter>((ref) {
               }
               
               return ExerciseActiveScreen(exerciseId: exerciseId);
+            },
+          ),
+
+          // Routes Studio Situations Pro (NOUVEAU)
+          GoRoute(
+            path: 'studio_situations_pro',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) {
+              return SimulationSelectionScreen();
+            },
+          ),
+          GoRoute(
+            path: 'preparation/:simulationType',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) {
+              final simulationType = state.pathParameters['simulationType']!;
+              return PreparationScreen(simulationType: SimulationTypeExtension.fromRouteString(simulationType as String));
+            },
+          ),
+          GoRoute(
+            path: 'simulation/:simulationType',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (BuildContext context, GoRouterState state) {
+              final simulationType = state.pathParameters['simulationType']!;
+              // Vous pouvez passer preparationData ici si nécessaire
+              return SimulationScreen(simulationType: SimulationTypeExtension.fromRouteString(simulationType));
             },
           ),
         ],

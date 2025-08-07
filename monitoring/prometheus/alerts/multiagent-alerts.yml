@@ -1,0 +1,198 @@
+# Règles d'alertes pour le système multi-agents Eloquence
+groups:
+  - name: multiagent_availability
+    interval: 30s
+    rules:
+      # Alerte si un agent est down
+      - alert: AgentDown
+        expr: up{job="livekit-agents"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: livekit-agent
+        annotations:
+          summary: "Agent LiveKit {{ $labels.instance }} est down"
+          description: "L'agent {{ $labels.instance }} ne répond plus depuis plus d'1 minute"
+          
+      # Alerte si plus de 50% des agents sont down
+      - alert: MajorityAgentsDown
+        expr: (count(up{job="livekit-agents"} == 0) / count(up{job="livekit-agents"})) > 0.5
+        for: 30s
+        labels:
+          severity: critical
+          component: multiagent-system
+        annotations:
+          summary: "Plus de 50% des agents sont down"
+          description: "{{ $value | humanizePercentage }} des agents ne répondent plus"
+          
+  - name: multiagent_performance
+    interval: 30s
+    rules:
+      # Alerte si latence élevée
+      - alert: HighAgentLatency
+        expr: histogram_quantile(0.99, rate(agent_response_time_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Latence élevée détectée sur les agents"
+          description: "P99 latence: {{ $value | humanizeDuration }} (seuil: 2s)"
+          
+      # Alerte si trop d'agents actifs simultanément
+      - alert: TooManyActiveAgents
+        expr: sum(active_agents_total) > 40
+        for: 2m
+        labels:
+          severity: warning
+          component: capacity
+        annotations:
+          summary: "Trop d'agents actifs simultanément"
+          description: "{{ $value }} agents actifs (limite recommandée: 40)"
+          
+      # Alerte si utilisation CPU élevée
+      - alert: HighAgentCPU
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{name=~"eloquence-livekit-agent-.*"}[5m]) * 100
+          ) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "Utilisation CPU élevée sur agent {{ $labels.name }}"
+          description: "CPU à {{ $value | humanizePercentage }} (seuil: 80%)"
+          
+      # Alerte si utilisation mémoire élevée  
+      - alert: HighAgentMemory
+        expr: |
+          (
+            container_memory_usage_bytes{name=~"eloquence-livekit-agent-.*"} 
+            / container_spec_memory_limit_bytes{name=~"eloquence-livekit-agent-.*"}
+          ) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "Utilisation mémoire élevée sur agent {{ $labels.name }}"
+          description: "Mémoire à {{ $value | humanizePercentage }} (seuil: 90%)"
+          
+  - name: multiagent_errors
+    interval: 30s
+    rules:
+      # Alerte si taux d'erreur élevé
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(agent_errors_total[5m])) 
+            / sum(rate(agent_requests_total[5m]))
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: reliability
+        annotations:
+          summary: "Taux d'erreur élevé sur les agents"
+          description: "Taux d'erreur: {{ $value | humanizePercentage }} (seuil: 5%)"
+          
+      # Alerte si échecs de connexion WebRTC
+      - alert: WebRTCConnectionFailures
+        expr: rate(webrtc_connection_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: webrtc
+        annotations:
+          summary: "Échecs de connexion WebRTC détectés"
+          description: "{{ $value | humanize }} échecs/seconde"
+          
+      # Alerte si échecs d'API OpenAI/Mistral
+      - alert: AIAPIFailures
+        expr: rate(ai_api_failures_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: ai_integration
+        annotations:
+          summary: "Échecs d'API IA détectés"
+          description: "{{ $value | humanize }} échecs/seconde sur {{ $labels.provider }}"
+          
+  - name: multiagent_sessions
+    interval: 30s
+    rules:
+      # Alerte si trop de sessions simultanées
+      - alert: TooManyConcurrentSessions
+        expr: concurrent_sessions_total > 100
+        for: 2m
+        labels:
+          severity: warning
+          component: capacity
+        annotations:
+          summary: "Trop de sessions simultanées"
+          description: "{{ $value }} sessions actives (limite: 100)"
+          
+      # Alerte si sessions bloquées
+      - alert: StuckSessions
+        expr: |
+          (
+            count(session_duration_seconds > 3600)
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: sessions
+        annotations:
+          summary: "Sessions bloquées détectées"
+          description: "{{ $value }} sessions durent plus d'1 heure"
+          
+  - name: multiagent_redis
+    interval: 30s
+    rules:
+      # Alerte si Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis est down"
+          description: "Redis ne répond plus, la coordination multi-agents est compromise"
+          
+      # Alerte si latence Redis élevée
+      - alert: RedisHighLatency
+        expr: redis_commands_duration_seconds_mean > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Latence Redis élevée"
+          description: "Latence moyenne: {{ $value | humanizeDuration }}"
+          
+  - name: multiagent_haproxy
+    interval: 30s
+    rules:
+      # Alerte si HAProxy down
+      - alert: HAProxyDown
+        expr: up{job="haproxy"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: haproxy
+        annotations:
+          summary: "HAProxy est down"
+          description: "Le load balancer ne répond plus"
+          
+      # Alerte si backend unhealthy
+      - alert: HAProxyBackendDown
+        expr: haproxy_backend_up == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: haproxy
+        annotations:
+          summary: "Backend HAProxy {{ $labels.backend }} est down"
+          description: "Aucun serveur disponible pour {{ $labels.backend }}"

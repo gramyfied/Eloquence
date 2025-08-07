@@ -1,0 +1,390 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'dart:async';
+import '../../../../core/theme/eloquence_unified_theme.dart';
+import '../../data/models/simulation_models.dart';
+import '../../data/services/studio_situations_pro_service.dart';
+import '../widgets/multi_agent_avatar_widget.dart';
+
+class SimulationScreen extends ConsumerStatefulWidget {
+  final SimulationType simulationType;
+
+  const SimulationScreen({Key? key, required this.simulationType}) : super(key: key);
+
+  @override
+  ConsumerState<SimulationScreen> createState() => _SimulationScreenState();
+}
+
+class _SimulationScreenState extends ConsumerState<SimulationScreen> with SingleTickerProviderStateMixin {
+  late Timer _timer;
+  int _seconds = 0;
+  bool _isPaused = false;
+  bool _isRecording = false;
+  
+  // Multi-agents state
+  List<AgentInfo> _agents = [];
+  String? _activeSpeakerId;
+  String _activeSpeakerName = '';
+  StreamSubscription<MultiAgentEvent>? _eventSubscription;
+
+  late AnimationController _glowController;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+    _initializeMultiAgents();
+
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _glowAnimation = Tween<double>(begin: 5.0, end: 15.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    )..addListener(() {
+        setState(() {}); // Rebuild to apply glow
+      });
+    
+    _glowController.repeat(reverse: true);
+  }
+  
+  void _initializeMultiAgents() async {
+    final service = ref.read(studioSituationsProServiceProvider);
+    
+    // Initialiser la simulation
+    await service.startSimulation(widget.simulationType);
+    
+    // Écouter les événements multi-agents
+    _eventSubscription = service.multiAgentEvents.listen((event) {
+      setState(() {
+        if (event is AgentJoinedEvent) {
+          _agents.add(event.agent);
+        } else if (event is AgentLeftEvent) {
+          _agents.removeWhere((a) => a.id == event.agentId);
+        } else if (event is SpeakerChangedEvent) {
+          _activeSpeakerId = event.agentId;
+          _activeSpeakerName = _agents.firstWhere(
+            (a) => a.id == event.agentId,
+            orElse: () => AgentInfo(
+              id: '',
+              name: 'Inconnu',
+              role: '',
+              avatarPath: '',
+              isActive: false,
+              participationRate: 0.0,
+            ),
+          ).name;
+        } else if (event is AgentStateUpdateEvent) {
+          final index = _agents.indexWhere((a) => a.id == event.agentId);
+          if (index != -1) {
+            _agents[index] = AgentInfo(
+              id: event.agentId,
+              name: _agents[index].name,
+              role: _agents[index].role,
+              avatarPath: _agents[index].avatarPath,
+              isActive: event.isActive,
+              participationRate: event.participationRate,
+            );
+          }
+        }
+      });
+    });
+    
+    // Obtenir les agents initiaux pour ce type de simulation
+    final initialAgents = service.getAgentsForSimulation(widget.simulationType);
+    setState(() {
+      _agents = initialAgents;
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _eventSubscription?.cancel();
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!_isPaused) {
+        setState(() {
+          _seconds++;
+        });
+      }
+    });
+  }
+
+  void _togglePause() {
+    setState(() {
+      _isPaused = !_isPaused;
+    });
+  }
+
+  void _toggleRecording() async {
+    setState(() {
+      _isRecording = !_isRecording;
+      if (_isRecording) {
+        _glowController.repeat(reverse: true);
+      } else {
+        _glowController.stop();
+      }
+    });
+    
+    // Démarrer/arrêter l'enregistrement LiveKit
+    if (_isRecording) {
+      final service = ref.read(studioSituationsProServiceProvider);
+      await service.startRecording();
+    } else {
+      final service = ref.read(studioSituationsProServiceProvider);
+      await service.stopRecording();
+    }
+  }
+  
+  void _onAgentTap(AgentInfo agent) {
+    // Gérer le tap sur un agent (par exemple, forcer la prise de parole)
+    final service = ref.read(studioSituationsProServiceProvider);
+    service.requestAgentSpeaker(agent.id);
+  }
+
+  String get _timerText {
+    final minutes = (_seconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: EloquenceTheme.navy,
+      appBar: _buildAppBar(context),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildMultiAgentSection(),
+            _buildMetrics(),
+            const Spacer(),
+            if (_activeSpeakerName.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: EloquenceTheme.spacingMd,
+                  vertical: EloquenceTheme.spacingSm,
+                ),
+                child: Center(
+                  child: ActiveSpeakerIndicator(
+                    speakerName: _activeSpeakerName,
+                    color: EloquenceTheme.cyan,
+                  ),
+                ),
+              ),
+            _buildControls(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  AppBar _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+        onPressed: () => context.pop(),
+      ),
+      title: Text(
+        widget.simulationType.toDisplayString(),
+        style: EloquenceTheme.headline3,
+      ),
+      centerTitle: true,
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: EloquenceTheme.spacingMd),
+          child: Center(
+            child: Text(
+              _timerText,
+              style: EloquenceTheme.bodyLarge.copyWith(color: EloquenceTheme.cyan),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMultiAgentSection() {
+    // Déterminer l'image d'environnement en fonction du type de simulation
+    String environmentImage = '';
+    switch (widget.simulationType) {
+      case SimulationType.entretienEmbauche:
+        environmentImage = 'assets/images/avatars/environnement_bureau_moderne.png';
+        break;
+      case SimulationType.debatPlateau:
+        environmentImage = 'assets/images/avatars/environnement_plateau_tv.png';
+        break;
+      case SimulationType.reunionDirection:
+        environmentImage = 'assets/images/avatars/environnement_salle_conseil.png';
+        break;
+      case SimulationType.conferenceVente:
+      case SimulationType.conferencePublique:
+        environmentImage = 'assets/images/avatars/environnement_conference.png';
+        break;
+      default:
+        environmentImage = 'assets/images/avatars/environnement_bureau_moderne.png';
+    }
+    
+    return Container(
+      height: 320,
+      margin: const EdgeInsets.all(EloquenceTheme.spacingMd),
+      child: Stack(
+        children: [
+          // Image d'environnement en arrière-plan
+          if (environmentImage.isNotEmpty)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: EloquenceTheme.borderRadiusLarge,
+                  image: DecorationImage(
+                    image: AssetImage(environmentImage),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.3),
+                      BlendMode.darken,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          
+          // Overlay glassmorphisme
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: EloquenceTheme.borderRadiusLarge,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    EloquenceTheme.navy.withOpacity(0.7),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Grille d'avatars
+          if (_agents.isNotEmpty)
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.all(EloquenceTheme.spacingMd),
+                child: MultiAgentAvatarGrid(
+                  agents: _agents,
+                  activeSpeakerId: _activeSpeakerId,
+                  onAgentTap: _onAgentTap,
+                ),
+              ),
+            ),
+          
+          // Loading si pas encore d'agents
+          if (_agents.isEmpty)
+            const Center(
+              child: CircularProgressIndicator(
+                color: EloquenceTheme.cyan,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetrics() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: EloquenceTheme.spacingMd),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildMetricCard("Confiance", "84", EloquenceTheme.cyan),
+          _buildMetricCard("Concision", "76", EloquenceTheme.violet),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: EloquenceTheme.headline1.copyWith(color: color, fontSize: 48),
+        ),
+        const SizedBox(height: EloquenceTheme.spacingXs),
+        Text(
+          title.toUpperCase(),
+          style: EloquenceTheme.bodySmall.copyWith(color: Colors.white70),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildControls() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: EloquenceTheme.spacingLg),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          IconButton(
+            icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause, color: Colors.white, size: 32),
+            onPressed: _togglePause,
+          ),
+          _buildMicButton(),
+          IconButton(
+            icon: const Icon(Icons.stop, color: Colors.redAccent, size: 32),
+            onPressed: () async {
+              _timer.cancel();
+              // Arrêter la simulation
+              final service = ref.read(studioSituationsProServiceProvider);
+              await service.endSimulation();
+              if (mounted) {
+                context.pop();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMicButton() {
+    return GestureDetector(
+      onTap: _toggleRecording,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: EloquenceTheme.cyan,
+          boxShadow: _isRecording ? [
+            BoxShadow(
+              color: EloquenceTheme.violet.withOpacity(0.7),
+              blurRadius: _glowAnimation.value,
+              spreadRadius: _glowAnimation.value / 2,
+            ),
+            BoxShadow(
+              color: EloquenceTheme.cyan.withOpacity(0.5),
+              blurRadius: _glowAnimation.value * 2,
+              spreadRadius: _glowAnimation.value,
+            ),
+          ] : [],
+        ),
+        child: Icon(
+          _isRecording ? Icons.mic : Icons.mic_none,
+          color: Colors.white,
+          size: 36,
+        ),
+      ),
+    );
+  }
+}
