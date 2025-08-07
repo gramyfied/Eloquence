@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import '../../../../presentation/theme/eloquence_design_system.dart';
 import '../../domain/entities/confidence_models.dart';
+import '../../domain/entities/gamification_models.dart';
 import '../widgets/animated_microphone_button.dart';
 import '../widgets/avatar_with_halo.dart';
 import '../../data/services/confidence_livekit_service.dart';
 import '../../data/services/mistral_api_service.dart';
+import '../../data/repositories/gamification_repository.dart';
 
 class TribunalIdeesScreenReal extends ConsumerStatefulWidget {
   const TribunalIdeesScreenReal({Key? key}) : super(key: key);
@@ -28,7 +30,10 @@ class _TribunalIdeesScreenRealState extends ConsumerState<TribunalIdeesScreenRea
   // Service Mistral pour génération IA
   final MistralApiService _mistralService = MistralApiService();
   
-  // Gamification State
+  // Repository de gamification
+  final GamificationRepository _gamificationRepository = HiveGamificationRepository();
+  
+  // Gamification State (temporairement local, intégration en cours)
   int _currentXP = 0;
   int _earnedXP = 0;
   int _currentLevel = 1;
@@ -328,8 +333,6 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
   void _selectRandomTopic() {
     _logger.i('🔄 _selectRandomTopic appelée - État exercice: ${_isExerciseActive ? "ACTIF" : "INACTIF"}');
     _logger.i('📱 Interface perçue par utilisateur: ${_isExerciseActive ? "ÉCRAN PRINCIPAL" : "ÉCRAN D\'ACCUEIL"}');
-    _logger.i('🔍 DIAGNOSTIC: Widget actuel = ${_isExerciseActive ? "_buildUnifiedInterface" : "_buildUnifiedInterface"} (même méthode!)');
-    _logger.i('🎯 Bouton appelant = ${_isExerciseActive ? "Interface principal" : "Interface accueil"} - UTILISE MÊME LOGIQUE');
     
     // Vérifier si la génération est déjà en cours
     if (_isGeneratingTopic) {
@@ -337,7 +340,6 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
       return;
     }
     
-    _logger.i('🚀 LANCEMENT génération identique pour les deux interfaces');
     _generateNewTopic();
   }
   

@@ -12,6 +12,22 @@ import '../../../../core/config/app_config.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
 
+/// Extension pour les phases d'exercice
+enum ExercisePhase {
+  idle,
+  connecting,
+  connected,
+  ready,
+  listening,
+  processing,
+  responding,
+  reconnecting,
+  ended,
+  error,
+  disconnected,
+  unknown,
+}
+
 /// Service LiveKit complet pour Confidence Boost
 /// REMPLACE entièrement la solution WebSocket streaming
 class ConfidenceLiveKitService {
@@ -52,6 +68,178 @@ class ConfidenceLiveKitService {
   bool get isConnected => _isConnected;
   bool get isPublishing => _isPublishing;
   String? get sessionId => _sessionId;
+
+  /// Démarre une session spécialisée pour le Tribunal des Idées Impossibles
+  Future<bool> startTribunalIdeasSession({
+    required String userId,
+    String? sessionId,
+  }) async {
+    try {
+      _logger.i('⚖️ Démarrage session Tribunal des Idées Impossibles via LiveKit');
+
+      // Créer un scénario spécialisé pour le tribunal
+      final tribunalScenario = ConfidenceScenario(
+        id: 'tribunal_idees_impossibles',
+        title: 'Tribunal des Idées Impossibles',
+        description: 'Défendez des idées impossibles devant un tribunal bienveillant',
+        difficulty: 'Intermédiaire',
+        prompt: 'Défendez une idée impossible avec conviction et éloquence',
+        type: ConfidenceScenarioType.presentation,
+        durationSeconds: 900, // 15 minutes
+        tips: [
+          'Structurez votre argumentation',
+          'Utilisez des exemples créatifs',
+          'Maintenez votre conviction',
+          'Répondez aux objections avec assurance'
+        ],
+        keywords: ['argumentation', 'créativité', 'éloquence', 'conviction'],
+        icon: '⚖️',
+      );
+
+      // Générer un ID de session unique
+      _sessionId = sessionId ?? 'tribunal_${DateTime.now().millisecondsSinceEpoch}';
+      _currentScenario = tribunalScenario;
+
+      _phaseController.add(ExercisePhase.connecting);
+
+      // Configuration audio et connexion LiveKit
+      await _configureAudioSession();
+      await _ensureAudioVolume();
+      await _configureNativeAudio();
+
+      // Obtenir token spécialisé pour le tribunal
+      final tokenData = await _getTribunalToken(userId, _sessionId!);
+      if (tokenData == null) {
+        throw Exception('Impossible d\'obtenir le token LiveKit pour le tribunal');
+      }
+
+      // Créer et configurer la room LiveKit
+      _room = Room();
+      _setupRoomListeners();
+
+      // Connexion à LiveKit
+      await _room!.connect(
+        tokenData['livekit_url'],
+        tokenData['token'],
+      );
+
+      _participantIdentity = tokenData['participant_identity'];
+      _isConnected = true;
+
+      _logger.i('✅ Connexion LiveKit réussie pour le tribunal');
+      _phaseController.add(ExercisePhase.connected);
+
+      // Démarrer publication audio
+      await _startAudioPublication();
+
+      // Envoyer configuration spécialisée tribunal
+      await _sendTribunalConfiguration();
+
+      _phaseController.add(ExercisePhase.ready);
+      _logger.i('⚖️ Session Tribunal des Idées Impossibles prête');
+
+      return true;
+
+    } catch (e, stackTrace) {
+      _logger.e('❌ Erreur démarrage session tribunal: $e', error: e, stackTrace: stackTrace);
+      _errorController.add('Erreur connexion tribunal: $e');
+      _phaseController.add(ExercisePhase.error);
+      await _cleanup();
+      return false;
+    }
+  }
+
+  /// Obtenir token spécialisé pour le Tribunal des Idées Impossibles
+  Future<Map<String, dynamic>?> _getTribunalToken(String userId, String sessionId) async {
+    try {
+      final tokenUrl = AppConfig.livekitTokenUrl.replaceAll('localhost', '192.168.1.44');
+      
+      final participantName = 'tribunal_${userId}_${DateTime.now().millisecondsSinceEpoch}';
+      final roomName = 'tribunal_idees_$sessionId';
+
+      _logger.i('⚖️ Génération token tribunal: $participantName dans $roomName');
+
+      final metadataObject = {
+        'exercise_type': 'tribunal_idees_impossibles',
+        'scenario_id': 'tribunal_idees_impossibles',
+        'scenario_title': 'Tribunal des Idées Impossibles',
+        'user_id': userId,
+        'session_id': sessionId,
+        'ai_character': 'juge_magistrat',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      final requestBody = {
+        'participant_name': participantName,
+        'room_name': roomName,
+        'grants': {
+          'roomJoin': true,
+          'canPublish': true,
+          'canSubscribe': true,
+          'canPublishData': true,
+        },
+        'metadata': metadataObject,
+      };
+
+      final response = await http.post(
+        Uri.parse('$tokenUrl/generate-token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final livekitUrl = AppConfig.livekitUrl.replaceAll('localhost', '192.168.1.44');
+        
+        return {
+          'token': data['token'],
+          'livekit_url': livekitUrl,
+          'participant_identity': data['participant_identity'] ?? participantName,
+          'room_name': data['room_name'] ?? roomName,
+        };
+      } else {
+        throw Exception('Erreur HTTP ${response.statusCode}: ${response.body}');
+      }
+
+    } catch (e) {
+      _logger.e('❌ Erreur obtention token tribunal: $e');
+      return null;
+    }
+  }
+
+  /// Envoyer configuration spécialisée pour le tribunal
+  Future<void> _sendTribunalConfiguration() async {
+    if (!_isConnected || _room?.localParticipant == null) {
+      _logger.w('⚠️ Configuration tribunal impossible: pas de connexion active');
+      return;
+    }
+
+    try {
+      final configMessage = {
+        'type': 'exercise_config',
+        'exercise_type': 'tribunal_idees_impossibles',
+        'scenario_id': 'tribunal_idees_impossibles',
+        'scenario_title': 'Tribunal des Idées Impossibles',
+        'scenario_description': 'Défendez des idées impossibles devant un tribunal bienveillant',
+        'session_id': _sessionId,
+        'timestamp': DateTime.now().toIso8601String(),
+        'ai_character': 'juge_magistrat',
+      };
+
+      final jsonData = jsonEncode(configMessage);
+      final bytes = utf8.encode(jsonData);
+
+      await _room!.localParticipant!.publishData(bytes, reliable: true);
+      _logger.i('⚖️ Configuration tribunal envoyée');
+
+    } catch (e) {
+      _logger.e('❌ Erreur envoi configuration tribunal: $e');
+      _errorController.add('Erreur configuration tribunal: $e');
+    }
+  }
 
   /// Démarre une session Confidence Boost avec LiveKit
   /// REMPLACE la méthode WebSocket startConversation()
@@ -229,11 +417,8 @@ class ConfidenceLiveKitService {
       }
     });
 
-    // 🔧 FIX CRITIQUE: Événements LiveKit corrects pour Flutter avec amélioration
-    
     // Timer pour vérifier périodiquement les nouveaux tracks audio
-    Timer? audioCheckTimer;
-    audioCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_room == null) {
         timer.cancel();
         return;
@@ -306,8 +491,6 @@ class ConfidenceLiveKitService {
     try {
       // Essayer de forcer l'audio vers les haut-parleurs
       if (_room?.localParticipant != null) {
-        // Note: Cette API pourrait ne pas être disponible dans toutes les versions
-        // On garde cette tentative mais on ne fait pas échouer si elle n'existe pas
         _logger.i('🔊 Tentative de routage audio vers haut-parleurs');
       }
       
@@ -432,60 +615,6 @@ class ConfidenceLiveKitService {
       _logger.e('❌ Erreur traitement données: $e');
     }
   }
-  
-  /// Gestion des données reçues du backend (transcription, réponses IA)
-  /// DEPRECATED - Utiliser _handleDataReceived à la place
-  void _handleParticipantData(RemoteParticipant participant) {
-    try {
-      // Les données sont envoyées via publishData() depuis le backend
-      final dataReceived = participant.metadata;
-      if (dataReceived != null && dataReceived.isNotEmpty) {
-        final data = jsonDecode(dataReceived) as Map<String, dynamic>;
-        
-        switch (data['type']) {
-          case 'transcription':
-            final text = data['text'] as String;
-            _transcriptionController.add(text);
-            _logger.d('📝 Transcription: $text');
-            break;
-
-          case 'ai_response':
-            final message = ConversationMessage(
-              id: data['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-              content: data['content'] as String,
-              isUser: false,
-              timestamp: DateTime.now(),
-            );
-            _conversationController.add(message);
-            _logger.d('🤖 Réponse IA: ${message.content}');
-            break;
-
-          case 'metrics':
-            final metricsData = data['metrics'] as Map<String, dynamic>;
-            final metrics = ConfidenceMetrics(
-              confidenceLevel: (metricsData['confidence_level'] ?? 0.0).toDouble(),
-              voiceClarity: (metricsData['voice_clarity'] ?? 0.0).toDouble(),
-              speakingPace: (metricsData['speaking_pace'] ?? 0.0).toDouble(),
-              energyLevel: (metricsData['energy_level'] ?? 0.0).toDouble(),
-              timestamp: DateTime.now(),
-            );
-            _metricsController.add(metrics);
-            _logger.d('📊 Métriques reçues');
-            break;
-
-          case 'phase_change':
-            final phase = ExercisePhase.values.firstWhere(
-              (p) => p.toString().split('.').last == data['phase'],
-              orElse: () => ExercisePhase.unknown,
-            );
-            _phaseController.add(phase);
-            break;
-        }
-      }
-    } catch (e) {
-      _logger.e('❌ Erreur traitement données participant: $e');
-    }
-  }
 
   /// Envoi de la configuration initiale de l'exercice
   Future<void> _sendExerciseConfiguration() async {
@@ -582,7 +711,7 @@ class ConfidenceLiveKitService {
       _logger.i('👤 Participant: $participantName');
       _logger.i('🏠 Room: $roomName');
 
-      // 🔧 CORRECTION FINALE: Le serveur Pydantic attend les métadonnées comme un objet dict, pas une string
+      // Métadonnées comme objet
       final metadataObject = {
         'exercise_type': 'confidence_boost',
         'scenario_id': scenario.id,
@@ -602,14 +731,8 @@ class ConfidenceLiveKitService {
           'canSubscribe': true,
           'canPublishData': true,
         },
-        'metadata': metadataObject, // 🔧 FIX FINAL: Objet au lieu de string
+        'metadata': metadataObject,
       };
-
-      _logger.i('🔍 DIAGNOSTIC: Corps de requête token:');
-      _logger.i('   - participant_name: $participantName');
-      _logger.i('   - room_name: $roomName');
-      _logger.i('   - metadata (object): $metadataObject');
-      _logger.i('   - Request body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
         Uri.parse('$tokenUrl/generate-token'),
@@ -620,49 +743,10 @@ class ConfidenceLiveKitService {
         body: jsonEncode(requestBody),
       ).timeout(const Duration(seconds: 10));
 
-      _logger.i('🔍 DIAGNOSTIC: Réponse serveur token:');
-      _logger.i('   - Status Code: ${response.statusCode}');
-      _logger.i('   - Headers: ${response.headers}');
-      _logger.i('   - Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        _logger.i('🎫 Token Confidence Boost obtenu');
-        
-        // 🔍 DIAGNOSTIC: Vérifier la structure du token JWT
-        final token = data['token'];
-        if (token != null) {
-          _logger.i('🔍 DIAGNOSTIC: Token JWT reçu: ${token.toString().substring(0, 50)}...');
-          
-          // Décoder le token pour vérifier sa structure
-          try {
-            final parts = token.toString().split('.');
-            if (parts.length == 3) {
-              _logger.i('✅ Token JWT valide (3 parties)');
-            } else {
-              _logger.e('❌ Token JWT invalide: ${parts.length} parties');
-            }
-          } catch (e) {
-            _logger.e('❌ Erreur analyse token: $e');
-          }
-        }
-        
-        // Parse expires_at safely (peut être int ou string)
-        final expiresAt = data['expires_at'];
-        if (expiresAt != null) {
-          try {
-            final expiresTimestamp = expiresAt is int ? expiresAt : int.parse(expiresAt.toString());
-            final expiresDate = DateTime.fromMillisecondsSinceEpoch(expiresTimestamp * 1000);
-            _logger.i('✅ Token valide jusqu\'à: $expiresDate');
-          } catch (e) {
-            _logger.w('⚠️ Impossible de parser expires_at: $expiresAt');
-          }
-        }
-        
         final livekitUrl = AppConfig.livekitUrl.replaceAll('localhost', '192.168.1.44');
-        _logger.i('🔍 DIAGNOSTIC: URL LiveKit finale: $livekitUrl');
         
-        // Adapter la réponse au format attendu par le reste du code
         return {
           'token': data['token'],
           'livekit_url': livekitUrl,
@@ -670,10 +754,6 @@ class ConfidenceLiveKitService {
           'room_name': data['room_name'] ?? roomName,
         };
       } else {
-        _logger.e('❌ DIAGNOSTIC: Erreur serveur token:');
-        _logger.e('   - Status: ${response.statusCode}');
-        _logger.e('   - Body: ${response.body}');
-        _logger.e('   - Headers: ${response.headers}');
         throw Exception('Erreur HTTP ${response.statusCode}: ${response.body}');
       }
 
@@ -683,113 +763,107 @@ class ConfidenceLiveKitService {
     }
   }
 
-  /// Terminer la session
-  Future<void> endSession() async {
-    _logger.i('🛑 Fin de session Confidence Boost');
-    
-    try {
-      // Notifier le backend de la fin de session
-      if (_isConnected && _room?.localParticipant != null) {
-        final endMessage = {
-          'type': 'session_end',
-          'session_id': _sessionId,
-          'timestamp': DateTime.now().toIso8601String(),
-        };
-
-        final jsonData = jsonEncode(endMessage);
-        final bytes = utf8.encode(jsonData);
-
-        await _room!.localParticipant!.publishData(bytes, reliable: true);
-      }
-
-      _phaseController.add(ExercisePhase.ended);
-      await _cleanup();
-      
-      _logger.i('✅ Session terminée proprement');
-
-    } catch (e) {
-      _logger.e('❌ Erreur fin de session: $e');
-      await _cleanup();
-    }
-  }
-
   /// Nettoyage des ressources
   Future<void> _cleanup() async {
     try {
+      _logger.i('🧹 Nettoyage ressources LiveKit');
+
       // Arrêter publication audio
       if (_localAudioTrack != null) {
         await _localAudioTrack!.stop();
         _localAudioTrack = null;
+        _isPublishing = false;
+      }
+
+      // Arrêter audio distant
+      if (_remoteAudioTrack != null) {
+        await _remoteAudioTrack!.stop();
+        _remoteAudioTrack = null;
       }
 
       // Déconnecter room
       if (_room != null) {
         await _room!.disconnect();
-        await _room!.dispose();
         _room = null;
+      }
+
+      // Arrêter audio player
+      if (_audioPlayer != null) {
+        await _audioPlayer!.stop();
+        await _audioPlayer!.dispose();
+        _audioPlayer = null;
+      }
+
+      // Désactiver audio session
+      if (_audioSession != null) {
+        await _audioSession!.setActive(false);
+        _audioSession = null;
       }
 
       // Réinitialiser état
       _isConnected = false;
       _isPublishing = false;
-      _remoteAudioTrack = null;
+      _currentScenario = null;
+      _sessionId = null;
       _participantIdentity = null;
+
+      _logger.i('✅ Nettoyage terminé');
 
     } catch (e) {
       _logger.e('❌ Erreur nettoyage: $e');
     }
   }
 
-  /// Reconnecter en cas de déconnexion
+  /// Terminer la session (méthode publique)
+  Future<void> endSession() async {
+    try {
+      _logger.i('🔚 Fin de session demandée');
+      _phaseController.add(ExercisePhase.ended);
+      await _cleanup();
+    } catch (e) {
+      _logger.e('❌ Erreur fin de session: $e');
+    }
+  }
+
+  /// Reconnecter en cas de problème
   Future<bool> reconnect() async {
-    if (_currentScenario == null || _sessionId == null) {
-      _logger.w('⚠️ Impossible de reconnecter: configuration manquante');
+    try {
+      _logger.i('🔄 Tentative de reconnexion');
+      _phaseController.add(ExercisePhase.reconnecting);
+      
+      if (_currentScenario != null) {
+        // Relancer la session avec le même scénario
+        return await startConfidenceBoostSession(
+          scenario: _currentScenario!,
+          userId: 'reconnect_user',
+          sessionId: _sessionId,
+        );
+      }
+      
+      return false;
+    } catch (e) {
+      _logger.e('❌ Erreur reconnexion: $e');
       return false;
     }
-
-    _logger.i('🔄 Tentative de reconnexion...');
-    _phaseController.add(ExercisePhase.reconnecting);
-
-    await _cleanup();
-
-    // Utiliser les mêmes paramètres que la session initiale
-    return await startConfidenceBoostSession(
-      scenario: _currentScenario!,
-      userId: _participantIdentity ?? 'user_unknown',
-      sessionId: _sessionId,
-    );
   }
 
-  /// Dispose des ressources (à appeler dans dispose() du provider)
-  void dispose() {
-    _logger.i('🧹 Dispose du service LiveKit');
-    
-    // Nettoyer l'audio player
-    _audioPlayer?.dispose();
-    _audioPlayer = null;
-    
-    endSession();
-    
-    _transcriptionController.close();
-    _conversationController.close();
-    _metricsController.close();
-    _phaseController.close();
-    _errorController.close();
+  /// Libérer toutes les ressources (dispose)
+  Future<void> dispose() async {
+    try {
+      _logger.i('🗑️ Dispose du service LiveKit');
+      
+      await _cleanup();
+      
+      // Fermer les streams
+      await _transcriptionController.close();
+      await _conversationController.close();
+      await _metricsController.close();
+      await _phaseController.close();
+      await _errorController.close();
+      
+      _logger.i('✅ Service LiveKit disposé');
+    } catch (e) {
+      _logger.e('❌ Erreur dispose: $e');
+    }
   }
-}
-
-/// Extension pour les phases d'exercice
-enum ExercisePhase {
-  idle,
-  connecting,
-  connected,
-  ready,
-  listening,
-  processing,
-  responding,
-  reconnecting,
-  ended,
-  error,
-  disconnected,
-  unknown,
 }

@@ -1,0 +1,149 @@
+# Configuration Réseau Eloquence - Générée Automatiquement
+# Basée sur l'architecture réelle du docker-compose.yml et app_config.dart
+
+services:
+  # === SERVICES CRITIQUES (docker-compose.yml) ===
+  - name: eloquence_exercises_api
+    type: http
+    url: http://localhost:8005
+    health_endpoint: /health
+    timeout: 10
+    critical: true
+    description: "API exercices spécialisés Eloquence"
+    dependencies: [redis, livekit_server, livekit_token_service]
+    docker_service: eloquence-exercises-api
+    
+  - name: livekit_server
+    type: websocket
+    url: ws://localhost:7880
+    timeout: 15
+    critical: true
+    auth_required: true
+    description: "Serveur LiveKit pour communication temps réel"
+    dependencies: [redis]
+    docker_service: livekit-server
+    credentials:
+      api_key: devkey
+      api_secret: devsecret123456789abcdef0123456789abcdef
+    
+  - name: livekit_token_service
+    type: http
+    url: http://localhost:8004
+    health_endpoint: /health
+    timeout: 10
+    critical: true
+    description: "Service de génération de tokens LiveKit"
+    dependencies: [livekit_server]
+    docker_service: livekit-token-service
+    
+  - name: vosk_stt
+    type: http
+    url: http://localhost:8002
+    health_endpoint: /health
+    timeout: 30
+    critical: true
+    description: "Service de reconnaissance vocale Vosk"
+    docker_service: vosk-stt
+    
+  - name: mistral_conversation
+    type: http
+    url: http://localhost:8001
+    health_endpoint: /health
+    timeout: 180
+    critical: true
+    auth_required: true
+    description: "Service de conversation IA Mistral"
+    docker_service: mistral-conversation
+    
+  - name: redis
+    type: redis
+    url: redis://localhost:6379
+    timeout: 5
+    critical: true
+    description: "Cache Redis"
+    docker_service: redis
+    
+  # === SERVICES FALLBACK (app_config.dart) ===
+  - name: tts_service
+    type: http
+    url: http://localhost:5002
+    timeout: 10
+    critical: false
+    description: "Service TTS fallback"
+    
+  - name: whisper_stt
+    type: http
+    url: http://localhost:8001
+    timeout: 30
+    critical: false
+    description: "Service STT Whisper fallback"
+    
+  - name: llm_service_fallback
+    type: http
+    url: http://localhost:8000
+    timeout: 10
+    critical: false
+    description: "Service LLM fallback"
+    
+  - name: vosk_service_fallback
+    type: http
+    url: http://localhost:2700
+    timeout: 30
+    critical: false
+    description: "Service Vosk ancien port fallback"
+
+# Configuration des environnements
+environments:
+  development:
+    host_ip: "192.168.1.44"  # IP machine hôte pour debug
+    replace_localhost: true
+    
+  production:
+    host_ip: "your-prod-server.com"
+    replace_localhost: false
+    use_https: true
+
+# Variables d'environnement critiques
+environment_variables:
+  required:
+    - LIVEKIT_API_KEY
+    - LIVEKIT_API_SECRET
+    - LIVEKIT_URL
+    - MISTRAL_API_KEY
+    - SCALEWAY_MISTRAL_URL
+  optional:
+    - REDIS_URL
+    - TOKEN_SERVICE_URL
+    - VOSK_SERVICE_URL
+
+# Patterns de détection d'exercices
+exercise_patterns:
+  flutter:
+    - "class\\s+(\\w+)Screen\\s*extends\\s*StatefulWidget"
+    - "class\\s+(\\w+)Exercise\\s*extends\\s*StatefulWidget"
+    - "class\\s+(\\w+)Page\\s*extends\\s*StatelessWidget"
+  python:
+    - "def\\s+(\\w+_exercise)\\s*\\("
+    - "class\\s+(\\w+Exercise)\\s*:"
+  javascript:
+    - "const\\s+(\\w+Exercise)\\s*="
+    - "function\\s+(\\w+Exercise)\\s*\\("
+
+# Inférence des services requis par exercice
+service_keywords:
+  voice: [vosk_stt, eloquence_exercises_api]
+  cosmic: [livekit_server, livekit_token_service, vosk_stt, eloquence_exercises_api]
+  conversation: [mistral_conversation, livekit_server, livekit_token_service, eloquence_exercises_api]
+  breathing: [eloquence_exercises_api]
+  simulation: [livekit_server, livekit_token_service, mistral_conversation, eloquence_exercises_api]
+  confidence: [mistral_conversation, eloquence_exercises_api]
+  articulation: [vosk_stt, eloquence_exercises_api]
+  exercise: [eloquence_exercises_api]  # Fallback pour tous les exercices
+
+# Configuration de monitoring
+monitoring:
+  health_check_interval: 30  # secondes
+  retry_attempts: 3
+  backoff_factor: 2.0
+  circuit_breaker_threshold: 5
+  circuit_breaker_timeout: 60

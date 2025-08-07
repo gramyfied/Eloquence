@@ -64,8 +64,46 @@ class MistralApiService implements IMistralApiService {
     
     // Vérifier si Mistral est activé
     if (!_isEnabled) {
-      logger.i(_tag, 'Mistral désactivé, utilisation du feedback simulé');
-      const simulatedResult = 'Feedback simulé: Excellente performance ! Continuez ainsi pour développer votre confiance en prise de parole.';
+      logger.i(_tag, 'Mistral désactivé, utilisation des sujets fallback créatifs');
+      
+      // Collection de 30 sujets hilarants et complètement absurdes pour le Tribunal des Idées Impossibles
+      final fallbackTopics = [
+        'Les licornes devraient-elles passer un permis de vol avant de voler ?',
+        'Faut-il créer un syndicat pour défendre les droits des monstres sous le lit ?',
+        'Les pizza hawaïennes constituent-elles un crime contre l\'humanité ?',
+        'Est-ce que les poissons rouges ont le droit de changer de couleur par caprice ?',
+        'Faut-il instaurer une taxe sur les mauvaises blagues de papa ?',
+        'Les zombies devraient-ils avoir accès à la sécurité sociale ?',
+        'Est-il légal pour les chats de nous ignorer aussi ouvertement ?',
+        'Faut-il créer des feux de circulation pour les fourmis en file indienne ?',
+        'Les extraterrestres ont-ils l\'obligation de déclarer leurs visites aux impôts ?',
+        'Doit-on poursuivre en justice les nuages qui cachent le soleil le weekend ?',
+        'Les plantes carnivores méritent-elles une pension alimentaire ?',
+        'Faut-il interdire aux vampires de critiquer les films de vampire ?',
+        'Est-ce que les kangourous peuvent être poursuivis pour excès de vitesse ?',
+        'Les dragons devraient-ils avoir une assurance incendie obligatoire ?',
+        'Faut-il créer un permis de conduire spécial pour les sorcières sur balai ?',
+        'Les fantômes ont-ils le droit de hanter sans autorisation municipale ?',
+        'Est-il légal pour les pingouins de porter un smoking sans cravate ?',
+        'Faut-il instaurer un couvre-feu pour les monstres du placard ?',
+        'Les sirènes devraient-elles avoir une licence pour chanter sous l\'eau ?',
+        'Est-ce que les robots ont le droit de tomber en panne volontairement ?',
+        'Faut-il poursuivre les magiciens qui font vraiment disparaître les objets ?',
+        'Les centaures peuvent-ils conduire ou sont-ils déjà des véhicules ?',
+        'Est-il légal de nourrir les trolls de pont sans permis de restauration ?',
+        'Faut-il créer des toilettes publiques pour les géants ?',
+        'Les elfes devraient-ils payer des impôts sur la magie qu\'ils utilisent ?',
+        'Est-ce que les yétis ont besoin d\'un certificat médical pour hiberner ?',
+        'Faut-il interdire aux sorcières de voler en état d\'ébriété ?',
+        'Les aliens peuvent-ils être expulsés pour séjour irrégulier sur Terre ?',
+        'Est-il légal pour les dinosaures de revenir sans visa temporel ?',
+        'Faut-il créer un code de la route pour les tapis volants en ville ?',
+      ];
+      
+      // Sélectionner un sujet aléatoire basé sur le timestamp + hash du prompt
+      final randomIndex = (DateTime.now().millisecondsSinceEpoch + prompt.hashCode) % fallbackTopics.length;
+      final simulatedResult = fallbackTopics[randomIndex];
+      
       await MistralCacheService.cacheResponse(
         prompt,
         simulatedResult,

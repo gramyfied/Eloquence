@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/navigation/navigation_state.dart';
 import '../../../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
+import '../../../features/confidence_boost/presentation/screens/tribunal_idees_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -56,6 +57,18 @@ class HomeScreen extends StatelessWidget {
         'icon': Icons.chat,
         'color': Colors.purple,
         'onTap': () => context.read<NavigationState>().navigateTo('/exercise_detail', context, '3'),
+      },
+      {
+        'title': 'Le Tribunal des Idées',
+        'description': 'Défendez des positions absurdes devant un juge IA.',
+        'icon': Icons.gavel,
+        'color': Colors.brown,
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TribunalIdeesScreen(),
+          ),
+        ),
       },
     ];
 

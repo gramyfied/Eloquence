@@ -16,10 +16,12 @@ import '../../features/confidence_boost/domain/entities/confidence_scenario.dart
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
 import '../../features/confidence_boost/presentation/screens/virelangue_roulette_screen.dart';
 import '../../features/confidence_boost/presentation/screens/dragon_breath_screen.dart';
+import '../../features/confidence_boost/presentation/screens/cosmic_voice_screen.dart';
 import '../../features/story_generator/presentation/screens/story_generator_home_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/widgets/auth_wrapper.dart';
+import '../../features/confidence_boost/presentation/screens/tribunal_idees_screen.dart';
 
 // Définir une GlobalKey pour le navigateur racine, après les imports
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -135,6 +137,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           
+          // Route cosmic_voice - L'ACCORDEUR VOCAL COSMIQUE
+          GoRoute(
+            path: 'cosmic_voice',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
+            builder: (BuildContext context, GoRouterState state) {
+              return const CosmicVoiceScreen();
+            },
+          ),
+          
+          // Route tribunal_idees - LE TRIBUNAL DES IDÉES
+          GoRoute(
+            path: 'tribunal_idees',
+            parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
+            builder: (BuildContext context, GoRouterState state) {
+              return const TribunalIdeesScreen();
+            },
+          ),
+          
           // Routes paramétrées
           GoRoute(
             path: 'exercise_detail/:id',
@@ -180,6 +200,16 @@ final routerProvider = Provider<GoRouter>((ref) {
               // NOUVEAU : Rediriger story_generator vers l'écran générateur d'histoires
               if (exerciseId == 'story_generator') {
                 return const StoryGeneratorHomeScreen();
+              }
+              
+              // NOUVEAU : Rediriger cosmic_voice vers l'Accordeur Vocal Cosmique
+              if (exerciseId == 'cosmic_voice') {
+                return const CosmicVoiceScreen();
+              }
+              
+              // NOUVEAU : Rediriger tribunal_idees vers le Tribunal des Idées
+              if (exerciseId == 'tribunal_idees') {
+                return const TribunalIdeesScreen();
               }
               
               return ExerciseActiveScreen(exerciseId: exerciseId);

@@ -148,19 +148,29 @@ class AudioExerciseEvaluation {
   });
 
   factory AudioExerciseEvaluation.fromJson(Map<String, dynamic> json) {
+    // 🛡️ DÉSÉRIALISATION DÉFENSIVE - ACCÈS CORRECT À LA STRUCTURE API
+    final evaluation = json['evaluation'] as Map<String, dynamic>? ?? {};
+    
     return AudioExerciseEvaluation(
-      sessionId: json['session_id'] as String,
-      overallScore: (json['overall_score'] as num).toDouble(),
-      detailedScores: Map<String, double>.from(
-        (json['detailed_scores'] as Map<String, dynamic>).map(
-          (key, value) => MapEntry(key, (value as num).toDouble()),
-        ),
-      ),
-      strengths: List<String>.from(json['strengths'] as List<dynamic>),
-      improvements: List<String>.from(json['improvements'] as List<dynamic>),
-      feedback: json['feedback'] as String,
-      totalDuration: Duration(seconds: json['total_duration_seconds'] as int),
-      totalExchanges: json['total_exchanges'] as int,
+      sessionId: json['session_id'] as String? ?? 'unknown_session',
+      overallScore: (evaluation['overall_score'] as num?)?.toDouble() ?? 0.0,
+      detailedScores: evaluation['detailed_scores'] != null
+        ? Map<String, double>.from(
+            (evaluation['detailed_scores'] as Map<String, dynamic>).map(
+              (key, value) => MapEntry(key, (value as num?)?.toDouble() ?? 0.0),
+            ),
+          )
+        : <String, double>{},
+      strengths: evaluation['strengths'] != null
+        ? List<String>.from(evaluation['strengths'] as List<dynamic>)
+        : <String>[],
+      improvements: evaluation['improvements'] != null
+        ? List<String>.from(evaluation['improvements'] as List<dynamic>)
+        : <String>[],
+      feedback: evaluation['feedback'] as String? ?? 'Session terminée',
+      // Champs manquants de l'API - valeurs calculées par défaut
+      totalDuration: Duration(seconds: (json['total_duration_seconds'] as int?) ?? 30), // Durée par défaut
+      totalExchanges: (json['total_exchanges'] as int?) ?? 1, // Au moins 1 échange
       prosodyAnalysis: json['prosody_analysis'] as Map<String, dynamic>? ?? {},
       conversationQuality: json['conversation_quality'] as Map<String, dynamic>? ?? {},
     );
@@ -219,14 +229,16 @@ class UniversalAudioExerciseService {
     try {
       final apiUrl = AppConfig.eloquenceStreamingApiUrl;
       debugPrint('📡 Démarrage exercice audio: ${config.exerciseId}');
-      debugPrint('🔗 URL utilisée: $apiUrl/start-conversation');
+      debugPrint('🔗 URL utilisée: $apiUrl/api/sessions/create');
       
       final response = await http.post(
-        Uri.parse('$apiUrl/start-conversation'),
+        Uri.parse('$apiUrl/api/sessions/create'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'scenario': config.scenario,
+          'exercise_id': config.exerciseId,
+          'participant_name': 'user_${DateTime.now().millisecondsSinceEpoch}',
           'language': config.language,
+          'scenario': config.scenario,
           'exercise_config': config.toJson(),
         }),
       ).timeout(_timeout);
@@ -236,6 +248,7 @@ class UniversalAudioExerciseService {
         final sessionId = data['session_id'] as String;
         
         debugPrint('✅ Exercice audio démarré: $sessionId');
+        debugPrint('🔗 LiveKit room: ${data['livekit_room']}');
         return sessionId;
       } else {
         throw Exception('Erreur démarrage exercice ${response.statusCode}: ${response.body}');
@@ -251,7 +264,7 @@ class UniversalAudioExerciseService {
     try {
       final baseUri = Uri.parse(AppConfig.eloquenceStreamingApiUrl);
       final wsScheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
-      final uri = Uri.parse('$wsScheme://${baseUri.host}:${baseUri.port}/ws/conversation/$sessionId');
+      final uri = Uri.parse('$wsScheme://${baseUri.host}:${baseUri.port}/ws/voice-analysis/$sessionId');
 
       debugPrint('📡 Connexion WebSocket exercice: $uri');
       
@@ -649,16 +662,29 @@ class UniversalAudioExerciseService {
       debugPrint('📡 Finalisation exercice: $sessionId');
       
       final response = await http.post(
-        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/complete-exercise'),
+        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/api/sessions/$sessionId/complete'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'session_id': sessionId,
-          'timestamp': DateTime.now().toIso8601String(),
+          'overall_score': 0.0,
+          'detailed_scores': {},
+          'strengths': [],
+          'improvements': [],
+          'feedback': 'Session completée',
         }),
       ).timeout(_timeout);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // 🔍 LOGS DE DEBUG POUR DIAGNOSTIC
+        debugPrint('🔍 DIAGNOSTIC: Réponse API complète:');
+        debugPrint('📋 JSON reçu: ${jsonEncode(data)}');
+        debugPrint('🔑 Champs présents: ${data.keys.toList()}');
+        debugPrint('📊 overall_score: ${data['overall_score']} (type: ${data['overall_score'].runtimeType})');
+        debugPrint('📊 detailed_scores: ${data['detailed_scores']} (type: ${data['detailed_scores'].runtimeType})');
+        debugPrint('⏱️ total_duration_seconds: ${data['total_duration_seconds']} (type: ${data['total_duration_seconds'].runtimeType})');
+        debugPrint('📈 total_exchanges: ${data['total_exchanges']} (type: ${data['total_exchanges'].runtimeType})');
+        
         final evaluation = AudioExerciseEvaluation.fromJson(data);
         
         debugPrint('✅ Exercice terminé - Score final: ${evaluation.overallScore}');
