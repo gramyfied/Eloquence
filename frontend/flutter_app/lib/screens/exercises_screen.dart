@@ -108,6 +108,27 @@ class ExercisesScreen extends ConsumerWidget {
                       _buildExerciseCard(
                         context,
                         ref,
+                        'L\'Accordeur Vocal Cosmique 🌌',
+                        'Guidez un vaisseau spatial avec votre voix et collectez des cristaux d\'énergie',
+                        Icons.rocket,
+                        const Color(0xFF00BCD4), // Cyan cosmique
+                        'cosmic_voice',
+                        isUnderDevelopment: true,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
+                        'Le Tribunal des Idées ⚖️',
+                        'Défendez des positions absurdes devant un juge IA impartial et développez vos talents d\'argumentation',
+                        Icons.gavel,
+                        const Color(0xFF8B4513), // Marron justice
+                        'tribunal_idees',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildExerciseCard(
+                        context,
+                        ref,
                         'Pitch Perfect',
                         'Maîtrisez l\'art du pitch en 90 secondes',
                         Icons.rocket_launch,
@@ -150,13 +171,61 @@ class ExercisesScreen extends ConsumerWidget {
     String description,
     IconData icon,
     Color accentColor,
-    String exerciseId,
-  ) {
+    String exerciseId, {
+    bool isUnderDevelopment = false,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
+        onTap: isUnderDevelopment ? () {
+          // Afficher un dialog pour exercice en développement
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: const Color(0xFF1E1E2E),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: accentColor, width: 1),
+                ),
+                title: Row(
+                  children: [
+                    Icon(Icons.construction, color: accentColor, size: 24),
+                    const SizedBox(width: 12),
+                    const Text(
+                      '🚧 En cours de développement',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                content: Text(
+                  'Cet exercice est actuellement en cours de développement et sera bientôt disponible.\n\nNous travaillons sur l\'intégration du contrôle vocal en temps réel pour une expérience optimale !',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha((255 * 0.8).round()),
+                    fontSize: 14,
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'Compris',
+                      style: TextStyle(
+                        color: accentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        } : () {
           debugPrint('=== Exercise card tapped ===');
           debugPrint('Title: $title');
           debugPrint('Exercise ID: $exerciseId');
@@ -178,6 +247,14 @@ class ExercisesScreen extends ConsumerWidget {
               // Navigation spéciale pour le Générateur d'Histoires Infinies
               debugPrint('Navigating to story generator home screen using root navigator');
               context.go('/story_generator', extra: {});
+            } else if (exerciseId == 'cosmic_voice') {
+              // Navigation spéciale pour l'Accordeur Vocal Cosmique
+              debugPrint('Navigating to cosmic voice exercise using root navigator');
+              context.go('/cosmic_voice', extra: {});
+            } else if (exerciseId == 'tribunal_idees') {
+              // Navigation spéciale pour le Tribunal des Idées
+              debugPrint('Navigating to tribunal idees exercise using root navigator');
+              context.go('/tribunal_idees', extra: {});
             } else {
               // Navigation normale vers exercise_detail avec l'ID
               debugPrint('Navigating to exercise detail with ID: $exerciseId');
@@ -189,61 +266,91 @@ class ExercisesScreen extends ConsumerWidget {
             debugPrint('Stack trace: $s');
           }
         },
-        child: EloquenceGlassCard(
-          borderRadius: 16,
-          borderColor: accentColor,
-          opacity: 0.15,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: accentColor.withAlpha((255 * 0.2).round()),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: accentColor,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontFamily: 'Inter',
-                        ),
+        child: Stack(
+          children: [
+            EloquenceGlassCard(
+              borderRadius: 16,
+              borderColor: isUnderDevelopment ? Colors.orange : accentColor,
+              opacity: isUnderDevelopment ? 0.08 : 0.15,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: (isUnderDevelopment ? Colors.orange : accentColor).withAlpha((255 * 0.2).round()),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withAlpha((255 * 0.7).round()),
-                          fontFamily: 'Inter',
-                        ),
+                      child: Icon(
+                        isUnderDevelopment ? Icons.construction : icon,
+                        color: isUnderDevelopment ? Colors.orange : accentColor,
+                        size: 28,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: isUnderDevelopment ? Colors.white.withAlpha((255 * 0.6).round()) : Colors.white,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ),
+                              if (isUnderDevelopment)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withAlpha((255 * 0.2).round()),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.orange, width: 1),
+                                  ),
+                                  child: const Text(
+                                    'BIENTÔT',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange,
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isUnderDevelopment
+                              ? 'Exercice en cours de développement - Architecture vocale en cours d\'optimisation'
+                              : description,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withAlpha((255 * (isUnderDevelopment ? 0.5 : 0.7)).round()),
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      isUnderDevelopment ? Icons.schedule : Icons.arrow_forward_ios,
+                      color: isUnderDevelopment ? Colors.orange : accentColor,
+                      size: 16,
+                    ),
+                  ],
                 ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: accentColor,
-                  size: 16,
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

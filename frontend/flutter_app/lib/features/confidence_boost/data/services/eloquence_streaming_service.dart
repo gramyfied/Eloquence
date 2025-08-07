@@ -103,9 +103,11 @@ class EloquenceStreamingService {
       debugPrint('📡 Démarrage conversation pour scénario: $scenario');
       
       final response = await http.post(
-        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/start-conversation'),
+        Uri.parse('${AppConfig.eloquenceStreamingApiUrl}/api/sessions/create'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'exercise_id': 'conversation_${scenario}_${DateTime.now().millisecondsSinceEpoch}',
+          'participant_name': 'user_${DateTime.now().millisecondsSinceEpoch}',
           'scenario': scenario,
           'language': language,
         }),
@@ -116,6 +118,8 @@ class EloquenceStreamingService {
         final sessionId = data['session_id'] as String;
         
         debugPrint('✅ Conversation démarrée: $sessionId');
+        debugPrint('🔗 LiveKit room: ${data['livekit_room']}');
+        debugPrint('🔑 Token reçu: ${data['token'] != null ? 'Oui' : 'Non'}');
         return sessionId;
       } else {
         throw Exception('Erreur démarrage conversation ${response.statusCode}: ${response.body}');

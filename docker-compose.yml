@@ -125,6 +125,7 @@ services:
       - eloquence-network
     env_file:
       - .env
+      - ./services/livekit-agent/.env
     environment:
       - LIVEKIT_URL=ws://livekit-server:7880
       - LIVEKIT_API_KEY=devkey
@@ -133,6 +134,9 @@ services:
       - VOSK_STT_URL=http://vosk-stt:8002
       - MISTRAL_BASE_URL=${SCALEWAY_MISTRAL_URL}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEBUG=true
+      - LOG_LEVEL=debug
     depends_on:
       livekit-server:
         condition: service_healthy
