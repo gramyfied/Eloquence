@@ -33,16 +33,21 @@ class _TribunalIdeesScreenRealState extends ConsumerState<TribunalIdeesScreenRea
   // Repository de gamification
   final GamificationRepository _gamificationRepository = HiveGamificationRepository();
   
-  // Gamification State (temporairement local, intégration en cours)
-  int _currentXP = 0;
+  // User ID pour la gamification
+  static const String _userId = 'tribunal_user';
+  
+  // États de gamification (maintenant synchronisés avec le repository)
+  UserGamificationProfile? _gamificationProfile;
   int _earnedXP = 0;
-  int _currentLevel = 1;
   double _exerciseScore = 0.0;
-  List<String> _unlockedBadges = [];
-  List<String> _completedAchievements = [];
   bool _isLevelingUp = false;
   bool _isBadgeUnlocked = false;
   bool _isExerciseActive = false;
+  
+  // Getters pour accéder aux données de gamification
+  int get _currentXP => _gamificationProfile?.totalXP ?? 0;
+  int get _currentLevel => _gamificationProfile?.currentLevel ?? 1;
+  List<String> get _unlockedBadges => _gamificationProfile?.earnedBadgeIds ?? [];
   
   // Exercise State
   String _currentDebateTopic = '';
@@ -101,9 +106,19 @@ class _TribunalIdeesScreenRealState extends ConsumerState<TribunalIdeesScreenRea
   void initState() {
     super.initState();
     _initializeAnimations();
-    _loadUserProgress();
+    _initializeGamification();
     _generateNewTopic(); // Génère un sujet IA dès le démarrage
     _setupLiveKitListeners();
+  }
+  
+  /// Initialiser le système de gamification
+  Future<void> _initializeGamification() async {
+    try {
+      await _gamificationRepository.initialize();
+      await _loadUserProgress();
+    } catch (e) {
+      _logger.e('❌ Erreur initialisation gamification: $e');
+    }
   }
   
   /// Configurer les listeners du service LiveKit spécialisé
@@ -1737,7 +1752,7 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
   
   // MÉTHODES DE GAMIFICATION
   
-  void _completeExercise(double score) {
+  Future<void> _completeExercise(double score) async {
     setState(() {
       _exerciseScore = score;
     });
@@ -1746,15 +1761,15 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     int earnedXP = _calculateXPWithBonus(score);
     
     // Animation XP
-    _animateXPGain(earnedXP);
+    await _animateXPGain(earnedXP);
     
     // Vérifications
     _checkLevelUp();
-    _checkBadgeUnlock();
+    await _checkBadgeUnlock();
     _checkAchievementProgress();
     
     // Sauvegarde
-    _saveProgress();
+    await _saveProgress();
   }
   
   int _calculateXPWithBonus(double score) {
@@ -1766,11 +1781,31 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     return (baseXP * totalMultiplier).round();
   }
   
-  void _animateXPGain(int xp) {
+  Future<void> _animateXPGain(int xp) async {
     setState(() {
       _earnedXP = xp;
-      _currentXP += xp;
     });
+    
+    // Mettre à jour le profil avec les nouveaux XP
+    if (_gamificationProfile != null) {
+      final newTotalXP = _gamificationProfile!.totalXP + xp;
+      final newLevel = UserGamificationProfile.calculateLevel(newTotalXP);
+      final newXPRequired = UserGamificationProfile.calculateXPForNextLevel(newLevel);
+      
+      final updatedProfile = _gamificationProfile!.copyWith(
+        totalXP: newTotalXP,
+        currentLevel: newLevel,
+        xpRequiredForNextLevel: newXPRequired,
+        lastSessionDate: DateTime.now(),
+        totalSessions: _gamificationProfile!.totalSessions + 1,
+      );
+      
+      await _gamificationRepository.updateUserProfile(updatedProfile);
+      
+      setState(() {
+        _gamificationProfile = updatedProfile;
+      });
+    }
     
     _xpAnimationController.forward();
     HapticFeedback.mediumImpact();
@@ -1780,7 +1815,7 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     int newLevel = _calculateLevel(_currentXP);
     if (newLevel > _currentLevel) {
       setState(() {
-        _currentLevel = newLevel;
+        _gamificationProfile = _gamificationProfile?.copyWith(currentLevel: newLevel);
         _isLevelingUp = true;
       });
       
@@ -1796,13 +1831,19 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     }
   }
   
-  void _checkBadgeUnlock() {
+  Future<void> _checkBadgeUnlock() async {
     List<String> newBadges = _evaluateBadgeConditions();
     
-    for (String badge in newBadges) {
-      if (!_unlockedBadges.contains(badge)) {
+    for (String badgeId in newBadges) {
+      if (!_unlockedBadges.contains(badgeId)) {
+        // Débloquer le badge via le repository
+        await _gamificationRepository.awardBadge(_userId, badgeId);
+        
+        // Recharger le profil pour obtenir les badges mis à jour
+        final updatedProfile = await _gamificationRepository.getUserProfile(_userId);
+        
         setState(() {
-          _unlockedBadges.add(badge);
+          _gamificationProfile = updatedProfile;
           _isBadgeUnlocked = true;
         });
         
@@ -1858,18 +1899,36 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     return _unlockedBadges.last.replaceAll('_', ' ').toUpperCase();
   }
   
-  void _loadUserProgress() {
-    // Charger depuis les services existants
-    setState(() {
-      _currentXP = 150; // Exemple
-      _currentLevel = 2;
-      _unlockedBadges = ['premier_plaidoyer'];
-    });
+  Future<void> _loadUserProgress() async {
+    try {
+      final profile = await _gamificationRepository.getUserProfile(_userId);
+      setState(() {
+        _gamificationProfile = profile;
+      });
+    } catch (e) {
+      _logger.w('Erreur chargement profil gamification: $e');
+      // Créer un profil par défaut si nécessaire
+      setState(() {
+        _gamificationProfile = UserGamificationProfile(
+          userId: _userId,
+          totalXP: 0,
+          currentLevel: 1,
+          earnedBadgeIds: [],
+          lastSessionDate: DateTime.now(),
+        );
+      });
+    }
   }
   
-  void _saveProgress() {
-    // Sauvegarder via les services existants
-    print('Progression sauvegardée: XP=$_currentXP, Niveau=$_currentLevel');
+  Future<void> _saveProgress() async {
+    try {
+      if (_gamificationProfile != null) {
+        await _gamificationRepository.updateUserProfile(_gamificationProfile!);
+        _logger.i('✅ Progression sauvegardée: XP=$_currentXP, Niveau=$_currentLevel');
+      }
+    } catch (e) {
+      _logger.e('❌ Erreur sauvegarde progression: $e');
+    }
   }
   
   @override
