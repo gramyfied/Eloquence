@@ -5,7 +5,8 @@ import 'dart:async';
 import '../../../../core/theme/eloquence_unified_theme.dart';
 import '../../data/models/simulation_models.dart';
 import '../../data/services/studio_situations_pro_service.dart';
-import '../widgets/multi_agent_avatar_widget.dart';
+import '../widgets/multi_agent_avatar_widget.dart' hide ActiveSpeakerIndicator;
+import '../widgets/animated_multi_agent_avatar_grid.dart';
 
 class SimulationScreen extends ConsumerStatefulWidget {
   final SimulationType simulationType;
@@ -16,7 +17,7 @@ class SimulationScreen extends ConsumerStatefulWidget {
   ConsumerState<SimulationScreen> createState() => _SimulationScreenState();
 }
 
-class _SimulationScreenState extends ConsumerState<SimulationScreen> with SingleTickerProviderStateMixin {
+class _SimulationScreenState extends ConsumerState<SimulationScreen> with TickerProviderStateMixin {
   late Timer _timer;
   int _seconds = 0;
   bool _isPaused = false;
@@ -30,6 +31,9 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Single
 
   late AnimationController _glowController;
   late Animation<double> _glowAnimation;
+  late AnimationController _entranceController;
+  late Animation<double> _fadeInAnimation;
+  late Animation<Offset> _slideInAnimation;
 
   @override
   void initState() {
@@ -37,18 +41,33 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Single
     _startTimer();
     _initializeMultiAgents();
 
+    // Initialiser les animations
     _glowController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
     _glowAnimation = Tween<double>(begin: 5.0, end: 15.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    )..addListener(() {
-        setState(() {}); // Rebuild to apply glow
-      });
+    );
     
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _entranceController, curve: Curves.easeOut),
+    );
+    
+    _slideInAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOut));
+    
+    // Démarrer les animations
     _glowController.repeat(reverse: true);
+    _entranceController.forward();
   }
   
   void _initializeMultiAgents() async {
@@ -105,6 +124,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Single
     _timer.cancel();
     _eventSubscription?.cancel();
     _glowController.dispose();
+    _entranceController.dispose();
     super.dispose();
   }
 
@@ -215,89 +235,116 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Single
   }
 
   Widget _buildMultiAgentSection() {
-    // Déterminer l'image d'environnement en fonction du type de simulation
-    String environmentImage = '';
-    switch (widget.simulationType) {
-      case SimulationType.entretienEmbauche:
-        environmentImage = 'assets/images/avatars/environnement_bureau_moderne.png';
-        break;
-      case SimulationType.debatPlateau:
-        environmentImage = 'assets/images/avatars/environnement_plateau_tv.png';
-        break;
-      case SimulationType.reunionDirection:
-        environmentImage = 'assets/images/avatars/environnement_salle_conseil.png';
-        break;
-      case SimulationType.conferenceVente:
-      case SimulationType.conferencePublique:
-        environmentImage = 'assets/images/avatars/environnement_conference.png';
-        break;
-      default:
-        environmentImage = 'assets/images/avatars/environnement_bureau_moderne.png';
-    }
-    
-    return Container(
-      height: 320,
-      margin: const EdgeInsets.all(EloquenceTheme.spacingMd),
-      child: Stack(
-        children: [
-          // Image d'environnement en arrière-plan
-          if (environmentImage.isNotEmpty)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: EloquenceTheme.borderRadiusLarge,
-                  image: DecorationImage(
-                    image: AssetImage(environmentImage),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withOpacity(0.3),
-                      BlendMode.darken,
+    return SlideTransition(
+      position: _slideInAnimation,
+      child: FadeTransition(
+        opacity: _fadeInAnimation,
+        child: Container(
+          height: 320,
+          margin: const EdgeInsets.all(EloquenceTheme.spacingMd),
+          child: Stack(
+            children: [
+              // Image d'environnement avec effet de parallaxe
+              Positioned.fill(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 800),
+                  decoration: BoxDecoration(
+                    borderRadius: EloquenceTheme.borderRadiusLarge,
+                    image: DecorationImage(
+                      image: AssetImage(_getEnvironmentImage()),
+                      fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(
+                        Colors.black.withOpacity(0.3),
+                        BlendMode.darken,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          
-          // Overlay glassmorphisme
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    EloquenceTheme.navy.withOpacity(0.7),
-                  ],
+              // Overlay glassmorphisme avec animation
+              Positioned.fill(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 1000),
+                  decoration: BoxDecoration(
+                    borderRadius: EloquenceTheme.borderRadiusLarge,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        EloquenceTheme.navy.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+              
+              // Grille d'avatars avec animations individuelles
+              if (_agents.isNotEmpty)
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.all(EloquenceTheme.spacingMd),
+                    child: AnimatedMultiAgentAvatarGrid(
+                      agents: _agents,
+                      activeSpeakerId: _activeSpeakerId,
+                      onAgentTap: _onAgentTap,
+                      animationController: _entranceController,
+                    ),
+                  ),
+                ),
+              
+              // Loading avec animation
+              if (_agents.isEmpty)
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        color: EloquenceTheme.cyan,
+                        strokeWidth: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Connexion aux agents...',
+                        style: EloquenceTheme.bodyMedium.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-          
-          // Grille d'avatars
-          if (_agents.isNotEmpty)
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.all(EloquenceTheme.spacingMd),
-                child: MultiAgentAvatarGrid(
-                  agents: _agents,
-                  activeSpeakerId: _activeSpeakerId,
-                  onAgentTap: _onAgentTap,
-                ),
-              ),
-            ),
-          
-          // Loading si pas encore d'agents
-          if (_agents.isEmpty)
-            const Center(
-              child: CircularProgressIndicator(
-                color: EloquenceTheme.cyan,
-              ),
-            ),
-        ],
+        ),
       ),
     );
+  }
+
+  String _getEnvironmentImage() {
+    switch (widget.simulationType) {
+      case SimulationType.entretienEmbauche:
+        return 'assets/images/avatars/environnement_bureau_entretien.png';
+      case SimulationType.debatPlateau:
+        return 'assets/images/avatars/environnement_plateau_tv.png';
+      case SimulationType.reunionDirection:
+        return 'assets/images/avatars/environnement_salle_reunion.png';
+      case SimulationType.conferenceVente:
+        return 'assets/images/avatars/environnement_salle_conference.png';
+      case SimulationType.conferencePublique:
+        return 'assets/images/avatars/environnement_auditorium.png';
+      case SimulationType.jobInterview:
+        return 'assets/images/avatars/environnement_bureau_entretien.png';
+      case SimulationType.salesPitch:
+        return 'assets/images/avatars/environnement_salle_conference.png';
+      case SimulationType.publicSpeaking:
+        return 'assets/images/avatars/environnement_auditorium.png';
+      case SimulationType.difficultConversation:
+        return 'assets/images/avatars/environnement_bureau_entretien.png';
+      case SimulationType.negotiation:
+        return 'assets/images/avatars/environnement_salle_reunion.png';
+      default:
+        return 'assets/images/avatars/environnement_bureau_entretien.png';
+    }
   }
 
   Widget _buildMetrics() {
