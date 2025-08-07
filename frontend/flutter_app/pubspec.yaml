@@ -57,6 +57,7 @@ dependencies:
   uuid: ^4.3.3
   path: ^1.9.0
   crypto: ^3.0.3
+  file_picker: ^8.0.0
   flutter_web_plugins:
     sdk: flutter
 
@@ -80,6 +81,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/orators/
+    - assets/images/avatars/
     - .env
   
   fonts:

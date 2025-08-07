@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:eloquence_2_0/features/studio_situations_pro/data/models/simulation_models.dart';
-import 'package:eloquence_2_0/features/studio_situations_pro/data/services/studio_livekit_service.dart';
-import 'package:eloquence_2_0/core/utils/unified_logger_service.dart';
+import '../models/simulation_models.dart';
+import 'studio_livekit_service.dart';
+import '../../../../core/utils/unified_logger_service.dart';
 
 /// Événements multi-agents
 abstract class MultiAgentEvent {}

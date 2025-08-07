@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
+import 'package:file_picker/file_picker.dart';
 import 'package:eloquence_2_0/core/theme/eloquence_unified_theme.dart';
 import 'package:eloquence_2_0/features/studio_situations_pro/data/models/simulation_models.dart';
+import 'package:eloquence_2_0/features/studio_situations_pro/data/services/preparation_coach_service.dart';
 
 class PreparationScreen extends ConsumerStatefulWidget {
   final SimulationType simulationType;
@@ -17,20 +19,67 @@ class PreparationScreen extends ConsumerStatefulWidget {
   ConsumerState<PreparationScreen> createState() => _PreparationScreenState();
 }
 
-class _PreparationScreenState extends ConsumerState<PreparationScreen> {
+class _PreparationScreenState extends ConsumerState<PreparationScreen> with TickerProviderStateMixin {
   final List<Message> _messages = [];
   final TextEditingController _textController = TextEditingController();
+  late PreparationCoachService _coachService;
+  bool _isLoadingResponse = false;
+  CoachMode _currentMode = CoachMode.text;
+  bool _isListening = false;
+  
+  // Animation controllers
+  late AnimationController _micAnimationController;
+  late Animation<double> _micPulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _messages.addAll([
-      Message(sender: Sender.ai, text: "Let's get ready for your simulation!"),
-      Message(
-        sender: Sender.ai,
-        text: "To be effective in this setting, convey confidence and articulate clearly. What's your first thought?",
-      ),
-    ]);
+    _coachService = PreparationCoachService();
+    
+    // Initialiser l'animation du micro
+    _micAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _micPulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _micAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Message d'accueil contextuel
+    _messages.add(
+      Message(sender: Sender.ai, text: _getWelcomeMessage()),
+    );
+  }
+
+  String _getWelcomeMessage() {
+    switch (widget.simulationType) {
+      case SimulationType.debatPlateau:
+        return "🎬 Prêt pour le débat TV ? Je suis ton coach ! Tu peux me parler en tapant du texte ou en activant le mode vocal avec le micro. Je vais t'aider à structurer tes arguments et anticiper les questions difficiles !";
+      case SimulationType.entretienEmbauche:
+        return "💼 Préparons ton entretien d'embauche ! Tu peux échanger avec moi par écrit ou vocalement. Parle-moi de tes compétences clés et de tes motivations.";
+      case SimulationType.reunionDirection:
+        return "📊 Réunion de direction en vue ! Chat ou vocal, à toi de choisir. Quel sujet vas-tu présenter ? Je t'aide à convaincre la direction.";
+      case SimulationType.conferenceVente:
+        return "🚀 Conférence de vente ! Mode texte ou vocal disponible. Dis-moi quel produit/service tu présentes et à qui tu t'adresses.";
+      case SimulationType.conferencePublique:
+        return "🎯 Conférence publique ! Tu peux me parler ou écrire. Quel est ton message principal ? Je t'aide à captiver ton audience.";
+      case SimulationType.jobInterview:
+        return "👔 Préparons ton entretien ! Chat textuel ou vocal, comme tu préfères. Parle-moi du poste que tu vises et de tes points forts.";
+      case SimulationType.salesPitch:
+        return "💡 Prêt pour ton pitch de vente ? Écris ou parle-moi. Décris-moi ton produit et ton client cible.";
+      case SimulationType.publicSpeaking:
+        return "🎤 Prise de parole en public ! Mode texte ou vocal à ta disposition. Quel est ton sujet ? Je vais t'aider à structurer ton discours.";
+      case SimulationType.difficultConversation:
+        return "💬 Une conversation difficile à préparer ? Tu peux écrire ou parler. Explique-moi le contexte, je t'aide à trouver les bons mots.";
+      case SimulationType.negotiation:
+        return "🤝 Préparons ta négociation ! Chat ou vocal, c'est toi qui choisis. Quels sont tes objectifs et tes marges de manœuvre ?";
+      default:
+        return "🎯 Préparons ta simulation ! Tu peux me parler ou m'écrire. Dis-moi ce qui t'inquiète le plus.";
+    }
   }
 
   @override
@@ -39,25 +88,103 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> {
     super.dispose();
   }
 
-  void _handleSendMessage(String text) {
+  void _handleSendMessage(String text) async {
     if (text.isEmpty) return;
+    
     setState(() {
       _messages.add(Message(sender: Sender.user, text: text));
+      _isLoadingResponse = true;
     });
     _textController.clear();
-    // TODO: AI response logic will be added here
+    
+    try {
+      // Construire l'historique de conversation
+      final conversationHistory = _messages
+          .map((msg) => "${msg.sender == Sender.user ? 'User' : 'AI'}: ${msg.text}")
+          .toList();
+      
+      // Obtenir la réponse du coach IA
+      final response = await _coachService.getCoachResponse(
+        text,
+        widget.simulationType,
+        conversationHistory,
+      );
+      
+      setState(() {
+        _messages.add(Message(sender: Sender.ai, text: response));
+        _isLoadingResponse = false;
+      });
+    } catch (e) {
+      setState(() {
+        _messages.add(
+          Message(
+            sender: Sender.ai,
+            text: "Désolé, je n'ai pas pu traiter votre message. Réessayez ou continuez la préparation.",
+          ),
+        );
+        _isLoadingResponse = false;
+      });
+    }
   }
 
-  void _handleFileUpload() {
-    // TODO: Implémenter la sélection de fichier avec file_picker à l'étape 4.2
-    setState(() {
-      _messages.add(
-        Message(
-          sender: Sender.ai,
-          text: "La fonctionnalité de téléchargement de documents est en cours de développement. Elle permettra bientôt d'analyser vos fichiers.",
-        )
+  void _handleFileUpload() async {
+    try {
+      // Ouvrir le sélecteur de fichiers
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx'],
+        allowMultiple: false,
       );
-    });
+
+      if (result != null && result.files.single.path != null) {
+        final file = result.files.single;
+        
+        // Afficher un message de chargement
+        setState(() {
+          _messages.add(
+            Message(
+              sender: Sender.user,
+              text: "📎 Document téléchargé : ${file.name}",
+            ),
+          );
+          _messages.add(
+            Message(
+              sender: Sender.ai,
+              text: "🔍 Analyse du document en cours...",
+            ),
+          );
+          _isLoadingResponse = true;
+        });
+
+        // Analyser le document avec le service coach
+        final analysis = await _coachService.analyzeDocument(
+          file.path!,
+          widget.simulationType,
+        );
+
+        // Afficher le résultat de l'analyse
+        setState(() {
+          _messages.removeLast(); // Enlever le message de chargement
+          _messages.add(
+            Message(
+              sender: Sender.ai,
+              text: "✅ Document analysé avec succès !\n\n$analysis",
+            ),
+          );
+          _isLoadingResponse = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _messages.add(
+          Message(
+            sender: Sender.ai,
+            text: "❌ Erreur lors du téléchargement : ${e.toString()}",
+          ),
+        );
+        _isLoadingResponse = false;
+      });
+    }
   }
 
   @override

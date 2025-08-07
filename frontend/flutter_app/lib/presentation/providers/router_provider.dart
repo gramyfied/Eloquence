@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:eloquence_2_0/core/utils/navigator_service.dart';
 
 // Import de tous les écrans nécessaires
 import '../../screens/home_screen.dart';
@@ -15,6 +14,7 @@ import '../../features/confidence_boost/presentation/screens/confidence_boost_en
 import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
 import '../../features/studio_situations_pro/data/models/simulation_models.dart';
+import '../../core/utils/navigator_service.dart';
 import '../../features/confidence_boost/presentation/screens/virelangue_roulette_screen.dart';
 import '../../features/confidence_boost/presentation/screens/dragon_breath_screen.dart';
 import '../../features/confidence_boost/presentation/screens/cosmic_voice_screen.dart';
