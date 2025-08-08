@@ -25,5 +25,5 @@ ENV LIVEKIT_API_SECRET=secret
 ENV MISTRAL_BASE_URL=https://api.scaleway.ai/18f6cc9d-07fc-49c3-a142-67be9b59ac63/v1
 ENV VOSK_SERVICE_URL=http://vosk-stt-analysis:2700
 
-# Commande de démarrage
-CMD ["python", "main.py", "start"]
+# Commande de démarrage - Forcer le système multi-agents pour Studio Situations Pro
+CMD ["python", "multi_agent_main.py", "start"]

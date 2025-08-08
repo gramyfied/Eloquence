@@ -6,10 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:eloquence_2_0/core/utils/unified_logger_service.dart';
-
-// Configuration LiveKit
-const String _livekitUrl = 'ws://localhost:7880';
-const String _tokenApiUrl = 'http://localhost:7880/api/token';
+import 'package:eloquence_2_0/core/config/network_config.dart';
 
 /// Service amélioré pour gérer la connexion LiveKit avec support multi-agents
 class StudioLiveKitService {
@@ -65,7 +62,7 @@ class StudioLiveKitService {
       // Générer un token (dans un cas réel, cela viendrait du backend)
       final token = await _generateToken(roomName, userId);
 
-      await _room!.connect(_livekitUrl, token, roomOptions: roomOptions);
+      await _room!.connect(NetworkConfig.livekitUrl, token, roomOptions: roomOptions);
       _isConnected = true;
       _connectionStateController.add(ConnectionState.connected);
       
@@ -84,12 +81,12 @@ class StudioLiveKitService {
     }
   }
 
-  /// Génère un token d'authentification via le backend ou simule en dev
+  /// Génère un token d'authentification via le backend
   Future<String> _generateToken(String roomName, String userId) async {
     try {
-      // Essayer d'appeler le backend pour générer un token réel
+      // Appeler le backend pour générer un token réel
       final response = await http.post(
-        Uri.parse(_tokenApiUrl),
+        Uri.parse(NetworkConfig.studioTokenUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'room': roomName,
@@ -99,26 +96,19 @@ class StudioLiveKitService {
             'user_role': 'participant',
           }),
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        UnifiedLoggerService.info('Token generated successfully for room: $roomName');
         return data['token'];
       } else {
-        throw Exception('Failed to generate token: ${response.statusCode}');
+        throw Exception('Failed to generate token: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      UnifiedLoggerService.warning('Token generation failed, using dev token: $e');
-      // Fallback pour développement - générer un token de test valide
-      return _generateDevToken(roomName, userId);
+      UnifiedLoggerService.error('Token generation failed: $e');
+      throw Exception('Could not generate authentication token: $e');
     }
-  }
-
-  String _generateDevToken(String roomName, String userId) {
-    // Token de développement basique mais fonctionnel
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    // En production, ce serait un JWT signé avec votre secret LiveKit
-    return 'dev-token-$roomName-$userId-$timestamp';
   }
 
   /// Publie la piste audio locale

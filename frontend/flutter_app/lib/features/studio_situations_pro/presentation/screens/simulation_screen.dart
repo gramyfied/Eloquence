@@ -10,8 +10,15 @@ import '../widgets/animated_multi_agent_avatar_grid.dart';
 
 class SimulationScreen extends ConsumerStatefulWidget {
   final SimulationType simulationType;
+  final String? userName;
+  final String? userSubject;
 
-  const SimulationScreen({Key? key, required this.simulationType}) : super(key: key);
+  const SimulationScreen({
+    Key? key,
+    required this.simulationType,
+    this.userName,
+    this.userSubject,
+  }) : super(key: key);
 
   @override
   ConsumerState<SimulationScreen> createState() => _SimulationScreenState();
@@ -73,11 +80,18 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Ticker
   void _initializeMultiAgents() async {
     final service = ref.read(studioSituationsProServiceProvider);
     
-    // Initialiser la simulation
-    await service.startSimulation(widget.simulationType);
+    // Initialiser la simulation avec les données utilisateur
+    await service.startSimulation(
+      widget.simulationType,
+      userName: widget.userName ?? 'Participant',
+      userSubject: widget.userSubject ?? 'Sujet non défini',
+    );
     
     // Écouter les événements multi-agents
     _eventSubscription = service.multiAgentEvents.listen((event) {
+      // ✅ CORRECTION CRITIQUE : Vérifier si le widget est encore monté
+      if (!mounted) return;
+      
       setState(() {
         if (event is AgentJoinedEvent) {
           _agents.add(event.agent);
@@ -114,6 +128,10 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Ticker
     
     // Obtenir les agents initiaux pour ce type de simulation
     final initialAgents = service.getAgentsForSimulation(widget.simulationType);
+    
+    // ✅ CORRECTION CRITIQUE : Vérifier si le widget est encore monté
+    if (!mounted) return;
+    
     setState(() {
       _agents = initialAgents;
     });
@@ -130,6 +148,12 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Ticker
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // ✅ CORRECTION CRITIQUE : Vérifier si le widget est encore monté
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
       if (!_isPaused) {
         setState(() {
           _seconds++;
@@ -139,12 +163,18 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> with Ticker
   }
 
   void _togglePause() {
+    // ✅ CORRECTION CRITIQUE : Vérifier si le widget est encore monté
+    if (!mounted) return;
+    
     setState(() {
       _isPaused = !_isPaused;
     });
   }
 
   void _toggleRecording() async {
+    // ✅ CORRECTION CRITIQUE : Vérifier si le widget est encore monté
+    if (!mounted) return;
+    
     setState(() {
       _isRecording = !_isRecording;
       if (_isRecording) {

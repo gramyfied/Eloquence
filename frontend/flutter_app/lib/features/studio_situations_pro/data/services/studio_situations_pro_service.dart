@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:http/http.dart' as http;
 import '../models/simulation_models.dart';
 import 'studio_livekit_service.dart';
 import '../../../../core/utils/unified_logger_service.dart';
+import '../../../../core/config/network_config.dart';
 
 /// Événements multi-agents
 abstract class MultiAgentEvent {}
@@ -303,27 +305,44 @@ class StudioSituationsProService extends ChangeNotifier {
     }
   }
   
+  // Champs privés pour la connexion backend
+  String? _currentRoomId;
+  Timer? _agentCheckTimer;
+  int _agentCheckAttempts = 0;
+  static const int _maxAgentCheckAttempts = 10;
+  
+  // Stocker les données utilisateur
+  String? _userName;
+  String? _userSubject;
+  
   /// Démarre une nouvelle simulation
-  Future<void> startSimulation(SimulationType type) async {
+  Future<void> startSimulation(
+    SimulationType type, {
+    String? userName,
+    String? userSubject,
+  }) async {
     try {
       UnifiedLoggerService.info('🎭 Démarrage simulation: ${type.name}');
+      UnifiedLoggerService.info('👤 Utilisateur: ${userName ?? "Anonyme"}, Sujet: ${userSubject ?? "Non défini"}');
       
       _currentSimulation = type;
-      _activeAgents = List.from(_simulationAgents[type] ?? []);
+      _userName = userName;
+      _userSubject = userSubject;
+      _activeAgents = [];  // Vide initialement, sera rempli par les vrais agents
       _conversationHistory.clear();
       _metrics = const PerformanceMetrics();
       _sessionStartTime = DateTime.now();
       _isSessionActive = true;
       
       // Générer un room ID unique
-      final roomId = 'studio_${type.name}_${DateTime.now().millisecondsSinceEpoch}';
+      _currentRoomId = 'studio_${type.name}_${DateTime.now().millisecondsSinceEpoch}';
       final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
       
       // Se connecter à LiveKit
-      await _livekitService.connect(roomId, userId: userId);
+      await _livekitService.connect(_currentRoomId!, userId: userId);
       
-      // Envoyer les métadonnées de la simulation
-      await _sendSimulationMetadata(type);
+      // Connecter au backend multi-agents avec les données utilisateur
+      await _connectToMultiAgentBackend(type, userName: userName, userSubject: userSubject);
       
       // Écouter les événements
       _setupListeners();
@@ -331,20 +350,8 @@ class StudioSituationsProService extends ChangeNotifier {
       // Démarrer le timer des métriques
       _startMetricsTimer();
       
-      // Ajouter le message de bienvenue
-      _addWelcomeMessage();
-      
-      // Simuler l'arrivée des agents
-      for (var agent in _activeAgents) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        _multiAgentEventController.add(AgentJoinedEvent(agent));
-        
-        // Simuler l'activation du premier agent
-        if (_activeAgents.indexOf(agent) == 0) {
-          _multiAgentEventController.add(SpeakerChangedEvent(agent.id));
-          _currentSpeaker = agent.id;
-        }
-      }
+      // Attendre que les agents rejoignent
+      await _waitForAgentsToJoin();
       
       notifyListeners();
       
@@ -358,8 +365,177 @@ class StudioSituationsProService extends ChangeNotifier {
     }
   }
   
+  /// Connecte au backend multi-agents via HAProxy
+  Future<void> _connectToMultiAgentBackend(
+    SimulationType type, {
+    String? userName,
+    String? userSubject,
+  }) async {
+    try {
+      UnifiedLoggerService.info('🔌 Connexion au backend multi-agents...');
+      
+      // URL du backend via HAProxy - utilise la configuration réseau
+      final backendUrl = NetworkConfig.studioBackendUrl;
+      
+      // Configuration des agents pour le type de simulation
+      final agentsConfig = _getAgentsConfig(type);
+      
+      // Requête de démarrage de session multi-agents
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'exercise_type': 'studio_${type.name}',
+          'room_id': _currentRoomId,
+          'simulation_type': type.name,
+          'agents_config': agentsConfig,
+          'max_agents': agentsConfig.length,
+          'user_name': userName ?? 'Participant',
+          'user_subject': userSubject ?? 'Sujet non défini',
+        }),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout de connexion au backend multi-agents');
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        UnifiedLoggerService.info('✅ Backend multi-agents connecté: ${data['message']}');
+        
+        // Envoyer les métadonnées via LiveKit avec les données utilisateur
+        await _sendSimulationMetadata(type, userName: userName, userSubject: userSubject);
+      } else {
+        throw Exception('Erreur backend: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      UnifiedLoggerService.error('❌ Erreur connexion backend multi-agents: $e');
+      
+      // Fallback : utiliser les agents locaux si le backend n'est pas disponible
+      if (e.toString().contains('Connection refused') ||
+          e.toString().contains('Timeout')) {
+        UnifiedLoggerService.warning('⚠️ Backend indisponible, utilisation des agents locaux');
+        await _fallbackToLocalAgents(type);
+      } else {
+        rethrow;
+      }
+    }
+  }
+  
+  /// Obtient la configuration des agents pour un type de simulation
+  List<Map<String, dynamic>> _getAgentsConfig(SimulationType type) {
+    final agents = _simulationAgents[type] ?? [];
+    return agents.map((agent) => {
+      'id': agent.id,
+      'name': agent.name,
+      'role': agent.role,
+      'avatar_path': agent.avatarPath,
+      'personality': _getAgentPersonality(agent.id, type),
+      'prompt': _getAgentPrompt(agent.id, type),
+    }).toList();
+  }
+  
+  /// Obtient la personnalité d'un agent
+  String _getAgentPersonality(String agentId, SimulationType type) {
+    final personalities = {
+      'animateur_principal': 'Professionnel, charismatique, structuré',
+      'journaliste_contradicteur': 'Critique, analytique, incisif',
+      'expert_specialise': 'Pédagogue, précis, approfondi',
+      'manager_rh': 'Bienveillant, évaluateur, structuré',
+      'expert_technique': 'Rigoureux, technique, précis',
+      'pdg': 'Visionnaire, décisif, stratégique',
+      'directeur_financier': 'Analytique, prudent, factuel',
+      'client_principal': 'Exigeant, intéressé, pragmatique',
+      'partenaire_technique': 'Collaboratif, technique, solution-oriented',
+      'moderateur': 'Neutre, facilitateur, inclusif',
+      'expert_audience': 'Curieux, pertinent, engagé',
+    };
+    return personalities[agentId] ?? 'Professionnel et engagé';
+  }
+  
+  /// Obtient le prompt système d'un agent
+  String _getAgentPrompt(String agentId, SimulationType type) {
+    final basePrompt = 'Tu es un agent IA dans une simulation professionnelle de type ${type.name}. ';
+    final rolePrompts = {
+      'animateur_principal': 'Tu animes le débat, poses des questions pertinentes et gères le temps de parole.',
+      'journaliste_contradicteur': 'Tu challenges les arguments avec des questions critiques mais constructives.',
+      'expert_specialise': 'Tu apportes une expertise technique approfondie sur le sujet discuté.',
+      'manager_rh': 'Tu évalues les compétences et la personnalité du candidat avec bienveillance.',
+      'expert_technique': 'Tu poses des questions techniques pour évaluer les connaissances.',
+      'pdg': 'Tu diriges la réunion et prends des décisions stratégiques.',
+      'directeur_financier': 'Tu analyses les aspects financiers et poses des questions sur les chiffres.',
+      'client_principal': 'Tu représentes les besoins client et poses des questions pratiques.',
+      'partenaire_technique': 'Tu apportes des solutions techniques et collabores sur les défis.',
+      'moderateur': 'Tu facilites la discussion et assures que tous peuvent s\'exprimer.',
+      'expert_audience': 'Tu poses des questions au nom du public et apportes des perspectives diverses.',
+    };
+    return basePrompt + (rolePrompts[agentId] ?? 'Participe activement à la simulation.');
+  }
+  
+  /// Attendre que les agents rejoignent la room
+  Future<void> _waitForAgentsToJoin() async {
+    UnifiedLoggerService.info('⏳ En attente des agents...');
+    
+    _agentCheckAttempts = 0;
+    final completer = Completer<void>();
+    
+    _agentCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _agentCheckAttempts++;
+      
+      if (_activeAgents.length >= (_simulationAgents[_currentSimulation!]?.length ?? 0)) {
+        // Tous les agents ont rejoint
+        timer.cancel();
+        UnifiedLoggerService.info('✅ Tous les agents ont rejoint la simulation');
+        _addWelcomeMessage();
+        if (!completer.isCompleted) completer.complete();
+      } else if (_agentCheckAttempts >= _maxAgentCheckAttempts) {
+        // Timeout
+        timer.cancel();
+        UnifiedLoggerService.warning('⚠️ Timeout en attente des agents');
+        
+        // Si aucun agent n'a rejoint, utiliser le fallback
+        if (_activeAgents.isEmpty) {
+          _fallbackToLocalAgents(_currentSimulation!);
+        }
+        
+        _addWelcomeMessage();
+        if (!completer.isCompleted) completer.complete();
+      } else {
+        UnifiedLoggerService.debug('Agents connectés: ${_activeAgents.length}/${_simulationAgents[_currentSimulation!]?.length ?? 0}');
+      }
+    });
+    
+    return completer.future;
+  }
+  
+  /// Fallback : utilise les agents locaux si le backend n'est pas disponible
+  Future<void> _fallbackToLocalAgents(SimulationType type) async {
+    UnifiedLoggerService.warning('📦 Utilisation des agents locaux (mode fallback)');
+    
+    _activeAgents = List.from(_simulationAgents[type] ?? []);
+    
+    // Simuler l'arrivée des agents localement
+    for (var agent in _activeAgents) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      _multiAgentEventController.add(AgentJoinedEvent(agent));
+      
+      // Activer le premier agent
+      if (_activeAgents.indexOf(agent) == 0) {
+        _multiAgentEventController.add(SpeakerChangedEvent(agent.id));
+        _currentSpeaker = agent.id;
+      }
+    }
+    
+    notifyListeners();
+  }
+  
   /// Envoie les métadonnées de la simulation aux agents
-  Future<void> _sendSimulationMetadata(SimulationType type) async {
+  Future<void> _sendSimulationMetadata(
+    SimulationType type, {
+    String? userName,
+    String? userSubject,
+  }) async {
     final metadata = {
       'type': 'simulation_start',
       'exercise_type': 'studio_${type.name}',
@@ -371,6 +547,8 @@ class StudioSituationsProService extends ChangeNotifier {
         'role': agent.role,
       }).toList(),
       'user_id': 'user_${DateTime.now().millisecondsSinceEpoch}',
+      'user_name': userName ?? 'Participant',
+      'user_subject': userSubject ?? 'Sujet non défini',
       'timestamp': DateTime.now().toIso8601String(),
     };
     
@@ -401,7 +579,18 @@ class StudioSituationsProService extends ChangeNotifier {
   void _handleAgentData(Map<String, dynamic> data) {
     final type = data['type'] ?? '';
     
+    UnifiedLoggerService.debug('📨 Event reçu: $type');
+    
     switch (type) {
+      case 'agent_joined':
+        _handleAgentJoined(data);
+        break;
+      case 'agent_left':
+        _handleAgentLeft(data);
+        break;
+      case 'agent_speaking':
+        _handleAgentSpeaking(data);
+        break;
       case 'agent_message':
         _processAgentMessage(data);
         break;
@@ -410,7 +599,6 @@ class StudioSituationsProService extends ChangeNotifier {
         break;
       case 'active_speaker':
         _updateActiveSpeaker(data);
-        // Émettre l'événement de changement de speaker
         final speakerId = data['speaker_id'] ?? '';
         if (speakerId.isNotEmpty) {
           _multiAgentEventController.add(SpeakerChangedEvent(speakerId));
@@ -419,6 +607,85 @@ class StudioSituationsProService extends ChangeNotifier {
       case 'metrics_update':
         _updateMetrics(data);
         break;
+      default:
+        UnifiedLoggerService.debug('Type d\'événement non géré: $type');
+    }
+  }
+  
+  /// Gère l'arrivée d'un agent
+  void _handleAgentJoined(Map<String, dynamic> data) {
+    try {
+      final agentData = data['agent'] ?? {};
+      final agent = AgentInfo(
+        id: agentData['id'] ?? '',
+        name: agentData['name'] ?? 'Agent',
+        role: agentData['role'] ?? 'Participant',
+        avatarPath: agentData['avatar_path'] ?? 'assets/images/avatars/avatar_expert_homme_africain.png',
+        isActive: agentData['is_active'] ?? false,
+        participationRate: (agentData['participation_rate'] ?? 0.0).toDouble(),
+      );
+      
+      // Vérifier si l'agent n'est pas déjà dans la liste
+      if (!_activeAgents.any((a) => a.id == agent.id)) {
+        _activeAgents.add(agent);
+        _multiAgentEventController.add(AgentJoinedEvent(agent));
+        
+        UnifiedLoggerService.info('✅ Agent rejoint: ${agent.name} (${agent.role})');
+        
+        // Si c'est le premier agent, le rendre actif
+        if (_activeAgents.length == 1) {
+          _currentSpeaker = agent.id;
+          _multiAgentEventController.add(SpeakerChangedEvent(agent.id));
+        }
+        
+        notifyListeners();
+      }
+    } catch (e) {
+      UnifiedLoggerService.error('Erreur lors de l\'ajout de l\'agent: $e');
+    }
+  }
+  
+  /// Gère le départ d'un agent
+  void _handleAgentLeft(Map<String, dynamic> data) {
+    final agentId = data['agent_id'] ?? '';
+    
+    _activeAgents.removeWhere((a) => a.id == agentId);
+    _multiAgentEventController.add(AgentLeftEvent(agentId));
+    
+    UnifiedLoggerService.info('👋 Agent parti: $agentId');
+    
+    // Si c'était le speaker actif, passer au suivant
+    if (_currentSpeaker == agentId && _activeAgents.isNotEmpty) {
+      _currentSpeaker = _activeAgents.first.id;
+      _multiAgentEventController.add(SpeakerChangedEvent(_currentSpeaker!));
+    }
+    
+    notifyListeners();
+  }
+  
+  /// Gère le changement de speaker
+  void _handleAgentSpeaking(Map<String, dynamic> data) {
+    final agentId = data['agent_id'] ?? '';
+    
+    if (agentId.isNotEmpty && agentId != _currentSpeaker) {
+      _currentSpeaker = agentId;
+      _multiAgentEventController.add(SpeakerChangedEvent(agentId));
+      
+      // Mettre à jour l'état actif des agents
+      _activeAgents = _activeAgents.map((agent) {
+        final isActive = agent.id == agentId;
+        if (agent.isActive != isActive) {
+          _multiAgentEventController.add(AgentStateUpdateEvent(
+            agentId: agent.id,
+            isActive: isActive,
+            participationRate: agent.participationRate,
+          ));
+        }
+        return agent.copyWith(isActive: isActive);
+      }).toList();
+      
+      UnifiedLoggerService.debug('🎤 Speaker actif: $agentId');
+      notifyListeners();
     }
   }
   
@@ -568,12 +835,18 @@ class StudioSituationsProService extends ChangeNotifier {
     final welcomeAgent = _activeAgents.first;
     final simulationName = _getSimulationDisplayName(_currentSimulation!);
     
+    // Personnaliser le message avec le nom et le sujet de l'utilisateur
+    final userName = _userName ?? 'Participant';
+    final userSubject = _userSubject ?? 'votre présentation';
+    
     final welcomeMessage = ConversationMessage(
       speakerId: welcomeAgent.id,
       speakerName: welcomeAgent.name,
-      content: '''Bonjour et bienvenue dans cette simulation "$simulationName" !
+      content: '''Bonjour ${userName} et bienvenue dans cette simulation "$simulationName" !
       
 Je suis ${welcomeAgent.name}, votre ${welcomeAgent.role}.
+
+Je vois que vous souhaitez nous parler de : ${userSubject}
 
 Nous allons recréer ensemble une situation professionnelle réaliste pour vous permettre de pratiquer et développer vos compétences de communication.
 
@@ -581,7 +854,7 @@ Mes collègues ${_activeAgents.skip(1).map((a) => a.name).join(' et ')} sont ég
 
 N'hésitez pas à vous exprimer naturellement. Nous sommes là pour vous accompagner !
 
-Quand vous êtes prêt(e), commencez par vous présenter ou posez votre première question.''',
+Quand vous êtes prêt(e), commencez votre présentation sur ${userSubject}.''',
       timestamp: DateTime.now(),
       isUser: false,
       isReaction: false,
@@ -727,6 +1000,7 @@ Quand vous êtes prêt(e), commencez par vous présenter ou posez votre premièr
   @override
   void dispose() {
     _metricsTimer?.cancel();
+    _agentCheckTimer?.cancel();
     _dataSubscription?.cancel();
     _messageSubscription?.cancel();
     _connectionSubscription?.cancel();
