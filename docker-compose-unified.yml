@@ -1,7 +1,9 @@
 services:
+  # === SERVICE REDIS (État et cache) ===
   redis:
     image: redis:7-alpine
-    restart: on-failure:5
+    container_name: eloquence-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     networks:
@@ -14,11 +16,12 @@ services:
     volumes:
       - redis-data:/data
 
+  # === SERVICE VOSK STT (Reconnaissance vocale) ===
   vosk-stt:
     build:
       context: ./services/vosk-stt-analysis
       dockerfile: Dockerfile
-    image: eloquence/vosk-stt:latest
+    container_name: eloquence-vosk-stt
     restart: unless-stopped
     ports:
       - "8002:8002"
@@ -38,11 +41,12 @@ services:
       retries: 3
       start_period: 60s
 
+  # === SERVICE MISTRAL (Conversation IA) ===
   mistral-conversation:
     build:
       context: ./services/mistral-conversation
       dockerfile: Dockerfile
-    image: eloquence/mistral-conversation:latest
+    container_name: eloquence-mistral
     restart: unless-stopped
     ports:
       - "8001:8001"
@@ -60,10 +64,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-  
-  # === LIVEKIT SERVICES (Architecture Moderne) ===
+
+  # === SERVICE LIVEKIT SERVER (WebRTC) ===
   livekit-server:
     image: livekit/livekit-server:latest
+    container_name: eloquence-livekit-server
     restart: unless-stopped
     ports:
       - "7880:7880"    # WebSocket
@@ -74,12 +79,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7880/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     environment:
       - "LIVEKIT_KEYS=devkey: devsecret123456789abcdef0123456789abcdef"
       - LIVEKIT_LOG_LEVEL=info
@@ -88,12 +87,19 @@ services:
       - LIVEKIT_RTC_PORT_RANGE_END=40100
       - LIVEKIT_REDIS_HOST=redis
       - LIVEKIT_REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7880/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # === SERVICE TOKEN LIVEKIT (Génération JWT) ===
   livekit-token-service:
     build:
       context: ./services/livekit-server
       dockerfile: Dockerfile
-    image: eloquence/livekit-token-service:latest
+    container_name: eloquence-livekit-token
     restart: unless-stopped
     ports:
       - "8004:8004"
@@ -113,34 +119,35 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
 
+  # === AGENT LIVEKIT UNIFIÉ (Routage intelligent) ===
   livekit-agent:
     build:
       context: ./services/livekit-agent
-      dockerfile: Dockerfile
-    image: eloquence/livekit-agent:latest
+      dockerfile: Dockerfile.unified
+    container_name: eloquence-livekit-agent
     restart: unless-stopped
     networks:
       - eloquence-network
     env_file:
       - .env
-      - ./services/livekit-agent/.env
     environment:
+      # Configuration LiveKit
       - LIVEKIT_URL=ws://livekit-server:7880
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
-      - LIVEKIT_ROOM=confidence_boost_default
+      # URLs des services
       - VOSK_STT_URL=http://vosk-stt:8002
-      - MISTRAL_BASE_URL=${SCALEWAY_MISTRAL_URL}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - REDIS_URL=redis://redis:6379/0
+      # Clés API
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_URL=redis://redis:6379/2
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      # Mode et debug
+      - AGENT_MODE=unified
       - DEBUG=true
       - LOG_LEVEL=debug
     depends_on:
-      redis:
-        condition: service_healthy
       livekit-server:
         condition: service_healthy
       livekit-token-service:
@@ -149,17 +156,20 @@ services:
         condition: service_healthy
       vosk-stt:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
-        max_attempts: 3
+        max_attempts: 5
 
+  # === API EXERCICES (Backend principal) ===
   eloquence-exercises-api:
     build:
       context: ./services/eloquence-exercises-api
       dockerfile: Dockerfile
-    image: eloquence/exercises-api:latest
+    container_name: eloquence-exercises-api
     restart: unless-stopped
     ports:
       - "8005:8005"
@@ -172,6 +182,7 @@ services:
       - LIVEKIT_URL=ws://livekit-server:7880
       - TOKEN_SERVICE_URL=http://livekit-token-service:8004
       - VOSK_SERVICE_URL=http://vosk-stt:8002
+      - MISTRAL_SERVICE_URL=http://mistral-conversation:8001
     depends_on:
       redis:
         condition: service_healthy
@@ -184,7 +195,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
 
 networks:
   eloquence-network:

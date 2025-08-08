@@ -251,47 +251,127 @@ class MultiAgentManager:
         return response
     
     async def simulate_agent_response(self, agent: AgentPersonality, context: str, user_message: str) -> str:
-        """Simule une réponse d'agent (remplacer par appel LLM en production)"""
+        """Génère une vraie réponse d'agent via LLM optimisé avec sa personnalité"""
         
-        # Réponses simulées basées sur le rôle et le style
+        try:
+            # Importer l'optimiseur LLM
+            from llm_optimizer import llm_optimizer
+            
+            # Construire le prompt avec la personnalité complète de l'agent
+            system_prompt = f"""Tu es {agent.name}, {agent.role}.
+
+PERSONNALITÉ:
+{agent.personality_traits}
+
+RÔLE:
+{agent.system_prompt}
+
+STYLE DE COMMUNICATION ({agent.interaction_style.value}):
+{self._get_style_instructions(agent.interaction_style)}
+
+CONTEXTE DE LA CONVERSATION:
+{context}
+
+AUTRES PARTICIPANTS:
+{', '.join([a.name + ' (' + a.role + ')' for a in self.agents.values() if a.agent_id != agent.agent_id])}
+
+INSTRUCTIONS:
+- Réponds TOUJOURS en français
+- Commence par t'identifier: "Je suis {agent.name}"
+- Reste dans ton personnage et ton style
+- Réponds de manière concise (2-3 phrases max)
+- Adapte ton ton selon ton rôle ({agent.role})
+- Si tu es modérateur, dirige la conversation
+- Si tu es expert, apporte des détails techniques
+- Si tu es challenger, pose des questions critiques"""
+
+            # Messages pour l'optimiseur
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+            
+            # Déterminer la complexité et le type de tâche
+            complexity = {
+                'num_agents': len(self.agents),
+                'context_length': len(context),
+                'interaction_depth': len(self.conversation_history)
+            }
+            
+            # Type de tâche basé sur le style d'interaction
+            task_type = 'multi_agent_orchestration'
+            if agent.interaction_style == InteractionStyle.MODERATOR:
+                task_type = 'debate_moderation'
+            elif agent.interaction_style == InteractionStyle.EXPERT:
+                task_type = 'technical_explanation'
+            elif agent.interaction_style == InteractionStyle.CHALLENGER:
+                task_type = 'complex_reasoning'
+            
+            # Utiliser l'optimiseur LLM avec cache et sélection intelligente
+            result = await llm_optimizer.get_optimized_response(
+                messages=messages,
+                task_type=task_type,
+                complexity=complexity,
+                use_cache=True,
+                cache_ttl=600  # Cache de 10 minutes pour les réponses d'agents
+            )
+            
+            generated_response = result['response']
+            logger.info(f"✅ Réponse LLM optimisée pour {agent.name} (modèle: {result['model']}, cache: {result['cached']})")
+            
+            return generated_response
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur génération réponse LLM pour {agent.name}: {e}")
+            # Fallback avec une réponse contextuelle
+            return f"Je suis {agent.name}, {agent.role}. {self._get_fallback_response(agent, user_message)}"
+    
+    def _get_style_instructions(self, style: InteractionStyle) -> str:
+        """Retourne les instructions de style pour chaque type d'interaction"""
+        styles = {
+            InteractionStyle.MODERATOR: """
+                - Dirige la conversation avec autorité bienveillante
+                - Distribue la parole équitablement
+                - Reformule et synthétise les points clés
+                - Pose des questions de relance
+                - Maintiens un rythme dynamique""",
+            InteractionStyle.CHALLENGER: """
+                - Pose des questions critiques et pointues
+                - Challenge les idées avec respect
+                - Demande des preuves et exemples concrets
+                - Identifie les failles dans l'argumentation
+                - Pousse à la réflexion profonde""",
+            InteractionStyle.EXPERT: """
+                - Apporte une expertise technique approfondie
+                - Cite des exemples et bonnes pratiques
+                - Explique les concepts complexes simplement
+                - Donne des conseils pratiques
+                - Partage ton expérience du terrain""",
+            InteractionStyle.SUPPORTIVE: """
+                - Soutiens et encourage les idées
+                - Complète avec des informations utiles
+                - Valorise les points positifs
+                - Aide à clarifier les concepts
+                - Crée une atmosphère collaborative""",
+            InteractionStyle.INTERVIEWER: """
+                - Pose des questions ouvertes et engageantes
+                - Creuse les motivations et expériences
+                - Guide vers l'introspection
+                - Cherche des exemples concrets
+                - Évalue les compétences avec bienveillance"""
+        }
+        return styles.get(style, "Communique de manière professionnelle et claire")
+    
+    def _get_fallback_response(self, agent: AgentPersonality, user_message: str) -> str:
+        """Génère une réponse de fallback contextuelle"""
         if agent.interaction_style == InteractionStyle.MODERATOR:
-            responses = [
-                f"Excellente question ! {user_message[:30]}... est effectivement un point crucial.",
-                f"Permettez-moi de reformuler : vous vous interrogez sur {user_message[:30]}...",
-                "C'est un aspect fondamental. Qui souhaite apporter son expertise sur ce point ?",
-                "Très pertinent ! Prenons un moment pour explorer cette dimension."
-            ]
+            return f"Excellente intervention concernant {user_message[:30]}... Continuons sur cette voie."
         elif agent.interaction_style == InteractionStyle.CHALLENGER:
-            responses = [
-                f"Mais concrètement, comment garantissez-vous que {user_message[:30]}... ?",
-                "Les données montrent pourtant une tendance différente...",
-                "Permettez-moi de challenger cette approche : n'est-ce pas risqué ?",
-                "J'ai besoin de plus de détails sur l'implémentation pratique."
-            ]
+            return f"J'aimerais approfondir ce point sur {user_message[:30]}..."
         elif agent.interaction_style == InteractionStyle.EXPERT:
-            responses = [
-                f"D'un point de vue technique, {user_message[:30]}... nécessite une approche structurée.",
-                "Mon expérience dans le domaine montre que trois facteurs sont critiques ici...",
-                "Il est important de considérer le contexte historique de cette problématique.",
-                "Permettez-moi d'apporter une perspective plus nuancée sur ce sujet."
-            ]
-        elif agent.interaction_style == InteractionStyle.INTERVIEWER:
-            responses = [
-                f"Pouvez-vous me donner un exemple concret de {user_message[:30]}... ?",
-                "Comment avez-vous géré une situation similaire dans le passé ?",
-                "Qu'est-ce qui vous motive particulièrement dans cette approche ?",
-                "Parlons de vos compétences dans ce domaine spécifique."
-            ]
-        else:  # SUPPORTIVE
-            responses = [
-                f"C'est effectivement un point important. Pour compléter...",
-                "Je peux apporter des éléments techniques supplémentaires.",
-                "Dans notre contexte, cela implique plusieurs considérations...",
-                "Excellente observation ! Permettez-moi d'ajouter..."
-            ]
-        
-        import random
-        return random.choice(responses)
+            return f"D'un point de vue technique, {user_message[:30]}... mérite analyse."
+        else:
+            return "Je prends note de votre point. Continuons."
     
     async def trigger_agent_reactions(self, primary_agent_id: str, primary_response: str) -> List[Dict]:
         """Déclenche les réactions des autres agents si approprié"""
@@ -307,8 +387,8 @@ class MultiAgentManager:
         # Attendre un peu pour simuler une réaction naturelle
         await asyncio.sleep(1.5)
         
-        # Sélectionner 1-2 agents pour réagir
-        reacting_agents = self.select_reacting_agents(primary_agent_id)
+        # Sélectionner 1-2 agents pour réagir (en passant la réponse primaire pour détecter les mentions)
+        reacting_agents = self.select_reacting_agents(primary_agent_id, primary_response)
         
         for agent_id in reacting_agents:
             agent = self.agents[agent_id]
@@ -339,28 +419,83 @@ class MultiAgentManager:
     async def should_trigger_reactions(self, primary_response: str) -> bool:
         """Détermine si des réactions doivent être déclenchées"""
         
+        # Détecter les mentions directes d'agents (distribution de parole)
+        agent_mentions = self._detect_agent_mentions(primary_response)
+        if agent_mentions:
+            logger.info(f"🎯 Distribution de parole détectée: {agent_mentions}")
+            return True
+        
         # Règles pour déclencher des réactions
         triggers = [
             "?" in primary_response,  # Question posée
             len(primary_response) > 200,  # Réponse longue
             any(word in primary_response.lower() for word in ["mais", "cependant", "toutefois"]),
-            datetime.now() - self.last_speaker_change > timedelta(seconds=30)  # Trop long sans interaction
+            datetime.now() - self.last_speaker_change > timedelta(seconds=30),  # Trop long sans interaction
+            # Mots-clés de distribution de parole
+            any(phrase in primary_response.lower() for phrase in [
+                "votre point de vue", "qu'en pensez-vous", "votre avis", "donnons la parole",
+                "passons à", "écoutons", "que diriez-vous"
+            ])
         ]
         
         return any(triggers)
     
-    def select_reacting_agents(self, exclude_agent_id: str) -> List[str]:
-        """Sélectionne les agents qui vont réagir"""
+    def _detect_agent_mentions(self, text: str) -> List[str]:
+        """Détecte les mentions explicites d'agents dans le texte"""
+        mentioned_agents = []
+        text_lower = text.lower()
+        
+        for agent_id, agent in self.agents.items():
+            # Chercher le prénom de l'agent
+            first_name = agent.name.split()[0].lower()
+            
+            # Patterns de distribution de parole
+            patterns = [
+                f"{first_name},",  # "Sarah, votre avis ?"
+                f"{first_name} ?",  # "Et vous Sarah ?"
+                f"à {first_name}",  # "Donnons la parole à Sarah"
+                f"écoutons {first_name}",  # "Écoutons Sarah"
+                f"{first_name} que",  # "Sarah que pensez-vous"
+                f"{first_name} qu",  # "Sarah qu'en dites-vous"
+                f"passons à {first_name}",  # "Passons à Sarah"
+            ]
+            
+            for pattern in patterns:
+                if pattern in text_lower:
+                    mentioned_agents.append(agent_id)
+                    logger.info(f"🎯 Agent {agent.name} mentionné avec pattern: '{pattern}'")
+                    break
+        
+        return mentioned_agents
+    
+    def select_reacting_agents(self, exclude_agent_id: str, primary_response: str = "") -> List[str]:
+        """Sélectionne les agents qui vont réagir, en priorisant ceux mentionnés"""
         
         eligible_agents = [
-            agent_id for agent_id in self.agents 
+            agent_id for agent_id in self.agents
             if agent_id != exclude_agent_id
         ]
         
         if not eligible_agents:
             return []
+        
+        # Vérifier si des agents spécifiques sont mentionnés
+        mentioned_agents = self._detect_agent_mentions(primary_response)
+        
+        # Si des agents sont mentionnés, les prioriser
+        if mentioned_agents:
+            # Filtrer pour ne garder que les agents éligibles qui sont mentionnés
+            prioritized_agents = [
+                agent_id for agent_id in mentioned_agents
+                if agent_id in eligible_agents
+            ]
             
-        # Prioriser les agents qui ont moins parlé
+            if prioritized_agents:
+                logger.info(f"🎯 Agents priorisés car mentionnés: {[self.agents[aid].name for aid in prioritized_agents]}")
+                # Retourner tous les agents mentionnés (max 3 pour éviter la cacophonie)
+                return prioritized_agents[:3]
+        
+        # Sinon, utiliser la logique habituelle : prioriser les agents qui ont moins parlé
         sorted_agents = sorted(
             eligible_agents,
             key=lambda x: self.interaction_count.get(x, 0)
@@ -372,36 +507,56 @@ class MultiAgentManager:
         return sorted_agents[:num_reactions]
     
     async def generate_agent_reaction(self, agent: AgentPersonality, primary_response: str) -> str:
-        """Génère une réaction courte d'un agent"""
+        """Génère une vraie réaction d'agent via LLM optimisé"""
         
-        # Réactions courtes simulées
-        if agent.interaction_style == InteractionStyle.MODERATOR:
-            reactions = [
-                "Excellent point ! Poursuivons sur cette lancée.",
-                "C'est très pertinent. Qui souhaite rebondir ?",
-                "Gardons ce rythme dynamique !",
+        try:
+            from llm_optimizer import llm_optimizer
+            
+            # Prompt pour une réaction courte et contextuelle
+            system_prompt = f"""Tu es {agent.name}, {agent.role}.
+Style: {agent.interaction_style.value}
+
+Un autre participant vient de dire: "{primary_response[:200]}"
+
+Génère une RÉACTION TRÈS COURTE (1 phrase max) qui:
+- Reste dans ton personnage
+- Montre que tu écoutes activement
+- Prépare une transition ou relance
+- Commence par ton prénom
+
+Exemples selon ton style:
+- Modérateur: "Michel: Excellent point ! Qui souhaite compléter ?"
+- Expert: "Marcus: J'ajouterais un détail technique important..."
+- Challenger: "Sarah: Permettez-moi de nuancer ce point..."
+"""
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Génère ta réaction courte."}
             ]
-        elif agent.interaction_style == InteractionStyle.CHALLENGER:
-            reactions = [
-                "J'aimerais creuser ce point davantage.",
-                "Intéressant, mais qu'en est-il de...",
-                "Permettez-moi une objection...",
-            ]
-        elif agent.interaction_style == InteractionStyle.EXPERT:
-            reactions = [
-                "Effectivement, et j'ajouterais que...",
-                "C'est conforme aux meilleures pratiques.",
-                "Un point technique important ici...",
-            ]
-        else:
-            reactions = [
-                "Tout à fait d'accord.",
-                "C'est un bon point.",
-                "Je prends note.",
-            ]
-        
-        import random
-        return random.choice(reactions)
+            
+            # Réaction rapide = conversation simple avec GPT-3.5
+            complexity = {
+                'num_agents': 1,
+                'context_length': len(primary_response),
+                'interaction_depth': 1
+            }
+            
+            # Utiliser l'optimiseur avec cache et modèle léger pour les réactions
+            result = await llm_optimizer.get_optimized_response(
+                messages=messages,
+                task_type='simple_conversation',  # Réaction simple = modèle léger
+                complexity=complexity,
+                use_cache=True,
+                cache_ttl=300  # Cache de 5 minutes pour les réactions
+            )
+            
+            logger.debug(f"✅ Réaction optimisée pour {agent.name} (modèle: {result['model']}, cache: {result['cached']})")
+            return result['response']
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur réaction LLM {agent.name}: {e}")
+            return f"{agent.name}: Je prends note de ce point."
     
     def build_agent_context(self, agent_id: str, user_message: str) -> str:
         """Construit le contexte pour un agent spécifique"""

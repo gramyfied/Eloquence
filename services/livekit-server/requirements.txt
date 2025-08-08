@@ -1,7 +1,5 @@
-# Service de génération de tokens JWT pour LiveKit avec SDK officiel
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-livekit-api==0.8.2
 pydantic==2.5.0
-python-multipart==0.0.6
 PyJWT==2.8.0
+python-multipart==0.0.6

@@ -87,6 +87,45 @@ services:
       timeout: 10s
       retries: 3
 
+  # === AGENT UNIFIÉ (ROUTAGE INTELLIGENT MULTI-AGENTS ET INDIVIDUELS) ===
+  livekit-agents:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.unified
+    restart: unless-stopped
+    ports:
+      - "8090:8080"  # Port pour health check et métriques (éviter conflit avec eloquence-api)
+    networks:
+      - eloquence
+    environment:
+      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral:8001/v1/chat/completions
+      - AGENT_MODE=unified  # Mode unifié pour router tous les exercices
+    env_file:
+      - .env  # Pour OPENAI_API_KEY et autres secrets
+    depends_on:
+      - redis
+      - livekit
+      - vosk-stt
+      - mistral
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
 networks:
   eloquence:
     driver: bridge

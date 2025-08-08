@@ -1005,11 +1005,19 @@ class ExerciseManager:
             # Log de la logique de sélection
             logger.info("🔄 Logique de sélection d'exercice:")
             
-            if exercise_type == 'job_interview':
-                logger.info("   ✅ SÉLECTION: job_interview")
+            # EXERCICES INDIVIDUELS UNIQUEMENT
+            # Les exercices multi-agents doivent être gérés par multi_agent_main.py
+            if exercise_type in ['studio_situations_pro', 'studio_debate_tv', 'studio_job_interview',
+                                'studio_boardroom', 'studio_sales_conference', 'studio_keynote']:
+                logger.error(f"   ❌ ERREUR: Exercice multi-agents '{exercise_type}' détecté dans main.py")
+                logger.error("   ⚠️ Ce type d'exercice doit être géré par le système multi-agents")
+                logger.warning("   🔄 Fallback vers confidence_boost")
+                result = ExerciseTemplates.confidence_boost()
+            elif exercise_type == 'job_interview':
+                logger.info("   ✅ SÉLECTION: job_interview (individuel)")
                 result = ExerciseTemplates.job_interview()
             elif exercise_type == 'confidence_boost':
-                logger.info("   ✅ SÉLECTION: confidence_boost")
+                logger.info("   ✅ SÉLECTION: confidence_boost (individuel)")
                 result = ExerciseTemplates.confidence_boost()
             elif exercise_type == 'cosmic_voice_control':
                 logger.info("   ✅ SÉLECTION: cosmic_voice_control")
@@ -1018,7 +1026,7 @@ class ExerciseManager:
                 logger.info("   ✅ SÉLECTION: tribunal_idees_impossibles")
                 result = ExerciseTemplates.tribunal_idees_impossibles()
             else:
-                logger.warning(f"   ⚠️ Type d'exercice inconnu: '{exercise_type}', utilisation par défaut")
+                logger.warning(f"   ⚠️ Type d'exercice inconnu: '{exercise_type}', utilisation confidence_boost par défaut")
                 result = ExerciseTemplates.confidence_boost()
             
             logger.info(f"🎯 EXERCICE SÉLECTIONNÉ:")
@@ -1036,6 +1044,7 @@ class ExerciseManager:
             logger.error("   🔄 Fallback vers confidence_boost")
             logger.info("="*50)
             return ExerciseTemplates.confidence_boost()
+    
     
     @staticmethod
     def add_new_exercise_type(exercise_id: str, config: ExerciseConfig):
