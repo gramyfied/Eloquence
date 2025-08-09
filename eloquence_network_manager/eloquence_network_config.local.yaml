@@ -1,0 +1,67 @@
+# Configuration Réseau Eloquence - Spécifique pour la validation locale
+# Ce fichier surcharge les URLs pour correspondre aux ports exposés sur l'hôte par docker-compose-new.yml
+
+services:
+  # === SERVICES CRITIQUES (mappés sur localhost) ===
+  - name: eloquence_exercises_api
+    type: http
+    url: http://localhost:8080  # Mappé depuis le service eloquence-api
+    health_endpoint: /health
+    timeout: 10
+    critical: true
+    description: "API principale unifiée Eloquence"
+    dependencies: [redis, livekit_server, vosk_stt, mistral_conversation]
+    docker_service: eloquence-api
+    
+  - name: livekit_server
+    type: websocket
+    url: ws://localhost:7880
+    timeout: 15
+    critical: false # Temporairement mis à false pour le diagnostic
+    auth_required: true
+    description: "Serveur LiveKit pour communication temps réel"
+    dependencies: [redis]
+    docker_service: livekit
+    credentials:
+      api_key: devkey
+      api_secret: devsecret123456789abcdef0123456789abcdef
+    
+  - name: livekit_token_service
+    type: http
+    url: http://localhost:8090 # Pointe vers le service agent qui peut générer des tokens
+    health_endpoint: /health
+    timeout: 10
+    critical: false # Temporairement mis à false pour le diagnostic
+    description: "Service de génération de tokens LiveKit (via agent)"
+    dependencies: [livekit_server]
+    docker_service: livekit-agents
+
+  - name: vosk_stt
+    type: http
+    url: http://localhost:8002
+    health_endpoint: /health
+    timeout: 30
+    critical: true
+    description: "Service de reconnaissance vocale Vosk"
+    docker_service: vosk-stt
+    
+  - name: mistral_conversation
+    type: http
+    url: http://localhost:8003 # Port externe mappé dans docker-compose-new.yml
+    health_endpoint: /health
+    timeout: 180
+    critical: true
+    auth_required: true
+    description: "Service de conversation IA Mistral"
+    docker_service: mistral
+    
+  - name: redis
+    type: redis
+    url: redis://localhost:6379
+    timeout: 5
+    critical: true
+    description: "Cache Redis"
+    docker_service: redis
+
+# Les services fallback ne sont pas dans docker-compose-new.yml, donc on les ignore ici.
+# On garde seulement ceux qui sont réellement démarrés.

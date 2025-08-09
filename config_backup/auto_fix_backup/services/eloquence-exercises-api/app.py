@@ -1,20 +1,3 @@
-
-# IMPORT OBLIGATOIRE DE LA CONFIGURATION CENTRALISÉE
-from config_client import (
-    get_livekit_config,
-    get_services_urls,
-    get_agent_config,
-    EloquenceConfigError
-)
-
-# Chargement de la configuration centralisée
-try:
-    CENTRALIZED_CONFIG = get_agent_config()
-except EloquenceConfigError as e:
-    print(f"Erreur configuration: {e}")
-    CENTRALIZED_CONFIG = {}
-
-
 from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import redis
@@ -79,14 +62,14 @@ redis_client = redis.Redis.from_url(
 )
 
 # Configuration LiveKit
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://livekit:CENTRALIZED_CONFIG["livekit"]["port"]")
-TOKEN_SERVICE_URL = os.getenv("TOKEN_SERVICE_URL", "http://livekit-token-service:CENTRALIZED_CONFIG["services"]["eloquence_exercises"]")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://livekit:7880")
+TOKEN_SERVICE_URL = os.getenv("TOKEN_SERVICE_URL", "http://livekit-token-service:8004")
 
 # Configuration du service Vosk
 VOSK_SERVICE_URL = os.getenv("VOSK_SERVICE_URL", "http://vosk-stt-analysis:8095")
 
 # Configuration du service Mistral
-MISTRAL_SERVICE_URL = os.getenv("MISTRAL_SERVICE_URL", "http://mistral-conversation:CENTRALIZED_CONFIG["services"]["mistral"]")
+MISTRAL_SERVICE_URL = os.getenv("MISTRAL_SERVICE_URL", "http://mistral-conversation:8001")
 
 # Configuration HTTPX optimisée selon la documentation
 httpx_timeout = httpx.Timeout(

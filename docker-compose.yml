@@ -1,0 +1,228 @@
+# =====================================================
+# FICHIER GÉNÉRÉ AUTOMATIQUEMENT
+# =====================================================
+# ATTENTION: Ce fichier est généré automatiquement
+# Ne pas modifier - Utiliser config/eloquence.config.yaml
+# =====================================================
+
+version: '3.8'
+services:
+  eloquence-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+    - 6379:6379
+    networks:
+    - eloquence-network
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  livekit-server:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+    - 7880:7880
+    - 7881:7881
+    - 40000-40100:40000-40100/udp
+    networks:
+    - eloquence-network
+    command:
+    - --config
+    - /app/livekit.yaml
+    volumes:
+    - ./livekit.yaml:/app/livekit.yaml:ro
+    depends_on:
+      eloquence-redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:7880/
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  haproxy:
+    image: haproxy:2.8-alpine
+    restart: unless-stopped
+    ports:
+    - 8081:8080
+    networks:
+    - eloquence-network
+    volumes:
+    - ./services/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+    - livekit-agent-1
+    - livekit-agent-2
+    - livekit-agent-3
+    - livekit-agent-4
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/stats
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  livekit-agent-1:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+    - 8011:8080
+    - 9091:9091
+    networks:
+    - eloquence-network
+    environment:
+    - AGENT_ID=agent_1
+    - AGENT_PORT=8080
+    - METRICS_PORT=9091
+    - LIVEKIT_URL=ws://livekit-server:7880
+    - LIVEKIT_API_KEY=devkey
+    - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+    - REDIS_URL=redis://eloquence-redis:6379
+    - VOSK_STT_URL=http://vosk-stt:8002
+    - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+    - AGENT_MODE=multi_agent
+    - MAX_SESSIONS=3
+    env_file:
+    - .env
+    depends_on:
+      eloquence-redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  livekit-agent-2:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+    - 8012:8080
+    - 9092:9091
+    networks:
+    - eloquence-network
+    environment:
+    - AGENT_ID=agent_2
+    - AGENT_PORT=8080
+    - METRICS_PORT=9091
+    - LIVEKIT_URL=ws://livekit-server:7880
+    - LIVEKIT_API_KEY=devkey
+    - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+    - REDIS_URL=redis://eloquence-redis:6379
+    - VOSK_STT_URL=http://vosk-stt:8002
+    - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+    - AGENT_MODE=multi_agent
+    - MAX_SESSIONS=3
+    env_file:
+    - .env
+    depends_on:
+      eloquence-redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  livekit-agent-3:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+    - 8013:8080
+    - 9093:9091
+    networks:
+    - eloquence-network
+    environment:
+    - AGENT_ID=agent_3
+    - AGENT_PORT=8080
+    - METRICS_PORT=9091
+    - LIVEKIT_URL=ws://livekit-server:7880
+    - LIVEKIT_API_KEY=devkey
+    - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+    - REDIS_URL=redis://eloquence-redis:6379
+    - VOSK_STT_URL=http://vosk-stt:8002
+    - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+    - AGENT_MODE=multi_agent
+    - MAX_SESSIONS=3
+    env_file:
+    - .env
+    depends_on:
+      eloquence-redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  livekit-agent-4:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+    - 8014:8080
+    - 9094:9091
+    networks:
+    - eloquence-network
+    environment:
+    - AGENT_ID=agent_4
+    - AGENT_PORT=8080
+    - METRICS_PORT=9091
+    - LIVEKIT_URL=ws://livekit-server:7880
+    - LIVEKIT_API_KEY=devkey
+    - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+    - REDIS_URL=redis://eloquence-redis:6379
+    - VOSK_STT_URL=http://vosk-stt:8002
+    - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+    - AGENT_MODE=multi_agent
+    - MAX_SESSIONS=3
+    env_file:
+    - .env
+    depends_on:
+      eloquence-redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+networks:
+  eloquence-network:
+    driver: bridge

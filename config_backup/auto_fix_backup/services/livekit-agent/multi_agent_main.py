@@ -2,23 +2,6 @@
 Point d'entrée principal pour le système multi-agents Studio Situations Pro
 Utilise directement MultiAgentManager avec les vrais agents configurés
 """
-
-# IMPORT OBLIGATOIRE DE LA CONFIGURATION CENTRALISÉE
-from config_client import (
-    get_livekit_config,
-    get_services_urls,
-    get_agent_config,
-    EloquenceConfigError
-)
-
-# Chargement de la configuration centralisée
-try:
-    CENTRALIZED_CONFIG = get_agent_config()
-except EloquenceConfigError as e:
-    print(f"Erreur configuration: {e}")
-    CENTRALIZED_CONFIG = {}
-
-
 import asyncio
 import logging
 import os
@@ -67,8 +50,8 @@ logger.info(f"   OPENAI_API_KEY présente: {'Oui' if os.getenv('OPENAI_API_KEY')
 logger.info(f"   MISTRAL_BASE_URL: {os.getenv('MISTRAL_BASE_URL', 'Non définie')}")
 
 # URLs des services
-MISTRAL_API_URL = os.getenv('MISTRAL_BASE_URL', 'http://mistral-conversation:CENTRALIZED_CONFIG["services"]["mistral"]/v1/chat/completions')
-VOSK_STT_URL = os.getenv('VOSK_STT_URL', 'http://vosk-stt:CENTRALIZED_CONFIG["services"]["vosk"]')
+MISTRAL_API_URL = os.getenv('MISTRAL_BASE_URL', 'http://mistral-conversation:8001/v1/chat/completions')
+VOSK_STT_URL = os.getenv('VOSK_STT_URL', 'http://vosk-stt:8002')
 
 class MultiAgentLiveKitService:
     """Service LiveKit intégré avec le gestionnaire multi-agents"""

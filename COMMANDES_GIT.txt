@@ -1,0 +1,20 @@
+COMMANDES GIT À EXÉCUTER MANUELLEMENT
+=====================================
+
+1. SAUVEGARDE DES MODIFICATIONS ACTUELLES :
+   git stash push -m "Sauvegarde avant mise à jour avec cursor/fix-livekit-bidirectional-ai-connection-cf4b"
+
+2. RÉCUPÉRATION DE LA NOUVELLE BRANCHE :
+   git fetch origin
+
+3. CHANGEMENT VERS LA NOUVELLE BRANCHE :
+   git checkout -b cursor/fix-livekit-bidirectional-ai-connection-cf4b origin/cursor/fix-livekit-bidirectional-ai-connection-cf4b
+
+4. VÉRIFICATION :
+   git status
+   git branch
+
+5. RÉCUPÉRATION DES MODIFICATIONS (optionnel) :
+   git stash pop
+
+EXÉCUTEZ CES COMMANDES DANS L'ORDRE DANS VOTRE TERMINAL GIT

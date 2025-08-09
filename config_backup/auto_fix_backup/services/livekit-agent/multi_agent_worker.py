@@ -3,23 +3,6 @@
 Worker multi-agent avec serveur HTTP pour health checks et métriques
 """
 
-
-# IMPORT OBLIGATOIRE DE LA CONFIGURATION CENTRALISÉE
-from config_client import (
-    get_livekit_config,
-    get_services_urls,
-    get_agent_config,
-    EloquenceConfigError
-)
-
-# Chargement de la configuration centralisée
-try:
-    CENTRALIZED_CONFIG = get_agent_config()
-except EloquenceConfigError as e:
-    print(f"Erreur configuration: {e}")
-    CENTRALIZED_CONFIG = {}
-
-
 import os
 import asyncio
 import logging
@@ -36,7 +19,7 @@ logger = logging.getLogger("multi_agent_worker")
 AGENT_ID = os.getenv("AGENT_ID", "agent_1")
 AGENT_PORT = int(os.getenv("AGENT_PORT", "8080"))
 METRICS_PORT = int(os.getenv("METRICS_PORT", "9091"))
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:CENTRALIZED_CONFIG["livekit"]["port"]")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
 API_KEY = os.getenv("LIVEKIT_API_KEY", "devkey")
 API_SECRET = os.getenv("LIVEKIT_API_SECRET", "devsecret123456789abcdef0123456789abcdef")
 

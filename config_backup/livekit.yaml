@@ -1,0 +1,20 @@
+# Configuration LiveKit pour Docker
+port: 7880
+log_level: info
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 40000
+  port_range_end: 40100
+  use_external_ip: false
+
+redis:
+  address: eloquence-redis-1:6379
+
+keys:
+  devkey: devsecret123456789abcdef0123456789abcdef
+
+# Configuration TURN pour connectivité
+turn:
+  enabled: false
+  # Désactivé pour tests locaux Docker

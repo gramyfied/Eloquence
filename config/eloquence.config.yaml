@@ -1,0 +1,118 @@
+# =====================================================
+# CONFIGURATION MAÎTRE ELOQUENCE - SEULE SOURCE DE VÉRITÉ
+# =====================================================
+# ATTENTION: Ce fichier est la SEULE source de configuration
+# Toute modification ailleurs dans le code est INTERDITE
+
+eloquence_config:
+  version: "1.0.0"
+  environment: "development"
+  
+  # =====================================================
+  # CONFIGURATION RÉSEAU CENTRALISÉE
+  # =====================================================
+  network:
+    domain: "localhost"
+    
+    # Ports principaux (SEULE DÉFINITION)
+    ports:
+      livekit_server: 7880
+      livekit_tcp: 7881
+      agent_http: 8080
+      redis: 6379
+      mistral_api: 8001
+      vosk_stt: 8002
+      eloquence_api: 8003
+      haproxy: 8081
+      
+    # Plages de ports RTC
+    rtc_port_range:
+      start: 40000
+      end: 40100
+      
+    # Configuration Docker interne
+    docker_network: "eloquence-network"
+    
+  # =====================================================
+  # SERVICES ET LEURS CONFIGURATIONS
+  # =====================================================
+  services:
+    livekit_server:
+      enabled: true
+      image: "livekit/livekit-server:latest"
+      internal_host: "livekit-server"
+      external_host: "localhost"
+      
+    livekit_agent:
+      enabled: true
+      mode: "multi"
+      instances: 4
+      internal_host: "livekit-agent"
+      external_host: "localhost"
+      
+    redis:
+      enabled: true
+      image: "redis:7-alpine"
+      internal_host: "eloquence-redis"
+      external_host: "localhost"
+      
+    mistral_api:
+      enabled: true
+      internal_host: "mistral-conversation"
+      external_host: "localhost"
+      
+    vosk_stt:
+      enabled: true
+      internal_host: "vosk-stt"
+      external_host: "localhost"
+      
+    haproxy:
+      enabled: true
+      image: "haproxy:2.8-alpine"
+      internal_host: "haproxy"
+      external_host: "localhost"
+      
+  # =====================================================
+  # URLS GÉNÉRÉES AUTOMATIQUEMENT
+  # =====================================================
+  urls:
+    # URLs Docker (services internes)
+    docker:
+      livekit: "ws://livekit-server:7880"
+      agent: "http://livekit-agent:8080"
+      redis: "redis://eloquence-redis:6379"
+      mistral: "http://mistral-conversation:8001/v1/chat/completions"
+      vosk: "http://vosk-stt:8002"
+      
+    # URLs externes (applications clientes)
+    external:
+      livekit: "ws://localhost:7880"
+      agent: "http://localhost:8080"
+      redis: "redis://localhost:6379"
+      mistral: "http://localhost:8001/v1/chat/completions"
+      vosk: "http://localhost:8002"
+      
+  # =====================================================
+  # SÉCURITÉ
+  # =====================================================
+  security:
+    livekit:
+      api_key: "devkey"
+      api_secret: "devsecret123456789abcdef0123456789abcdef"
+      
+  # =====================================================
+  # CONFIGURATION MULTI-AGENTS
+  # =====================================================
+  multi_agent:
+    enabled: true
+    instances: 4
+    ports:
+      agent_1: 8011
+      agent_2: 8012
+      agent_3: 8013
+      agent_4: 8014
+    metrics_ports:
+      agent_1: 9091
+      agent_2: 9092
+      agent_3: 9093
+      agent_4: 9094

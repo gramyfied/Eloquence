@@ -4,23 +4,6 @@ Interface STT personnalisée pour LiveKit utilisant le service Vosk
 Version corrigée pour LiveKit 1.2.3 avec toutes les corrections critiques
 """
 
-
-# IMPORT OBLIGATOIRE DE LA CONFIGURATION CENTRALISÉE
-from config_client import (
-    get_livekit_config,
-    get_services_urls,
-    get_agent_config,
-    EloquenceConfigError
-)
-
-# Chargement de la configuration centralisée
-try:
-    CENTRALIZED_CONFIG = get_agent_config()
-except EloquenceConfigError as e:
-    print(f"Erreur configuration: {e}")
-    CENTRALIZED_CONFIG = {}
-
-
 import asyncio
 import aiohttp
 import logging
@@ -49,7 +32,7 @@ class VoskSTTFixed(stt.STT):
     
     def __init__(
         self,
-        vosk_url: str = "http://vosk-stt:CENTRALIZED_CONFIG["services"]["vosk"]",
+        vosk_url: str = "http://vosk-stt:8002",
         language: str = "fr",
         sample_rate: int = 16000,
     ):

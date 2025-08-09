@@ -1,23 +1,6 @@
 """
 Service de génération de tokens JWT pour LiveKit
 """
-
-# IMPORT OBLIGATOIRE DE LA CONFIGURATION CENTRALISÉE
-from config_client import (
-    get_livekit_config,
-    get_services_urls,
-    get_agent_config,
-    EloquenceConfigError
-)
-
-# Chargement de la configuration centralisée
-try:
-    CENTRALIZED_CONFIG = get_agent_config()
-except EloquenceConfigError as e:
-    print(f"Erreur configuration: {e}")
-    CENTRALIZED_CONFIG = {}
-
-
 import os
 import time
 import jwt
@@ -32,7 +15,7 @@ import logging
 # Configuration
 API_KEY = os.getenv("LIVEKIT_API_KEY", "devkey")
 API_SECRET = os.getenv("LIVEKIT_API_SECRET", "devsecret123456789abcdef0123456789abcdef")
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://livekit-server:CENTRALIZED_CONFIG["livekit"]["port"]")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://livekit-server:7880")
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)

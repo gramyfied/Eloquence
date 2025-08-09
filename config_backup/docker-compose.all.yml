@@ -1,0 +1,361 @@
+version: '3.8'
+
+services:
+  # === SERVICES CORE ===
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - eloquence-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # === LIVEKIT SERVER ===
+  livekit-server:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "40000-40100:40000-40100/udp"
+    networks:
+      - eloquence-network
+    command: ["--config", "/app/livekit.yaml"]
+    volumes:
+      - ./livekit.yaml:/app/livekit.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7880/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === HAProxy Load Balancer ===
+  haproxy:
+    image: haproxy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - eloquence-network
+    volumes:
+      - ./services/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - livekit-agent-1
+      - livekit-agent-2
+      - livekit-agent-3
+      - livekit-agent-4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === AGENTS MULTI-AGENTS (4 instances) ===
+  livekit-agent-1:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+      - "8011:8080"  # Port externe unique pour chaque agent
+      - "9091:9091"  # Métriques Prometheus
+    networks:
+      - eloquence-network
+    environment:
+      - AGENT_ID=agent_1
+      - AGENT_PORT=8080
+      - METRICS_PORT=9091
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - AGENT_MODE=multi_agent
+      - MAX_SESSIONS=3
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-agent-2:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+      - "8012:8080"
+      - "9092:9092"
+    networks:
+      - eloquence-network
+    environment:
+      - AGENT_ID=agent_2
+      - AGENT_PORT=8080
+      - METRICS_PORT=9092
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - AGENT_MODE=multi_agent
+      - MAX_SESSIONS=3
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-agent-3:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+      - "8013:8080"
+      - "9093:9093"
+    networks:
+      - eloquence-network
+    environment:
+      - AGENT_ID=agent_3
+      - AGENT_PORT=8080
+      - METRICS_PORT=9093
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - AGENT_MODE=multi_agent
+      - MAX_SESSIONS=3
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-agent-4:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile.multi
+    restart: unless-stopped
+    ports:
+      - "8014:8080"
+      - "9094:9094"
+    networks:
+      - eloquence-network
+    environment:
+      - AGENT_ID=agent_4
+      - AGENT_PORT=8080
+      - METRICS_PORT=9094
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - AGENT_MODE=multi_agent
+      - MAX_SESSIONS=3
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === AGENT UNIFIÉ (pour les exercices individuels) ===
+  livekit-agent:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    networks:
+      - eloquence-network
+    environment:
+      - AGENT_ID=unified_agent
+      - AGENT_PORT=8080
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - AGENT_MODE=unified
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === SERVICE DE TOKENS LIVEKIT ===
+  livekit-token-service:
+    build:
+      context: ./services/livekit-agent
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    networks:
+      - eloquence-network
+    environment:
+      - SERVICE_MODE=token_service
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - REDIS_URL=redis://redis:6379/0
+      - TOKEN_SERVICE_PORT=8004
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === SERVICES SUPPORT ===
+  vosk-stt:
+    build:
+      context: ./services/vosk-stt-analysis
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    networks:
+      - eloquence-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mistral-conversation:
+    build:
+      context: ./services/mistral-conversation
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    networks:
+      - eloquence-network
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  eloquence-exercises-api:
+    build:
+      context: ./services/eloquence-exercises-api
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    networks:
+      - eloquence-network
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - VOSK_STT_URL=http://vosk-stt:8002
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # === MONITORING ===
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    networks:
+      - eloquence-network
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts/:/etc/prometheus/alerts/:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - eloquence-network
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/:ro
+      - ./monitoring/grafana/dashboards/:/var/lib/grafana/dashboards/:ro
+
+  # Services de monitoring désactivés sur Windows
+  # cadvisor et node-exporter nécessitent des montages Linux
+
+networks:
+  eloquence-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  vosk-models:
+  prometheus-data:
+  grafana-data:

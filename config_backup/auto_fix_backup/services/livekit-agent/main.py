@@ -5,7 +5,7 @@
 # 
 # ❌ INTERDIT :
 #   - Ports hardcodés (7880, 8080, etc.)
-#   - URLs hardcodées (ws://localhost:CENTRALIZED_CONFIG["livekit"]["port"], etc.)
+#   - URLs hardcodées (ws://localhost:7880, etc.)
 #   - Variables d'environnement directes (os.getenv)
 #
 # ✅ AUTORISÉ UNIQUEMENT :
@@ -777,7 +777,7 @@ async def run_cosmic_voice_exercise(ctx: JobContext, exercise_config: ExerciseCo
         logger.info(f"🎵 Session ID extraite: {session_id}")
         
         # Configuration WebSocket backend pour transmission pitch
-        backend_websocket_url = f"ws://localhost:CENTRALIZED_CONFIG["services"]["eloquence_exercises"]/ws/voice-analysis/{session_id}"
+        backend_websocket_url = f"ws://localhost:8004/ws/voice-analysis/{session_id}"
         
         # Créer l'agent spécialisé cosmic voice
         cosmic_agent = CosmicVoiceAgent(session_id, backend_websocket_url)

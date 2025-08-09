@@ -1,23 +1,6 @@
 """
 Agent multi-agents LiveKit simplifié
 """
-
-# IMPORT OBLIGATOIRE DE LA CONFIGURATION CENTRALISÉE
-from config_client import (
-    get_livekit_config,
-    get_services_urls,
-    get_agent_config,
-    EloquenceConfigError
-)
-
-# Chargement de la configuration centralisée
-try:
-    CENTRALIZED_CONFIG = get_agent_config()
-except EloquenceConfigError as e:
-    print(f"Erreur configuration: {e}")
-    CENTRALIZED_CONFIG = {}
-
-
 import os
 import asyncio
 import logging
@@ -168,7 +151,7 @@ async def main():
     # Configuration depuis les variables d'environnement
     config = AgentConfig(
         agent_id=os.environ.get("AGENT_ID", "agent_default"),
-        livekit_url=os.environ.get("LIVEKIT_URL", "ws://localhost:CENTRALIZED_CONFIG["livekit"]["port"]"),
+        livekit_url=os.environ.get("LIVEKIT_URL", "ws://localhost:7880"),
         api_key=os.environ.get("LIVEKIT_API_KEY"),
         api_secret=os.environ.get("LIVEKIT_API_SECRET"),
         redis_url=os.environ.get("REDIS_URL", "redis://redis:6379/0"),
