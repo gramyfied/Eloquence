@@ -322,8 +322,7 @@ class RobustLiveKitAgent:
             tts = openai.TTS(
                 voice=selected_voice,
                 api_key=api_key,
-                model="tts-1",
-                base_url="https://api.openai.com/v1"
+                model="tts-1"
             )
             logger.info(f"✅ TTS OpenAI créé avec voix {selected_voice} pour {self.exercise_config.ai_character}")
             return tts
@@ -897,8 +896,7 @@ async def legacy_entrypoint(ctx: JobContext):
                     tts = openai.TTS(
                         voice="alloy",
                         api_key=api_key,
-                        model="tts-1",
-                        base_url="https://api.openai.com/v1"
+                        model="tts-1"
                     )
                     logger.info("✅ TTS OpenAI créé")
                 except Exception as openai_error:

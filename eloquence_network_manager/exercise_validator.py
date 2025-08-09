@@ -30,6 +30,20 @@ from eloquence_network_manager import EloquenceNetworkManager, HealthCheckResult
 # Initialiser colorama
 init(autoreset=True)
 
+# --- ASCII Icons ---
+ICON_OK = "[OK]"
+ICON_KO = "[KO]"
+ICON_WARN = "[WARN]"
+ICON_FAIL = "[FAIL]"
+ICON_INFO = "[INFO]"
+ICON_ACTION = "[ACTION]"
+ICON_ERROR = "[ERROR]"
+ICON_SCAN = "[SCAN]"
+ICON_VALIDATE = "[VALIDATE]"
+ICON_MONITOR = "[MONITOR]"
+ICON_SUMMARY = "[SUMMARY]"
+ICON_DETAILS = "[DETAILS]"
+
 @dataclass
 class ExerciseMetadata:
     """Métadonnées d'un exercice détecté"""
@@ -139,7 +153,7 @@ class ExerciseDetector:
         Returns:
             List[ExerciseMetadata]: Liste des exercices détectés
         """
-        self.logger.info(f"🔍 Scan du projet: {self.project_path}")
+        self.logger.info(f"{ICON_SCAN} Scan du projet: {self.project_path}")
         
         exercises = []
         total_files = 0
@@ -167,7 +181,7 @@ class ExerciseDetector:
                         except Exception as e:
                             self.logger.warning(f"Erreur lors de l'analyse de {file_path}: {str(e)}")
                             
-            self.logger.info(f"✅ Scan terminé - {len(exercises)} exercices détectés dans {total_files} fichiers")
+            self.logger.info(f"{ICON_OK} Scan terminé - {len(exercises)} exercices détectés dans {total_files} fichiers")
             
             # Post-traitement: déduplication et enrichissement
             exercises = self._post_process_exercises(exercises)
@@ -175,7 +189,7 @@ class ExerciseDetector:
             return exercises
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur lors du scan: {str(e)}")
+            self.logger.error(f"{ICON_ERROR} Erreur lors du scan: {str(e)}")
             return []
             
     async def _analyze_file(self, file_path: Path, language: str) -> List[ExerciseMetadata]:
@@ -393,7 +407,7 @@ class ExerciseValidator:
         Returns:
             ValidationReport: Rapport de validation
         """
-        self.logger.info(f"🔍 Validation de l'exercice: {exercise.name}")
+        self.logger.info(f"{ICON_VALIDATE} Validation de l'exercice: {exercise.name}")
         
         try:
             # 1. Vérifier l'état des services requis
@@ -448,7 +462,7 @@ class ExerciseValidator:
             )
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur lors de la validation de {exercise.name}: {str(e)}")
+            self.logger.error(f"{ICON_ERROR} Erreur lors de la validation de {exercise.name}: {str(e)}")
             
             return ValidationReport(
                 exercise_name=exercise.name,
@@ -676,7 +690,7 @@ class ExerciseValidator:
             
     async def validate_all_exercises(self, exercises: List[ExerciseMetadata]) -> Dict[str, ValidationReport]:
         """Valide tous les exercices"""
-        self.logger.info(f"🔍 Validation de {len(exercises)} exercices...")
+        self.logger.info(f"{ICON_VALIDATE} Validation de {len(exercises)} exercices...")
         
         reports = {}
         
@@ -685,7 +699,7 @@ class ExerciseValidator:
                 report = await self.validate_exercise(exercise)
                 reports[exercise.name] = report
             except Exception as e:
-                self.logger.error(f"❌ Erreur lors de la validation de {exercise.name}: {str(e)}")
+                self.logger.error(f"{ICON_ERROR} Erreur lors de la validation de {exercise.name}: {str(e)}")
                 
         return reports
 
@@ -698,7 +712,14 @@ async def main():
     parser.add_argument('--validate-all', action='store_true', help='Valider tous les exercices détectés')
     parser.add_argument('--monitor', type=int, metavar='INTERVAL', help='Monitoring continu des exercices (interval en secondes)')
     parser.add_argument('--project-path', type=str, default='.', help='Chemin vers le projet à analyser')
-    parser.add_argument('--config', type=str, default='eloquence_network_config.yaml', help='Fichier de configuration réseau')
+    # Déterminer le fichier de configuration à utiliser (local si disponible)
+    script_dir = Path(__file__).resolve().parent
+    local_config_path = script_dir / 'eloquence_network_config.local.yaml'
+    default_config_path = script_dir / 'eloquence_network_config.yaml'
+    
+    config_to_use = local_config_path if local_config_path.exists() else default_config_path
+    
+    parser.add_argument('--config', type=str, default=str(config_to_use), help='Fichier de configuration réseau')
     parser.add_argument('--output', type=str, help='Fichier de sortie pour les résultats (JSON)')
     
     args = parser.parse_args()
@@ -710,80 +731,80 @@ async def main():
         # Initialiser le gestionnaire réseau pour la validation
         network_manager = EloquenceNetworkManager(config_path=args.config)
         if not await network_manager.initialize():
-            print(f"{Fore.RED}❌ Échec de l'initialisation du gestionnaire réseau{Style.RESET_ALL}")
+            print(f"{Fore.RED}{ICON_ERROR} Échec de l'initialisation du gestionnaire réseau{Style.RESET_ALL}")
             return 1
             
         validator = ExerciseValidator(network_manager)
         
         if args.scan:
             # Scanner le projet
-            print(f"{Fore.CYAN}🔍 Scan des exercices dans: {args.project_path}{Style.RESET_ALL}\n")
+            print(f"{Fore.CYAN}{ICON_SCAN} Scan des exercices dans: {args.project_path}{Style.RESET_ALL}\n")
             
             exercises = await detector.scan_project()
             
             if exercises:
-                print(f"{Fore.GREEN}✅ {len(exercises)} exercices détectés:{Style.RESET_ALL}\n")
+                print(f"{Fore.GREEN}{ICON_INFO} {len(exercises)} exercices détectés:{Style.RESET_ALL}\n")
                 
                 for exercise in exercises:
-                    print(f"📋 {exercise.name}")
-                    print(f"  └─ Type: {exercise.exercise_type}")
-                    print(f"  └─ Fichier: {exercise.file_path}:{exercise.line_number}")
-                    print(f"  └─ Langage: {exercise.language}")
-                    print(f"  └─ Services requis: {', '.join(exercise.required_services)}")
+                    print(f"{ICON_DETAILS} {exercise.name}")
+                    print(f"  - Type: {exercise.exercise_type}")
+                    print(f"  - Fichier: {exercise.file_path}:{exercise.line_number}")
+                    print(f"  - Langage: {exercise.language}")
+                    print(f"  - Services requis: {', '.join(exercise.required_services)}")
                     print()
                     
                 if args.output:
                     # Sauvegarder les résultats
                     with open(args.output, 'w', encoding='utf-8') as f:
                         json.dump([asdict(ex) for ex in exercises], f, indent=2, default=str)
-                    print(f"{Fore.GREEN}✅ Résultats sauvegardés: {args.output}{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}{ICON_INFO} Résultats sauvegardés: {args.output}{Style.RESET_ALL}")
                     
             else:
-                print(f"{Fore.YELLOW}⚠️ Aucun exercice détecté{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}{ICON_WARN} Aucun exercice détecté{Style.RESET_ALL}")
                 
         elif args.validate:
             # Valider un exercice spécifique
-            print(f"{Fore.CYAN}✅ Validation: {args.validate}{Style.RESET_ALL}\n")
+            print(f"{Fore.CYAN}{ICON_VALIDATE} Validation: {args.validate}{Style.RESET_ALL}\n")
             
             # D'abord scanner pour trouver l'exercice
             exercises = await detector.scan_project()
             target_exercise = next((ex for ex in exercises if ex.name == args.validate), None)
             
             if not target_exercise:
-                print(f"{Fore.RED}❌ Exercice '{args.validate}' non trouvé{Style.RESET_ALL}")
+                print(f"{Fore.RED}{ICON_ERROR} Exercice '{args.validate}' non trouvé{Style.RESET_ALL}")
                 return 1
                 
             # Valider l'exercice
             report = await validator.validate_exercise(target_exercise)
             
             # Afficher le rapport
-            print(f"🔍 Architecture: {report.architecture_type.title()}")
-            print(f"📊 Score de complétude: {report.completeness_score}%")
-            print(f"✅ Valide: {report.is_valid}")
-            print(f"⏱️ Temps estimé: {report.estimated_fix_time}")
+            print(f"{ICON_INFO} Architecture: {report.architecture_type.title()}")
+            print(f"{ICON_INFO} Score de complétude: {report.completeness_score}%")
+            print(f"{ICON_INFO} Valide: {report.is_valid}")
+            print(f"{ICON_INFO} Temps estimé: {report.estimated_fix_time}")
             
             if report.missing_services:
-                print(f"\n{Fore.RED}❌ Services manquants:{Style.RESET_ALL}")
+                print(f"\n{Fore.RED}{ICON_ERROR} Services manquants:{Style.RESET_ALL}")
                 for service in report.missing_services:
                     print(f"  - {service}")
                     
             if report.required_actions:
-                print(f"\n{Fore.YELLOW}🔧 Actions requises:{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}{ICON_ACTION} Actions requises:{Style.RESET_ALL}")
                 for action in report.required_actions:
                     print(f"  - {action}")
                     
             if report.recommendations:
-                print(f"\n{Fore.BLUE}💡 Recommandations:{Style.RESET_ALL}")
+                print(f"\n{Fore.BLUE}{ICON_INFO} Recommandations:{Style.RESET_ALL}")
                 for rec in report.recommendations:
                     print(f"  - {rec}")
                     
         elif args.validate_all:
             # Valider tous les exercices
-            print(f"{Fore.CYAN}🔍 Validation de tous les exercices{Style.RESET_ALL}\n")
+            print(f"{Fore.CYAN}{ICON_VALIDATE} Validation de tous les exercices{Style.RESET_ALL}\n")
             
             exercises = await detector.scan_project()
             if not exercises:
-                print(f"{Fore.YELLOW}⚠️ Aucun exercice détecté{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}{ICON_WARN} Aucun exercice détecté{Style.RESET_ALL}")
                 return 0
                 
             reports = await validator.validate_all_exercises(exercises)
@@ -792,24 +813,24 @@ async def main():
             valid_exercises = sum(1 for report in reports.values() if report.is_valid)
             avg_score = sum(report.completeness_score for report in reports.values()) / len(reports)
             
-            print(f"📊 Résumé global:")
-            print(f"  └─ Exercices valides: {valid_exercises}/{len(reports)}")
-            print(f"  └─ Score moyen: {avg_score:.1f}%")
+            print(f"{ICON_SUMMARY} Résumé global:")
+            print(f"  - Exercices valides: {valid_exercises}/{len(reports)}")
+            print(f"  - Score moyen: {avg_score:.1f}%")
             print()
             
             # Détails par exercice
             for exercise_name, report in reports.items():
-                status_icon = "✅" if report.is_valid else "❌"
+                status_icon = ICON_OK if report.is_valid else ICON_KO
                 status_color = Fore.GREEN if report.is_valid else Fore.RED
                 
                 print(f"{status_color}{status_icon} {exercise_name} ({report.completeness_score}%){Style.RESET_ALL}")
                 
                 if not report.is_valid and report.required_actions:
-                    print(f"  └─ Actions: {report.required_actions[0]}")
+                    print(f"  - Actions: {report.required_actions[0]}")
                     
         elif args.monitor:
             # Monitoring continu
-            print(f"{Fore.CYAN}🔄 Monitoring continu des exercices (intervalle: {args.monitor}s){Style.RESET_ALL}\n")
+            print(f"{Fore.CYAN}{ICON_MONITOR} Monitoring continu des exercices (intervalle: {args.monitor}s){Style.RESET_ALL}\n")
             
             try:
                 while True:
@@ -822,25 +843,25 @@ async def main():
                     
                     if valid_count == total_count:
                         color = Fore.GREEN
-                        icon = "✅"
+                        icon = ICON_OK
                     elif valid_count > total_count // 2:
                         color = Fore.YELLOW
-                        icon = "⚠️"
+                        icon = ICON_WARN
                     else:
                         color = Fore.RED
-                        icon = "❌"
+                        icon = ICON_FAIL
                         
                     print(f"{color}[{timestamp}] {icon} Exercices: {valid_count}/{total_count} valides{Style.RESET_ALL}")
                     
                     # Afficher les exercices en erreur
                     for name, report in reports.items():
                         if not report.is_valid:
-                            print(f"  {Fore.RED}└─ {name}: {report.required_actions[0] if report.required_actions else 'Erreur inconnue'}{Style.RESET_ALL}")
+                            print(f"  {Fore.RED}- {name}: {report.required_actions[0] if report.required_actions else 'Erreur inconnue'}{Style.RESET_ALL}")
                             
                     await asyncio.sleep(args.monitor)
                     
             except KeyboardInterrupt:
-                print(f"\n{Fore.YELLOW}🛑 Arrêt du monitoring demandé{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}>> Arrêt du monitoring demandé{Style.RESET_ALL}")
                 
         else:
             # Afficher l'aide
@@ -849,10 +870,10 @@ async def main():
         return 0
         
     except KeyboardInterrupt:
-        print(f"\n{Fore.YELLOW}🛑 Arrêt demandé par l'utilisateur{Style.RESET_ALL}")
+        print(f"\n{Fore.YELLOW}>> Arrêt demandé par l'utilisateur{Style.RESET_ALL}")
         return 0
     except Exception as e:
-        print(f"{Fore.RED}❌ Erreur fatale: {str(e)}{Style.RESET_ALL}")
+        print(f"{Fore.RED}{ICON_ERROR} {str(e)}{Style.RESET_ALL}")
         traceback.print_exc()
         return 1
     finally:

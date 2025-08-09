@@ -15,10 +15,10 @@ class EloquenceConversationService {
   static String get _tokenServiceUrl {
     if (kDebugMode && Platform.isAndroid) {
       // IP locale du PC de développement pour tests mobiles réels
-      return 'http://192.168.1.44:8004';
+      return 'http://192.168.1.44:8090';
     }
     // Localhost pour émulateur et web
-    return 'http://localhost:8004';
+    return 'http://localhost:8090';
   }
   
   static String get _livekitUrl {

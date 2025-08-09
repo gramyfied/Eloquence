@@ -5,6 +5,7 @@ Utilise directement MultiAgentManager avec les vrais agents configurés
 import asyncio
 import logging
 import os
+import json
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -23,12 +24,15 @@ from vosk_stt_interface import VoskSTTFixed as VoskSTT
 
 # Imports du système multi-agents
 from multi_agent_config import (
-    MultiAgentConfig, 
-    AgentPersonality, 
+    MultiAgentConfig,
+    AgentPersonality,
     InteractionStyle,
     ExerciseTemplates
 )
-from multi_agent_manager import MultiAgentManager
+# from multi_agent_manager import MultiAgentManager # Remplacé par l'orchestrateur
+from exercise_router import ExerciseRouter, ExerciseType
+from agent_communication_enhancer import AgentCommunicationEnhancer, create_communication_enhancer
+from agent_interaction_orchestrator import AgentInteractionOrchestrator, create_interaction_orchestrator
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -54,11 +58,16 @@ class MultiAgentLiveKitService:
     
     def __init__(self, multi_agent_config: MultiAgentConfig, user_data: dict = None):
         self.config = multi_agent_config
-        self.manager = MultiAgentManager(multi_agent_config)
+        self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
+        
+        # Initialisation des nouveaux composants
+        agents_map = {agent.agent_id: agent for agent in multi_agent_config.agents}
+        self.enhancer = create_communication_enhancer(agents_map)
+        self.orchestrator = create_interaction_orchestrator(agents_map, self.enhancer)
+        
         self.session: Optional[AgentSession] = None
         self.room = None
         self.is_running = False
-        self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
         
         logger.info(f"🎭 MultiAgentLiveKitService initialisé pour: {multi_agent_config.exercise_id}")
         logger.info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
@@ -197,8 +206,7 @@ class MultiAgentLiveKitService:
             tts = openai.TTS(
                 voice=default_voice,
                 api_key=api_key,
-                model="tts-1",
-                base_url="https://api.openai.com/v1"
+                model="tts-1"
             )
             logger.info(f"✅ TTS OpenAI créé avec voix par défaut: {default_voice}")
             return tts
@@ -222,33 +230,19 @@ class MultiAgentLiveKitService:
             if not moderator:
                 moderator = primary_agent
             
-            # Instructions système intégrées
-            system_instructions = f"""Tu es {moderator.name}, {moderator.role} dans une simulation multi-agents Studio Situations Pro.
+            # Instructions système génériques pour le contexte global
+            system_instructions = f"""Tu es un assistant IA orchestrant une simulation de conversation multi-agents.
 
-� AGENTS PRÉSENTS DANS LA SIMULATION:
+ AGENTS PRÉSENTS DANS LA SIMULATION:
 {chr(10).join([f"• {agent.name}: {agent.role} ({agent.interaction_style.value})" for agent in self.config.agents])}
-
-🎯 TON RÔLE EN TANT QUE {moderator.name}:
-{moderator.system_prompt}
 
 📋 CONTEXTE SIMULATION: {self.config.exercise_id}
 - Gestion des tours: {self.config.turn_management}
 - Durée maximale: {self.config.max_duration_minutes} minutes
 - Règles d'interaction: {self.config.interaction_rules}
 
-🔧 INSTRUCTIONS SPÉCIALES MULTI-AGENTS:
-- Présente-toi TOUJOURS avec ton vrai nom: {moderator.name}
-- Tu représentes l'agent principal mais coordonnes avec les autres
-- Adapte ton style: {moderator.interaction_style.value}
-- Mentionne les autres participants selon le contexte
-- Utilise un style professionnel adapté à la situation
-- Garde tes réponses courtes et engageantes (2-3 phrases max)
-- Identifie-toi clairement dans chaque message
-
-🎪 EXEMPLE DE RÉPONSE:
-"Bonjour ! Je suis {moderator.name}, votre {moderator.role}. [Ta réponse professionnelle ici]"
-
-IMPORTANT: Dans chaque message, commence par ton nom réel pour une identification claire."""
+La logique de l'application te fournira le rôle spécifique à jouer pour chaque réponse.
+"""
 
             agent = Agent(
                 instructions=system_instructions,
@@ -265,111 +259,114 @@ IMPORTANT: Dans chaque message, commence par ton nom réel pour une identificati
     async def generate_multiagent_response(self, user_message: str) -> str:
         """Génère une réponse orchestrée du système multi-agents avec voix appropriée"""
         try:
-            logger.info(f"🎭 Orchestration multi-agents pour: {user_message[:50]}...")
+            logger.info(f"🎶 Orchestration pour: {user_message[:50]}...")
             
-            # Utiliser le MultiAgentManager pour orchestrer la réponse
-            response_data = await self.manager.handle_user_input(user_message)
+            # 1. Utiliser l'Orchestrateur pour déterminer qui doit parler
+            orchestration_plan = await self.orchestrator.orchestrate_interaction(
+                user_message, self.config.exercise_id
+            )
             
-            # Récupérer l'agent principal qui répond
-            primary_agent_id = response_data.get('primary_speaker')
-            primary_response = response_data.get('primary_response', '')
+            primary_agent_id = orchestration_plan['primary_agent_id']
+            agent = self.orchestrator.agents[primary_agent_id]
             
-            # Identifier l'agent et préparer les réponses vocales
-            responses_to_speak = []
+            # 2. Générer la réponse de l'agent principal via LLM
+            try:
+                with open("services/livekit-agent/PROMPT_SYSTEME_IA_COMPLET.md", "r", encoding="utf-8") as f:
+                    base_prompt = f.read()
+            except FileNotFoundError:
+                logger.error("PROMPT_SYSTEME_IA_COMPLET.md non trouvé! Utilisation d'un prompt par défaut.")
+                base_prompt = "Tu es un assistant IA."
+
+            agent_prompt = f"""{base_prompt}
+
+Tu es MAINTENANT l'agent {agent.name} avec le rôle de {agent.role}.
+Ton style d'interaction est : {agent.interaction_style.value}.
+Tes instructions spécifiques sont :
+---
+{agent.system_prompt}
+---
+
+Le dernier message de l'utilisateur est : "{user_message}".
+Formule une réponse pertinente, courte (2-3 phrases) et dans ton style, en respectant tes instructions.
+Commence IMPÉRATIVEMENT par "[{agent.name}]: ".
+"""
             
-            if primary_agent_id and primary_agent_id in self.manager.agents:
-                agent = self.manager.agents[primary_agent_id]
-                logger.info(f"🗣️ {agent.name} ({agent.role}) répond")
-                
-                # Ajouter la réponse principale
+            llm_instance = self.session.llm
+            chat_stream = await llm_instance.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": agent_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                stream=True,
+            )
+            
+            primary_response = ""
+            async for chunk in chat_stream:
+                content = chunk.choices[0].delta.content
+                if content:
+                    primary_response += content
+
+            logger.info(f"🗣️ {agent.name} ({agent.role}) répond: {primary_response[:80]}...")
+
+            responses_to_speak = [{'agent': agent, 'text': primary_response, 'delay': 0}]
+
+            # 3. Ajouter les interventions forcées par l'orchestrateur
+            for forced in orchestration_plan.get('forced_interactions', []):
+                forced_agent = self.orchestrator.agents[forced['agent_id']]
                 responses_to_speak.append({
-                    'agent': agent,
-                    'text': primary_response,
-                    'delay': 0
+                    'agent': forced_agent,
+                    'text': forced['message'],
+                    'delay': 1000
                 })
-                
-                # Ajouter les réponses secondaires si présentes
-                secondary_responses = response_data.get('secondary_responses', [])
-                for sec_resp in secondary_responses:
-                    sec_agent_id = sec_resp.get('agent_id')
-                    if sec_agent_id in self.manager.agents:
-                        sec_agent = self.manager.agents[sec_agent_id]
-                        responses_to_speak.append({
-                            'agent': sec_agent,
-                            'text': sec_resp.get('reaction', ''),
-                            'delay': sec_resp.get('delay_ms', 1500)
-                        })
-            
-            # Faire parler chaque agent avec sa propre voix
+
+            # 4. Faire parler les agents
             if hasattr(self, 'session') and self.session and responses_to_speak:
                 await self.speak_multiple_agents(responses_to_speak)
             
-            # Retourner un texte formaté pour le log/display
-            formatted_text = f"[{responses_to_speak[0]['agent'].name}]: {responses_to_speak[0]['text']}"
-            for resp in responses_to_speak[1:]:
-                formatted_text += f"\n[{resp['agent'].name}]: {resp['text']}"
-            
-            return formatted_text
-            
+            # 5. Ne rien retourner, la parole est gérée par speak_multiple_agents
+            return ""
+
         except Exception as e:
-            logger.error(f"❌ Erreur orchestration multi-agents: {e}")
+            logger.error(f"❌ Erreur orchestration multi-agents: {e}", exc_info=True)
             return "[Système]: Je rencontre un problème technique. Pouvez-vous reformuler ?"
     
     async def speak_multiple_agents(self, responses_to_speak: list):
-        """Fait parler plusieurs agents avec leurs voix distinctes"""
+        """Fait parler plusieurs agents avec leurs voix distinctes. Le texte doit déjà contenir le nom de l'agent."""
         try:
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 logger.warning("⚠️ Pas de clé OpenAI, utilisation d'une voix unique")
-                # Fallback : tout dire avec une seule voix
-                full_text = " ".join([f"{r['agent'].name} dit: {r['text']}" for r in responses_to_speak])
+                full_text = " ".join([r['text'] for r in responses_to_speak])
                 await self.session.say(text=full_text)
                 return
             
-            for resp_data in responses_to_speak:
+            for i, resp_data in enumerate(responses_to_speak):
                 agent = resp_data['agent']
                 text = resp_data['text']
                 delay = resp_data['delay']
                 
-                # Attendre le délai si nécessaire
-                if delay > 0:
+                if i > 0 and delay > 0:
                     await asyncio.sleep(delay / 1000.0)
                 
-                # Créer un TTS avec la voix spécifique de l'agent
                 voice = agent.voice_config.get('voice', 'alloy')
                 speed = agent.voice_config.get('speed', 1.0)
                 
                 logger.info(f"🔊 {agent.name} parle avec la voix: {voice} (vitesse: {speed})")
                 
-                # Créer temporairement un nouveau TTS avec la bonne voix
                 try:
-                    temp_tts = openai.TTS(
-                        voice=voice,
-                        api_key=api_key,
-                        model="tts-1",
-                        speed=speed
-                    )
+                    temp_tts = openai.TTS(voice=voice, api_key=api_key, model="tts-1", speed=speed)
                     
-                    # Remplacer temporairement le TTS de la session
-                    original_tts = self.session._tts if hasattr(self.session, '_tts') else None
-                    self.session._tts = temp_tts
-                    
-                    # Faire parler l'agent avec sa voix
-                    await self.session.say(text=f"{agent.name}: {text}")
-                    
-                    # Restaurer le TTS original
-                    if original_tts:
-                        self.session._tts = original_tts
+                    # On utilise toujours session.say() pour garantir que chaque agent
+                    # parle avec sa propre voix, sans modifier le TTS global de la session.
+                    await self.session.say(text=text, tts=temp_tts)
                         
                 except Exception as tts_error:
-                    logger.warning(f"⚠️ Erreur TTS pour {agent.name}: {tts_error}")
-                    # Fallback : utiliser la voix par défaut
-                    await self.session.say(text=f"{agent.name} dit: {text}")
+                    logger.warning(f"⚠️ Erreur TTS pour {agent.name}: {tts_error}, fallback voix par défaut")
+                    await self.session.say(text=text)
                     
         except Exception as e:
-            logger.error(f"❌ Erreur speak_multiple_agents: {e}")
-            # Fallback : tout dire d'un coup
-            full_text = " ".join([f"{r['agent'].name}: {r['text']}" for r in responses_to_speak])
+            logger.error(f"❌ Erreur speak_multiple_agents: {e}", exc_info=True)
+            full_text = " ".join([r['text'] for r in responses_to_speak])
             await self.session.say(text=full_text)
     
     async def update_tts_voice(self, agent: AgentPersonality):
@@ -452,15 +449,16 @@ IMPORTANT: Dans chaque message, commence par ton nom réel pour une identificati
             logger.error(f"❌ Erreur génération message bienvenue: {e}")
             return f"[Système]: Bienvenue {self.user_data.get('user_name', 'Participant')} dans Studio Situations Pro."
 
-    async def run_session(self, ctx: JobContext):
+    async def run_session(self, ctx: JobContext, connect: bool = True):
         """Execute la session multi-agents avec gestion robuste"""
         self.is_running = True
         
         try:
             logger.info(f"🚀 Démarrage session multi-agents: {self.config.exercise_id}")
             
-            # Connexion avec retry
-            await self.connect_with_retry(ctx)
+            if connect:
+                # Connexion avec retry
+                await self.connect_with_retry(ctx)
             
             # Stocker ctx.room pour compatibilité LiveKit 1.2.3
             self.room = ctx.room
@@ -475,8 +473,7 @@ IMPORTANT: Dans chaque message, commence par ton nom réel pour une identificati
             # Création de la session
             self.session = AgentSession(**components)
             
-            # Initialisation du manager multi-agents
-            self.manager.initialize_session()
+            # Le manager est remplacé par l'orchestrateur, pas d'initialisation spécifique requise ici.
             
             # Démarrage de la session
             await self.session.start(agent=agent, room=ctx.room)
@@ -559,161 +556,155 @@ IMPORTANT: Dans chaque message, commence par ton nom réel pour une identificati
 # DÉTECTION AUTOMATIQUE DU TYPE D'EXERCICE
 # ==========================================
 
-def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict]:
-    """Détecte automatiquement le type d'exercice et extrait les données utilisateur"""
-    logger.info("🔍 DÉTECTION AUTOMATIQUE EXERCICE MULTI-AGENTS")
-    logger.info("="*60)
+def detect_exercise_from_metadata(metadata: str) -> tuple[Optional[MultiAgentConfig], dict]:
+    """Détecte le type d'exercice et les données utilisateur via le Router."""
+    logger.info("... ROUTAGE EXERCICE via ExerciseRouter ...")
     logger.info(f"📥 Métadonnées reçues: '{metadata}'")
     
     try:
         import json
         data = json.loads(metadata) if metadata else {}
-        exercise_type = data.get('exercise_type', 'studio_debate_tv')
+        exercise_id = data.get('exercise_type', 'studio_debate_tv')
         
-        # Extraire les données utilisateur
         user_data = {
             'user_name': data.get('user_name', 'Participant'),
             'user_subject': data.get('user_subject', 'votre présentation'),
         }
         
-        logger.info(f"🎯 Type détecté: '{exercise_type}'")
-        logger.info(f"👤 Utilisateur: {user_data['user_name']}")
-        logger.info(f"📋 Sujet: {user_data['user_subject']}")
+        # Utilisation du Router pour obtenir la configuration
+        route, _ = ExerciseRouter.route_exercise(exercise_id, user_data)
         
-        # Mapping des types d'exercices vers les configurations multi-agents
+        if route.exercise_type != ExerciseType.MULTI_AGENT:
+            logger.warning(f"⚠️ Tentative de lancer un exercice INDIVIDUEL ({exercise_id}) dans le main multi-agents.")
+            return None, user_data
+
+        # Mapping des exercices multi-agents vers les templates de configuration
         exercise_mapping = {
-            'studio_situations_pro': ExerciseTemplates.studio_debate_tv,
             'studio_debate_tv': ExerciseTemplates.studio_debate_tv,
-            'studio_debatPlateau': ExerciseTemplates.studio_debate_tv,
             'studio_job_interview': ExerciseTemplates.studio_job_interview,
-            'studio_entretienEmbauche': ExerciseTemplates.studio_job_interview,
             'studio_boardroom': ExerciseTemplates.studio_boardroom,
-            'studio_reunionDirection': ExerciseTemplates.studio_boardroom,
             'studio_sales_conference': ExerciseTemplates.studio_sales_conference,
-            'studio_conferenceVente': ExerciseTemplates.studio_sales_conference,
             'studio_keynote': ExerciseTemplates.studio_keynote,
-            'studio_conferencePublique': ExerciseTemplates.studio_keynote,
         }
-        
-        if exercise_type in exercise_mapping:
-            config = exercise_mapping[exercise_type]()
+
+        config_function = exercise_mapping.get(route.exercise_id)
+
+        if config_function:
+            config = config_function()
             logger.info(f"✅ Configuration multi-agents sélectionnée: {config.exercise_id}")
-            logger.info(f"   Agents: {[agent.name for agent in config.agents]}")
             return config, user_data
         else:
-            logger.warning(f"⚠️ Type inconnu '{exercise_type}', utilisation débat TV par défaut")
+            logger.warning(f"⚠️ Pas de config pour '{route.exercise_id}', fallback débat TV")
             return ExerciseTemplates.studio_debate_tv(), user_data
-            
+
     except Exception as e:
-        logger.error(f"❌ Erreur détection exercice: {e}")
-        logger.info("🔄 Fallback vers débat TV")
+        logger.error(f"❌ Erreur détection exercice: {e}", exc_info=True)
+        logger.info("🔄 Fallback vers débat TV par défaut")
         return ExerciseTemplates.studio_debate_tv(), {'user_name': 'Participant', 'user_subject': 'votre présentation'}
 
 
 # ==========================================
-# POINT D'ENTRÉE PRINCIPAL MULTI-AGENTS
+# POINT D'ENTRÉE UNIFIÉ (SUPER-ROUTEUR)
 # ==========================================
+from main import robust_entrypoint as individual_entrypoint
 
-async def multiagent_entrypoint(ctx: JobContext):
-    """Point d'entrée principal pour le système multi-agents Studio Situations Pro"""
-    logger.info("🎭 DÉMARRAGE SYSTÈME MULTI-AGENTS STUDIO SITUATIONS PRO")
+async def unified_entrypoint(ctx: JobContext):
+    """
+    Point d'entrée unifié qui route les exercices vers le bon système
+    (individuel ou multi-agents) en se basant sur les métadonnées.
+    """
+    logger.info("🚀 DÉMARRAGE POINT D'ENTRÉE UNIFIÉ")
     logger.info("="*70)
+
+    try:
+        # 1. Établir la connexion LiveKit une seule fois
+        logger.info("🔗 Établissement de la connexion LiveKit...")
+        await ctx.connect()
+        logger.info("✅ Connexion LiveKit établie avec succès")
+
+        # 2. Extraire les métadonnées
+        metadata = await get_metadata(ctx)
+        if not metadata:
+            logger.error("❌ Impossible de trouver les métadonnées. Arrêt.")
+            return
+
+        # 3. Router l'exercice
+        import json
+        data = json.loads(metadata)
+        exercise_id = data.get('exercise_type', 'confidence_boost')
+        
+        route, user_data = ExerciseRouter.route_exercise(exercise_id, data)
+        logger.info(f"📍 ROUTAGE: Exercice '{exercise_id}' dirigé vers le handler '{route.handler_module}'")
+
+        # 4. Lancer le bon handler
+        if route.exercise_type == ExerciseType.INDIVIDUAL:
+            logger.info("👤 Lancement du système pour exercice INDIVIDUEL...")
+            # Le contexte `ctx` est déjà connecté, on peut le passer directement
+            await individual_entrypoint(ctx)
+        else:
+            logger.info("👨‍👩‍👧‍👦 Lancement du système pour exercice MULTI-AGENTS...")
+            await multiagent_entrypoint(ctx, route, user_data)
+
+    except Exception as e:
+        logger.error(f"❌ ERREUR CRITIQUE dans le point d'entrée unifié: {e}", exc_info=True)
+        raise
+
+async def get_metadata(ctx: JobContext) -> Optional[str]:
+    """Extrait les métadonnées de la room ou des participants."""
+    # Vérification métadonnées room
+    if hasattr(ctx, 'room') and ctx.room and hasattr(ctx.room, 'metadata') and ctx.room.metadata:
+        logger.info("✅ Métadonnées trouvées depuis: ROOM")
+        return ctx.room.metadata
+
+    # Vérification métadonnées participants
+    if hasattr(ctx, 'room') and ctx.room:
+        await asyncio.sleep(2)  # Attendre que les participants se connectent
+        for participant in ctx.room.remote_participants.values():
+            if participant.metadata:
+                logger.info(f"✅ Métadonnées trouvées depuis: PARTICIPANT_{participant.identity}")
+                return participant.metadata
+    
+    logger.warning("⚠️ Aucune métadonnée trouvée.")
+    return None
+
+async def multiagent_entrypoint(ctx: JobContext, route: 'ExerciseRoute', user_data: dict):
+    """Point d'entrée pour les exercices multi-agents (appelé par le routeur unifié)."""
+    logger.info(f"🎭 DÉMARRAGE SYSTÈME MULTI-AGENTS pour '{route.exercise_id}'")
     
     try:
-        # 1. ÉTABLIR LA CONNEXION LIVEKIT
-        logger.info("🔗 Établissement de la connexion LiveKit multi-agents...")
-        await ctx.connect()
-        logger.info("✅ Connexion LiveKit multi-agents établie avec succès")
-        
-        # 2. DIAGNOSTIC ET DÉTECTION DU TYPE D'EXERCICE
-        logger.info("🔍 DIAGNOSTIC COMPLET - DÉTECTION EXERCICE MULTI-AGENTS")
-        logger.info("="*60)
-        
-        # Analyser les métadonnées pour détecter le type d'exercice
-        metadata = None
-        metadata_found_from = "AUCUNE"
-        
-        # Vérification métadonnées room
-        if hasattr(ctx, 'room') and ctx.room and hasattr(ctx.room, 'metadata'):
-            room_metadata = ctx.room.metadata
-            if room_metadata:
-                metadata = room_metadata
-                metadata_found_from = "ROOM"
-                logger.info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
-        
-        # Vérification métadonnées participants si pas trouvées dans room
-        if not metadata and hasattr(ctx, 'room') and ctx.room:
-            await asyncio.sleep(2)  # Attendre les participants
-            
-            for participant_id, participant in ctx.room.remote_participants.items():
-                participant_metadata = getattr(participant, 'metadata', None)
-                if participant_metadata:
-                    metadata = participant_metadata
-                    metadata_found_from = f"PARTICIPANT_{participant_id}"
-                    logger.info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
-                    break
-        
-        # 3. SÉLECTION ET INITIALISATION DE LA CONFIGURATION MULTI-AGENTS
-        logger.info("🎯 SÉLECTION CONFIGURATION MULTI-AGENTS")
-        
-        if metadata:
-            logger.info(f"📋 Utilisation métadonnées: {metadata}")
-            config, user_data = detect_exercise_from_metadata(metadata)
-        else:
-            logger.warning("⚠️ Aucune métadonnée trouvée, utilisation configuration par défaut")
-            config = ExerciseTemplates.studio_debate_tv()
-            user_data = {'user_name': 'Participant', 'user_subject': 'votre présentation'}
-        
+        # La connexion est déjà établie par le routeur unifié
+        config, _ = detect_exercise_from_metadata(json.dumps(user_data))
+        if config is None:
+             logger.error(f"❌ Configuration non trouvée pour l'exercice multi-agents {route.exercise_id}")
+             return
+
         logger.info("="*60)
         logger.info(f"🎭 CONFIGURATION MULTI-AGENTS SÉLECTIONNÉE:")
         logger.info(f"   ID: {config.exercise_id}")
-        logger.info(f"   Utilisateur: {user_data['user_name']}")
-        logger.info(f"   Sujet: {user_data['user_subject']}")
-        logger.info(f"   Gestion tours: {config.turn_management}")
-        logger.info(f"   Durée max: {config.max_duration_minutes} min")
-        logger.info(f"   Nombre d'agents: {len(config.agents)}")
-        
-        for i, agent in enumerate(config.agents, 1):
-            logger.info(f"   Agent {i}: {agent.name} ({agent.role}) - {agent.interaction_style.value}")
-            logger.info(f"            Voix: {agent.voice_config}")
-        
+        # ... (autres logs de config)
         logger.info("="*60)
         
-        # 4. DÉMARRAGE DU SERVICE MULTI-AGENTS
-        logger.info(f"🚀 Démarrage service multi-agents: {config.exercise_id}")
-        
         service = MultiAgentLiveKitService(config, user_data)
-        await service.run_session(ctx)
+        # Le run_session n'a plus besoin de se connecter, juste de démarrer la session
+        await service.run_session(ctx, connect=False)
         
     except Exception as e:
-        logger.error(f"❌ ERREUR CRITIQUE dans le système multi-agents: {e}")
-        logger.error("Détails de l'erreur:", exc_info=True)
-        
-        # Fallback vers le système simple si échec
-        logger.info("🔄 Tentative de fallback vers système simple...")
-        try:
-            from main import legacy_entrypoint
-            await legacy_entrypoint(ctx)
-        except Exception as fallback_error:
-            logger.error(f"❌ Même le fallback échoue: {fallback_error}")
-            raise
+        logger.error(f"❌ ERREUR CRITIQUE dans le système multi-agents: {e}", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
-    """Point d'entrée principal du worker LiveKit multi-agents"""
-    logger.info("🎯 DÉMARRAGE WORKER LIVEKIT MULTI-AGENTS STUDIO SITUATIONS PRO")
+    """Point d'entrée principal du worker LiveKit unifié"""
+    logger.info("🎯 DÉMARRAGE WORKER LIVEKIT UNIFIÉ (Individuel + Multi-Agents)")
     
-    # Configuration WorkerOptions avec l'entrypoint multi-agents
+    # Configuration WorkerOptions avec le nouveau point d'entrée unifié
     worker_options = agents.WorkerOptions(
-        entrypoint_fnc=multiagent_entrypoint
+        entrypoint_fnc=unified_entrypoint
     )
     
-    logger.info("🎯 WorkerOptions configuré avec système multi-agents")
-    logger.info(f"   - Système multi-agents: ✅")
-    logger.info(f"   - Agents configurés: Michel Dubois, Sarah Johnson, Marcus Thompson, etc.")
-    logger.info(f"   - Gestion des personnalités: ✅")
-    logger.info(f"   - Voix distinctes: ✅")
-    logger.info(f"   - Identification correcte: ✅")
+    logger.info("🎯 WorkerOptions configuré avec le routeur unifié")
+    logger.info(f"   - Gère les exercices individuels: ✅")
+    logger.info(f"   - Gère les exercices multi-agents: ✅")
     
     # Point d'entrée officiel avec CLI LiveKit
     agents.cli.run_app(worker_options)

@@ -29,6 +29,7 @@ from colorama import Fore, Back, Style, init
 import psutil
 import docker
 import traceback
+from dotenv import load_dotenv
 
 # Initialiser colorama pour Windows
 init(autoreset=True)
@@ -125,12 +126,15 @@ class EloquenceNetworkManager:
             
             # 4. Initialiser le client Docker
             self._init_docker_client()
+
+            # 5. Charger les variables d'environnement depuis .env
+            self._load_environment_variables()
             
-            # 5. Valider les variables d'environnement critiques
+            # 6. Valider les variables d'environnement critiques
             if not self._validate_environment_variables():
                 return False
                 
-            # 6. Test de connectivité initial
+            # 7. Test de connectivité initial
             initial_health = await self.check_all_services()
             healthy_services = sum(1 for result in initial_health['services'].values() 
                                  if result.status == 'healthy')
@@ -145,7 +149,20 @@ class EloquenceNetworkManager:
         except Exception as e:
             self.logger.error(f"❌ Erreur lors de l'initialisation: {str(e)}")
             return False
-            
+
+    def _load_environment_variables(self):
+        """Charge les variables d'environnement depuis le fichier .env à la racine"""
+        try:
+            project_root = Path(__file__).resolve().parent.parent
+            dotenv_path = project_root / '.env'
+            if dotenv_path.exists():
+                load_dotenv(dotenv_path=dotenv_path)
+                self.logger.info(f"🌍 Variables d'environnement chargées depuis {dotenv_path}")
+            else:
+                self.logger.warning(f"⚠️ Fichier .env non trouvé à {dotenv_path}, utilisation des variables système.")
+        except Exception as e:
+            self.logger.error(f"❌ Erreur lors du chargement du fichier .env: {e}")
+
     async def _load_configuration(self) -> bool:
         """Charge la configuration depuis le fichier YAML"""
         try:

@@ -69,19 +69,25 @@ class UniversalLiveKitAudioService {
         throw Exception('Impossible d\'obtenir le token LiveKit');
       }
       
-      // 2. Créer la room avec configuration simplifiée
+      // 2. Créer la room avec configuration optimisée
       _room = Room();
       
-      // 3. Configurer les listeners
+      // 3. Configurer les listeners avec gestion d'erreurs robuste
       _setupRoomListeners();
       
-      // 4. Se connecter à LiveKit avec URL configurée
+      // 4. Se connecter à LiveKit avec URL configurée et options ICE
       await _room!.connect(
         AppConfig.livekitUrl,
         token,
+        connectOptions: ConnectOptions(
+          autoSubscribe: true,
+        ),
       );
       
-      // 5. Publier l'audio
+      // 5. Attendre que la connexion soit établie
+      await _waitForConnection();
+      
+      // 6. Publier l'audio
       await _publishAudio();
       
       _isConnected = true;
@@ -98,15 +104,37 @@ class UniversalLiveKitAudioService {
     }
   }
 
-  /// Publication automatique de l'audio
+  /// Attendre que la connexion soit établie
+  Future<void> _waitForConnection() async {
+    int attempts = 0;
+    const maxAttempts = 30; // 30 secondes max
+    
+    while (_room?.connectionState != ConnectionState.connected && attempts < maxAttempts) {
+      await Future.delayed(const Duration(seconds: 1));
+      attempts++;
+      _logger.d('⏳ Attente connexion... Tentative $attempts/$maxAttempts');
+    }
+    
+    if (_room?.connectionState != ConnectionState.connected) {
+      throw Exception('Timeout de connexion LiveKit après $maxAttempts secondes');
+    }
+  }
+
+  /// Publication automatique de l'audio avec gestion d'erreurs améliorée
   Future<void> _publishAudio() async {
     try {
       if (_room?.localParticipant == null) {
         throw Exception('Participant local non disponible');
       }
 
-      // Créer le track audio avec configuration basique
-      _audioTrack = await LocalAudioTrack.create(AudioCaptureOptions());
+      // Créer le track audio avec configuration optimisée
+      _audioTrack = await LocalAudioTrack.create(
+        AudioCaptureOptions(
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        ),
+      );
 
       // Publier le track
       await _room!.localParticipant!.publishAudioTrack(_audioTrack!);
@@ -120,39 +148,74 @@ class UniversalLiveKitAudioService {
     }
   }
 
-  /// Configuration des listeners universels
+  /// Configuration des listeners avec gestion robuste des événements
   void _setupRoomListeners() {
     if (_room == null) return;
 
-    // Listener principal de la room
+    // Listener principal de la room avec gestion d'erreurs
     _room!.addListener(() {
-      _logger.d('📡 Événement room: ${_room!.connectionState}');
+      final state = _room!.connectionState;
+      _logger.d('📡 Événement room: $state');
+      
+      switch (state) {
+        case ConnectionState.connected:
+          if (!_isConnected) {
+            _isConnected = true;
+            onConnected?.call();
+          }
+          break;
+        case ConnectionState.disconnected:
+          if (_isConnected) {
+            _isConnected = false;
+            onDisconnected?.call();
+          }
+          break;
+        case ConnectionState.reconnecting:
+          _logger.w('🔄 Reconnexion en cours...');
+          break;
+        case ConnectionState.disconnected:
+          if (_isConnected) {
+            _isConnected = false;
+            onDisconnected?.call();
+          }
+          break;
+        default:
+          break;
+      }
     });
 
-    // Événements de participants
+    // Écouter les participants entrants
     _room!.addListener(() {
-      // Gestion basique des événements
-      if (_room!.connectionState == ConnectionState.connected) {
-        if (!_isConnected) {
-          _isConnected = true;
-          onConnected?.call();
+      for (final participant in _room!.remoteParticipants.values) {
+        for (final publication in participant.audioTrackPublications) {
+          if (publication.subscribed && publication.track != null) {
+            final track = publication.track as RemoteAudioTrack;
+            _setupAudioTrackListener(track);
+          }
         }
-      } else if (_room!.connectionState == ConnectionState.disconnected) {
-        if (_isConnected) {
-          _isConnected = false;
-          onDisconnected?.call();
-        }
+      }
+    });
+
+    // Écouter les données reçues
+    _room!.addListener(() {
+      // Gérer les messages de données reçus
+      // Cette fonctionnalité sera implémentée selon les besoins
+    });
+  }
+
+  /// Configuration du listener pour un track audio distant
+  void _setupAudioTrackListener(RemoteAudioTrack audioTrack) {
+    audioTrack.addListener(() {
+      // Ici on peut ajouter le monitoring du niveau audio
+      // pour fournir un feedback visuel à l'utilisateur
+      if (onAudioLevelChanged != null) {
+        // Simuler un niveau audio (à adapter selon vos besoins)
+        onAudioLevelChanged!(0.5);
       }
     });
   }
 
-  /// Configuration du monitoring audio
-  void _setupAudioMonitoring(RemoteAudioTrack audioTrack) {
-    // Ici on pourrait ajouter le monitoring du niveau audio
-    // pour fournir un feedback visuel à l'utilisateur
-  }
-
-  /// Envoi de données à l'agent IA
+  /// Envoi de données à l'agent IA avec gestion d'erreurs améliorée
   Future<void> sendData({
     required String type,
     required Map<String, dynamic> data,
@@ -177,6 +240,7 @@ class UniversalLiveKitAudioService {
       await _room!.localParticipant!.publishData(
         bytes,
         reliable: true,
+        topic: 'exercise_data',
       );
 
       _logger.d('📤 Données envoyées: $type');
@@ -187,7 +251,7 @@ class UniversalLiveKitAudioService {
     }
   }
 
-  /// Déconnexion propre
+  /// Déconnexion propre avec gestion d'erreurs
   Future<void> disconnect() async {
     _logger.i('🔌 Déconnexion LiveKit...');
     
@@ -200,7 +264,7 @@ class UniversalLiveKitAudioService {
     }
   }
 
-  /// Nettoyage des ressources
+  /// Nettoyage des ressources avec gestion d'erreurs robuste
   Future<void> _cleanup() async {
     try {
       // Arrêter la publication audio
@@ -211,7 +275,9 @@ class UniversalLiveKitAudioService {
 
       // Déconnecter la room
       if (_room != null) {
-        await _room!.disconnect();
+        if (_room!.connectionState == ConnectionState.connected) {
+          await _room!.disconnect();
+        }
         await _room!.dispose();
         _room = null;
       }
@@ -228,7 +294,7 @@ class UniversalLiveKitAudioService {
     }
   }
 
-  /// Obtenir token LiveKit depuis le service de tokens
+  /// Obtenir token LiveKit depuis le service de tokens avec gestion d'erreurs améliorée
   Future<String?> _getLiveKitToken(
     String exerciseType,
     String userId,
@@ -246,7 +312,7 @@ class UniversalLiveKitAudioService {
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'room_name': 'confidence_boost_${exerciseType}_${DateTime.now().millisecondsSinceEpoch}',
+          'room_name': 'exercise_${exerciseType}_${DateTime.now().millisecondsSinceEpoch}',
           'participant_name': 'user_$userId',
           'participant_identity': userId,
           'grants': {
@@ -264,7 +330,7 @@ class UniversalLiveKitAudioService {
           },
           'validity_hours': 2, // Token valide 2 heures
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -279,7 +345,9 @@ class UniversalLiveKitAudioService {
           throw Exception('Token manquant dans la réponse');
         }
       } else {
-        throw Exception('Erreur HTTP ${response.statusCode}: ${response.body}');
+        final errorBody = response.body;
+        _logger.e('❌ Erreur HTTP ${response.statusCode}: $errorBody');
+        throw Exception('Erreur HTTP ${response.statusCode}: $errorBody');
       }
       
     } catch (e) {

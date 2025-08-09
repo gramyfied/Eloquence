@@ -1,4 +1,4 @@
-# Configuration minimale pour Docker
+# Configuration LiveKit pour Docker
 port: 7880
 log_level: info
 
@@ -9,13 +9,10 @@ rtc:
   use_external_ip: false
 
 redis:
-  address: redis:6379
+  address: eloquence-redis-1:6379
 
 keys:
-  # Clés API pour développement (à changer en production)
   devkey: devsecret123456789abcdef0123456789abcdef
-
-# Configuration agent supprimée car non supportée par cette version de LiveKit
 
 # Configuration TURN pour connectivité
 turn:

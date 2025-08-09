@@ -99,8 +99,13 @@ async def unified_entrypoint(ctx: JobContext):
         logger.info(f"   Exercise: {exercise_type}")
         logger.info(f"   Loading: multi_agent_main.multiagent_entrypoint")
         logger.info("="*60)
-        from multi_agent_main import multiagent_entrypoint
-        await multiagent_entrypoint(ctx)
+        from multi_agent_main import multiagent_entrypoint, detect_exercise_from_metadata
+        import json
+        
+        # La logique multi-agent a besoin de la route et des données utilisateur parsées
+        route, user_data = detect_exercise_from_metadata(json.dumps(participant_metadata))
+        
+        await multiagent_entrypoint(ctx, route, user_data)
         logger.info("✅ Multi-agent session completed")
         
     elif exercise_type in INDIVIDUAL_EXERCISES:

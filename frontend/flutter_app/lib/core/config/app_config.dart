@@ -32,11 +32,11 @@ class AppConfig {
     return dotenv.env['LIVEKIT_API_SECRET'] ?? (kDebugMode ? 'secret' : null);
   }
 
-  // URL du serveur de tokens LiveKit
-  static String get livekitTokenUrl {
-    final url = dotenv.env['LIVEKIT_TOKEN_URL'] ?? 'http://localhost:8004';
-    return isProduction ? "https://your-prod-server.com/livekit-tokens" : _replaceLocalhostWithDevIp(url);
-  }
+          // URL du serveur de tokens LiveKit
+        static String get livekitTokenUrl {
+            final url = dotenv.env['LIVEKIT_TOKEN_URL'] ?? 'http://localhost:8004';
+            return isProduction ? "https://your-prod-server.com/livekit-tokens" : _replaceLocalhostWithDevIp(url);
+        }
 
   static String get whisperUrl {
     final url = dotenv.env['WHISPER_STT_URL'] ?? 'http://localhost:8001';
