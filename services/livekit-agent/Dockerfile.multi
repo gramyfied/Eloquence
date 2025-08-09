@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Définition du répertoire de travail
+WORKDIR /app
+
+# Copie des fichiers de dépendances
+COPY requirements.txt .
+
+# Installation des dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du code source
+COPY . .
+
+# Exposition des ports
+EXPOSE 8080 9091
+
+# Point d'entrée
+CMD ["python", "multi_agent_worker.py"]

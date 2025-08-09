@@ -1056,10 +1056,19 @@ class ExerciseManager:
 # ==========================================
 
 import numpy as np
-import webrtcvad
 import collections
 import struct
 import requests
+
+# Import conditionnel de webrtcvad pour éviter les erreurs de compilation
+try:
+    import webrtcvad
+    WEBRTCVAD_AVAILABLE = True
+    logger.info("✅ webrtcvad disponible pour l'analyse de pitch")
+except ImportError as e:
+    WEBRTCVAD_AVAILABLE = False
+    logger.warning(f"⚠️ webrtcvad non disponible: {e}")
+    logger.info("🔄 Mode dégradé: analyse de pitch désactivée")
 
 class RealTimePitchAnalyzer:
     """Analyseur de fréquence vocale en temps réel pour cosmic_voice"""
@@ -1068,7 +1077,14 @@ class RealTimePitchAnalyzer:
         self.sample_rate = sample_rate
         self.frame_duration_ms = frame_duration_ms
         self.frame_size = int(sample_rate * frame_duration_ms / 1000)
-        self.vad = webrtcvad.Vad(1)  # Agressivité modérée
+        
+        # Initialisation conditionnelle de webrtcvad
+        if WEBRTCVAD_AVAILABLE:
+            self.vad = webrtcvad.Vad(1)  # Agressivité modérée
+        else:
+            self.vad = None
+            logger.warning("⚠️ VAD désactivé - webrtcvad non disponible")
+        
         self.pitch_history = collections.deque(maxlen=10)
         
         logger.info(f"🎵 RealTimePitchAnalyzer initialisé:")
@@ -1087,11 +1103,16 @@ class RealTimePitchAnalyzer:
                 logger.debug(f"🎵 Frame size mismatch: {len(audio_data)} != {self.frame_size}")
                 return self._default_pitch_data()
             
-            # VAD (Voice Activity Detection)
-            is_speech = self.vad.is_speech(audio_frame, self.sample_rate)
-            if not is_speech:
-                logger.debug("🎵 Pas de voix détectée")
-                return self._default_pitch_data()
+            # VAD (Voice Activity Detection) - conditionnel
+            if self.vad is not None:
+                is_speech = self.vad.is_speech(audio_frame, self.sample_rate)
+                if not is_speech:
+                    logger.debug("🎵 Pas de voix détectée (VAD)")
+                    return self._default_pitch_data()
+            else:
+                # Mode dégradé: toujours considérer comme de la voix
+                is_speech = True
+                logger.debug("🎵 Mode dégradé: VAD désactivé, voix supposée")
             
             # Analyse de fréquence fondamentale (F0) via autocorrelation
             pitch_hz = self._estimate_fundamental_frequency(audio_data)
