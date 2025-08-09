@@ -192,7 +192,7 @@ class ConfidenceLiveKitService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final livekitUrl = AppConfig.livekitUrl.replaceAll('localhost', '192.168.1.44');
+        final livekitUrl = AppConfig.livekitUrl;
         
         return {
           'token': data['token'],
@@ -745,7 +745,7 @@ class ConfidenceLiveKitService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final livekitUrl = AppConfig.livekitUrl.replaceAll('localhost', '192.168.1.44');
+        final livekitUrl = AppConfig.livekitUrl;
         
         return {
           'token': data['token'],

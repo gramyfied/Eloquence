@@ -7,20 +7,15 @@ class AppConfig {
 
   // Fonction utilitaire pour substituer localhost avec l'IP correcte en mode debug
   static String _replaceLocalhostWithDevIp(String url) {
-    if (kDebugMode && url.contains('localhost')) {
-      // FIX: Utiliser l'IP machine hôte pour tous les cas car Docker expose sur 0.0.0.0
-      const devIp = '192.168.1.44';
-      final newUrl = url.replaceFirst('localhost', devIp);
-      debugPrint('🌐 URL remplacée: $url → $newUrl');
-      return newUrl;
-    }
+    // Ne force plus une IP fixe; laisse l'environnement contrôler.
+    // Si nécessaire, l'app peut fournir une URL déjà correcte via .env
     return url;
   }
 
   // URLs des services
   static String get livekitUrl {
     final url = dotenv.env['LIVEKIT_URL'] ?? 'ws://localhost:7880';
-    return isProduction ? "wss://your-prod-server.com" : _replaceLocalhostWithDevIp(url);
+    return isProduction ? url : _replaceLocalhostWithDevIp(url);
   }
 
   // Clés API LiveKit
