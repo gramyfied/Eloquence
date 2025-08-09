@@ -107,7 +107,7 @@ class CleanLiveKitService extends ChangeNotifier {
         _logger.i('[DIAGNOSTIC] Starting connection attempt...');
         
         await _room!.connect(
-          AppConfig.livekitUrl, // Utilisation de AppConfig.livekitUrl
+          url,
           token,
           connectOptions: connectOptions,
         );

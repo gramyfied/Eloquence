@@ -36,7 +36,7 @@ class SessionModel {
       
       final sessionId = json['session_id'] ?? '';
       final roomName = json['room_name'] ?? (json['session_id'] != null ? 'eloquence-${json['session_id']}' : ''); // Fallback pour room_name si non présent avec les clés livekit
-      final token = json['livekit_token'] ?? '';
+      final token = (json['livekit_token'] ?? json['token'] ?? '') as String; // Supporte aussi 'token'
       final livekitUrl = json['livekit_url'] ?? '';
       final initialMessageData = json['initial_message'];
 

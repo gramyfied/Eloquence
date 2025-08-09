@@ -220,18 +220,27 @@ class ApiService {
         // Vérifier que les champs requis sont présents
         if (!sessionData.containsKey('session_id') ||
             !sessionData.containsKey('room_name') ||
-            !sessionData.containsKey('livekit_token') ||
+            (!sessionData.containsKey('livekit_token') && !sessionData.containsKey('token')) ||
             !sessionData.containsKey('livekit_url')) {
-          logger.e(_tag, 'Données de session incomplètes (attend livekit_token, livekit_url): ${sessionData.keys.join(', ')}');
-          logger.e(_tag, 'Valeurs reçues: session_id=${sessionData['session_id']}, room_name=${sessionData['room_name']}, livekit_token=${sessionData['livekit_token']}, livekit_url=${sessionData['livekit_url']}');
+          logger.e(_tag, 'Données de session incomplètes (attend livekit_token/token et livekit_url): ${sessionData.keys.join(', ')}');
+          logger.e(_tag, 'Valeurs reçues: session_id=${sessionData['session_id']}, room_name=${sessionData['room_name']}, livekit_token=${sessionData['livekit_token']}, token=${sessionData['token']}, livekit_url=${sessionData['livekit_url']}');
           throw Exception('Données de session incomplètes');
         }
         
         final sessionId = sessionData['session_id'];
         final roomName = sessionData['room_name'];
-        final livekitUrl = sessionData['livekit_url'];
+        final livekitUrlFromServer = sessionData['livekit_url'] ?? '';
         
-        logger.i(_tag, 'Session ID: $sessionId, Room: $roomName, LiveKit URL (depuis sessionData): $livekitUrl');
+        // Harmoniser l'URL LiveKit pour le client (éviter les hostnames Docker internes)
+        final Uri? parsed = livekitUrlFromServer.isNotEmpty ? Uri.tryParse(livekitUrlFromServer) : null;
+        final bool looksInternal = parsed == null ||
+            parsed.host.isEmpty ||
+            parsed.host.contains('livekit') ||
+            parsed.host.contains('localhost');
+        final correctedLivekitUrl = looksInternal ? AppConfig.livekitUrl : livekitUrlFromServer;
+        sessionData['livekit_url'] = correctedLivekitUrl;
+        
+        logger.i(_tag, 'Session ID: $sessionId, Room: $roomName, LiveKit URL (corrigée pour client): $correctedLivekitUrl');
         
         final session = SessionModel.fromJson(sessionData);
         // Log AGRESSIF de l'objet SessionModel créé

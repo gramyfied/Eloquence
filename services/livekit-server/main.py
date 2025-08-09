@@ -30,7 +30,7 @@ app.add_middleware(
 
 # Configuration LiveKit depuis les variables d'environnement
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "devkey")
-LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "secret")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "devsecret123456789abcdef0123456789abcdef")
 LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
 
 # Cache de tokens actifs (en production, utiliser Redis)
