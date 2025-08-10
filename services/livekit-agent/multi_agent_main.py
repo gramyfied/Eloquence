@@ -59,6 +59,7 @@ class MultiAgentLiveKitService:
         self.room = None
         self.is_running = False
         self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
+        self.tts_lock = asyncio.Lock()
         
         logger.info(f"🎭 MultiAgentLiveKitService initialisé pour: {multi_agent_config.exercise_id}")
         logger.info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
@@ -316,61 +317,66 @@ IMPORTANT: Dans chaque message, commence par ton nom réel pour une identificati
             return "[Système]: Je rencontre un problème technique. Pouvez-vous reformuler ?"
     
     async def speak_multiple_agents(self, responses_to_speak: list):
-        """Fait parler plusieurs agents avec leurs voix distinctes"""
-        try:
-            api_key = os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                logger.warning("⚠️ Pas de clé OpenAI, utilisation d'une voix unique")
-                # Fallback : tout dire avec une seule voix
-                full_text = " ".join([f"{r['agent'].name} dit: {r['text']}" for r in responses_to_speak])
-                await self.session.say(text=full_text)
-                return
-            
-            for resp_data in responses_to_speak:
-                agent = resp_data['agent']
-                text = resp_data['text']
-                delay = resp_data['delay']
-                
-                # Attendre le délai si nécessaire
-                if delay > 0:
-                    await asyncio.sleep(delay / 1000.0)
-                
-                # Créer un TTS avec la voix spécifique de l'agent
-                voice = agent.voice_config.get('voice', 'alloy')
-                speed = agent.voice_config.get('speed', 1.0)
-                
-                logger.info(f"🔊 {agent.name} parle avec la voix: {voice} (vitesse: {speed})")
-                
-                # Créer temporairement un nouveau TTS avec la bonne voix
-                try:
-                    temp_tts = openai.TTS(
-                        voice=voice,
-                        api_key=api_key,
-                        model="tts-1",
-                        speed=speed
-                    )
-                    
-                    # Remplacer temporairement le TTS de la session
-                    original_tts = self.session._tts if hasattr(self.session, '_tts') else None
-                    self.session._tts = temp_tts
-                    
-                    # Faire parler l'agent avec sa voix
-                    await self.session.say(text=f"{agent.name}: {text}")
-                    
-                    # Restaurer le TTS original
-                    if original_tts:
-                        self.session._tts = original_tts
-                        
-                except Exception as tts_error:
-                    logger.warning(f"⚠️ Erreur TTS pour {agent.name}: {tts_error}")
-                    # Fallback : utiliser la voix par défaut
-                    await self.session.say(text=f"{agent.name} dit: {text}")
-                    
-        except Exception as e:
-            logger.error(f"❌ Erreur speak_multiple_agents: {e}")
-            # Fallback : tout dire d'un coup
-            full_text = " ".join([f"{r['agent'].name}: {r['text']}" for r in responses_to_speak])
+        """Fait parler plusieurs agents en publiant des pistes audio distinctes pour les réactions."""
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            logger.warning("⚠️ Pas de clé OpenAI, fallback vers une voix unique")
+            full_text = " ".join([f"{r['agent'].name} dit: {r['text']}" for r in responses_to_speak])
             await self.session.say(text=full_text)
+            return
+
+        # L'agent principal utilise session.say() pour une gestion simple
+        if responses_to_speak:
+            primary = responses_to_speak[0]
+            agent = primary['agent']
+            text = primary['text']
+            logger.info(f"🔊 [Principal] {agent.name} parle avec la voix par défaut de la session.")
+            await self.session.say(text=f"{agent.name}: {text}")
+
+        # Les agents secondaires publient leurs propres pistes audio en parallèle
+        if len(responses_to_speak) > 1:
+            secondary_tasks = []
+            for resp_data in responses_to_speak[1:]:
+                task = asyncio.create_task(self.speak_reacting_agent(resp_data, api_key))
+                secondary_tasks.append(task)
+            
+            if secondary_tasks:
+                await asyncio.gather(*secondary_tasks)
+
+    async def speak_reacting_agent(self, resp_data: dict, api_key: str):
+        """Génère et publie l'audio pour un agent réactif."""
+        if not self.is_running:
+            return
+
+        agent = resp_data.get('agent')
+        text = resp_data.get('text')
+        delay_ms = resp_data.get('delay', 0)
+
+        if not agent or not text:
+            logger.warning(f"Données de réaction invalides: {resp_data}")
+            return
+            
+        if delay_ms > 0:
+            await asyncio.sleep(delay_ms / 1000.0)
+
+        try:
+            voice = agent.voice_config.get('voice', 'alloy')
+            speed = agent.voice_config.get('speed', 1.0)
+            logger.info(f"🔊 [Réaction] {agent.name} génère audio avec voix {voice} (vitesse: {speed})")
+
+            tts = openai.TTS(voice=voice, api_key=api_key, model="tts-1", speed=speed)
+            audio_stream = await tts.synthesize(text=f"{agent.name}: {text}")
+
+            track = rtc.LocalAudioTrack.create_from_stream(audio_stream)
+            
+            track_name = f"reaction_{agent.agent_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            publication = await self.room.local_participant.publish_track(
+                track, rtc.TrackPublishOptions(name=track_name)
+            )
+            logger.info(f"✅ Piste audio '{track_name}' publiée pour la réaction de {agent.name}")
+
+        except Exception as e:
+            logger.error(f"❌ Erreur de publication audio pour {agent.name}: {e}", exc_info=True)
     
     async def update_tts_voice(self, agent: AgentPersonality):
         """Met à jour dynamiquement la voix TTS pour correspondre à l'agent"""

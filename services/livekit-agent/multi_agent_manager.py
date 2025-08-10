@@ -380,12 +380,14 @@ INSTRUCTIONS:
         
         # Déterminer si d'autres agents doivent réagir
         should_react = await self.should_trigger_reactions(primary_response)
+        logger.info(f"🤔 Should agents react? -> {should_react}")
         
         if not should_react:
+            logger.info("🤷 No reaction triggered based on current logic.")
             return reactions
             
         # Attendre un peu pour simuler une réaction naturelle
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(0.3)
         
         # Sélectionner 1-2 agents pour réagir (en passant la réponse primaire pour détecter les mentions)
         reacting_agents = self.select_reacting_agents(primary_agent_id, primary_response)
@@ -401,7 +403,7 @@ INSTRUCTIONS:
                     "agent_id": agent_id,
                     "agent_name": agent.name,
                     "reaction": reaction,
-                    "delay_ms": 1500 + (len(reactions) * 1000)  # Délai progressif
+                    "delay_ms": 300 + (len(reactions) * 500)  # Délai progressif
                 })
                 
                 # Ajouter à l'historique
@@ -417,28 +419,32 @@ INSTRUCTIONS:
         return reactions
     
     async def should_trigger_reactions(self, primary_response: str) -> bool:
-        """Détermine si des réactions doivent être déclenchées"""
+        """LOGIQUE AMÉLIORÉE : Plus sensible pour débat dynamique"""
         
-        # Détecter les mentions directes d'agents (distribution de parole)
-        agent_mentions = self._detect_agent_mentions(primary_response)
-        if agent_mentions:
-            logger.info(f"🎯 Distribution de parole détectée: {agent_mentions}")
+        # Mentions directes = réaction garantie
+        mentions = self._detect_agent_mentions(primary_response)
+        if mentions:
+            logger.info(f"✅ Reactions triggered due to direct mention of: {mentions}")
             return True
         
-        # Règles pour déclencher des réactions
-        triggers = [
-            "?" in primary_response,  # Question posée
-            len(primary_response) > 200,  # Réponse longue
-            any(word in primary_response.lower() for word in ["mais", "cependant", "toutefois"]),
-            datetime.now() - self.last_speaker_change > timedelta(seconds=30),  # Trop long sans interaction
-            # Mots-clés de distribution de parole
-            any(phrase in primary_response.lower() for phrase in [
-                "votre point de vue", "qu'en pensez-vous", "votre avis", "donnons la parole",
-                "passons à", "écoutons", "que diriez-vous"
-            ])
-        ]
+        # Déclencheurs plus sensibles pour débat TV :
+        trigger_results = {
+            "question": "?" in primary_response,
+            "long_response": len(primary_response) > 120,
+            "debate_conjunctions": any(word in primary_response.lower() for word in ["mais", "cependant", "toutefois", "néanmoins", "pourtant", "d'ailleurs", "en revanche", "au contraire"]),
+            "opinion_keywords": any(phrase in primary_response.lower() for phrase in ["je pense", "à mon avis", "selon moi", "il me semble", "c'est important", "il faut", "nous devons"]),
+            "time_since_last_speaker": datetime.now() - self.last_speaker_change > timedelta(seconds=15)
+        }
         
-        return any(triggers)
+        logger.info(f"🔎 Analysing reaction triggers: {trigger_results}")
+        
+        # Pour un débat dynamique, on considère que les agents doivent presque toujours réagir.
+        # On garde la détection de mentions comme filtre prioritaire.
+        # Simplification pour garantir une meilleure réactivité :
+        if len(self.conversation_history) < 2: # Pas de réaction au tout premier message
+            return False
+
+        return True
     
     def _detect_agent_mentions(self, text: str) -> List[str]:
         """Détecte les mentions explicites d'agents dans le texte"""
@@ -469,42 +475,34 @@ INSTRUCTIONS:
         return mentioned_agents
     
     def select_reacting_agents(self, exclude_agent_id: str, primary_response: str = "") -> List[str]:
-        """Sélectionne les agents qui vont réagir, en priorisant ceux mentionnés"""
+        """NOUVELLE LOGIQUE : 2-3 agents réagissent pour débat dynamique"""
         
-        eligible_agents = [
-            agent_id for agent_id in self.agents
-            if agent_id != exclude_agent_id
-        ]
-        
+        eligible_agents = [aid for aid in self.agents if aid != exclude_agent_id]
+        logger.info(f"👥 Eligible agents for reaction: {[self.agents[aid].name for aid in eligible_agents]}")
         if not eligible_agents:
             return []
         
-        # Vérifier si des agents spécifiques sont mentionnés
+        # 1. Agents mentionnés (priorité)
         mentioned_agents = self._detect_agent_mentions(primary_response)
+        prioritized = [aid for aid in mentioned_agents if aid in eligible_agents]
         
-        # Si des agents sont mentionnés, les prioriser
-        if mentioned_agents:
-            # Filtrer pour ne garder que les agents éligibles qui sont mentionnés
-            prioritized_agents = [
-                agent_id for agent_id in mentioned_agents
-                if agent_id in eligible_agents
-            ]
-            
-            if prioritized_agents:
-                logger.info(f"🎯 Agents priorisés car mentionnés: {[self.agents[aid].name for aid in prioritized_agents]}")
-                # Retourner tous les agents mentionnés (max 3 pour éviter la cacophonie)
-                return prioritized_agents[:3]
+        # 2. Agents moins actifs (équité)
+        remaining = [aid for aid in eligible_agents if aid not in prioritized]
+        sorted_remaining = sorted(remaining, key=lambda x: self.interaction_count.get(x, 0))
         
-        # Sinon, utiliser la logique habituelle : prioriser les agents qui ont moins parlé
-        sorted_agents = sorted(
-            eligible_agents,
-            key=lambda x: self.interaction_count.get(x, 0)
-        )
+        # 🔥 NOUVELLE RÈGLE : TOUJOURS 2-3 RÉACTIONS pour débat dynamique
+        target_reactions = min(3, len(eligible_agents))
         
-        # Sélectionner 1-2 agents
-        import random
-        num_reactions = min(random.randint(1, 2), len(sorted_agents))
-        return sorted_agents[:num_reactions]
+        # Construire la sélection finale
+        final_selection = prioritized
+        
+        # Ajouter les agents les moins actifs jusqu'à atteindre la cible
+        additional_needed = target_reactions - len(final_selection)
+        if additional_needed > 0:
+            final_selection.extend(sorted_remaining[:additional_needed])
+
+        logger.info(f"✅ Selected reacting agents: {[self.agents[aid].name for aid in final_selection]}")
+        return final_selection
     
     async def generate_agent_reaction(self, agent: AgentPersonality, primary_response: str) -> str:
         """Génère une vraie réaction d'agent via LLM optimisé"""

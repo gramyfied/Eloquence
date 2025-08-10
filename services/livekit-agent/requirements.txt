@@ -20,3 +20,4 @@ requests>=2.31.0
 # Optimisation LLM avec cache Redis
 redis>=4.5.0
 hiredis>=2.2.0  # Accélérateur Redis C
+redis>=4.0.0

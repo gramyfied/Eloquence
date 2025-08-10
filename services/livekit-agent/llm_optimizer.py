@@ -48,10 +48,23 @@ class LLMOptimizer:
             logger.warning(f"⚠️ Redis non disponible pour cache: {e}")
             return None
     
-    def _generate_cache_key(self, prompt: str, context: Dict) -> str:
-        """Génère une clé de cache unique basée sur le prompt et le contexte"""
+    def _generate_cache_key(self, messages: List[Dict[str, str]], context: Dict) -> str:
+        """Génère une clé de cache unique basée sur les messages et le contexte pour éviter les collisions."""
+        
+        # Le system_prompt contient l'identité de l'agent (nom, rôle, personnalité),
+        # ce qui est crucial pour différencier les réactions.
+        system_prompt_content = ""
+        if messages and messages[0]['role'] == 'system':
+            system_prompt_content = messages[0]['content']
+
+        # Le dernier message utilisateur est aussi pertinent.
+        user_prompt_content = ""
+        if messages and messages[-1]['role'] == 'user':
+            user_prompt_content = messages[-1]['content']
+
         cache_data = {
-            'prompt': prompt,
+            'system_prompt_hash': hashlib.md5(system_prompt_content.encode()).hexdigest(),
+            'user_prompt': user_prompt_content,
             'context': json.dumps(context, sort_keys=True)
         }
         cache_string = json.dumps(cache_data, sort_keys=True)
@@ -108,7 +121,7 @@ class LLMOptimizer:
         # Vérifier le cache si activé
         if use_cache and self.redis_client:
             cache_key = self._generate_cache_key(
-                messages[-1]['content'] if messages else '',
+                messages,  # Passer la liste complète des messages
                 {'task_type': task_type, 'complexity': complexity}
             )
             
