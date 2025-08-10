@@ -16,6 +16,7 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, silero
 from vosk_stt_interface import VoskSTTFixed as VoskSTT
+from llm_client import llm_client
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -536,14 +537,28 @@ def create_openai_stt():
     )
 
 def create_mistral_llm():
-    """Crée un LLM configuré pour utiliser OpenAI (plus stable)"""
-    api_key = os.getenv('OPENAI_API_KEY')
-    logger.info(f"🔍 Configuration OpenAI LLM - Modèle: gpt-4o-mini")
-    
-    return openai.LLM(
-        model="gpt-4o-mini",
-        api_key=api_key,
-    )
+    """(Obsolète) Crée un LLM. Remplacé par llm_client."""
+    logger.warning("Appel à create_mistral_llm (obsolète), utilisation de llm_client maintenant")
+
+    class LLMClientWrapper:
+        async def chat(self, messages, **kwargs):
+            from openai.types.chat import ChatCompletion, ChatCompletionMessage
+            from openai.types.chat.chat_completion import Choice
+            
+            response_text = await llm_client.generate_response(messages)
+            
+            message = ChatCompletionMessage(role='assistant', content=response_text)
+            choice = Choice(index=0, message=message, finish_reason='stop')
+            
+            return ChatCompletion(
+                id='chatcmpl-mock',
+                choices=[choice],
+                created=0,
+                model='gpt-4o-mini-wrapped',
+                object='chat.completion',
+            )
+
+    return LLMClientWrapper()
 
 # ==========================================
 # POINT D'ENTRÉE PRINCIPAL ROBUSTE
@@ -1058,7 +1073,7 @@ class ExerciseManager:
 # ==========================================
 
 import numpy as np
-import webrtcvad
+# import webrtcvad
 import collections
 import struct
 import requests
@@ -1070,7 +1085,7 @@ class RealTimePitchAnalyzer:
         self.sample_rate = sample_rate
         self.frame_duration_ms = frame_duration_ms
         self.frame_size = int(sample_rate * frame_duration_ms / 1000)
-        self.vad = webrtcvad.Vad(1)  # Agressivité modérée
+        # self.vad = webrtcvad.Vad(1)  # Agressivité modérée
         self.pitch_history = collections.deque(maxlen=10)
         
         logger.info(f"🎵 RealTimePitchAnalyzer initialisé:")
@@ -1089,11 +1104,11 @@ class RealTimePitchAnalyzer:
                 logger.debug(f"🎵 Frame size mismatch: {len(audio_data)} != {self.frame_size}")
                 return self._default_pitch_data()
             
-            # VAD (Voice Activity Detection)
-            is_speech = self.vad.is_speech(audio_frame, self.sample_rate)
-            if not is_speech:
-                logger.debug("🎵 Pas de voix détectée")
-                return self._default_pitch_data()
+            # VAD (Voice Activity Detection) - Temporairement désactivé
+            is_speech = True # self.vad.is_speech(audio_frame, self.sample_rate)
+            # if not is_speech:
+            #     logger.debug("🎵 Pas de voix détectée")
+            #     return self._default_pitch_data()
             
             # Analyse de fréquence fondamentale (F0) via autocorrelation
             pitch_hz = self._estimate_fundamental_frequency(audio_data)

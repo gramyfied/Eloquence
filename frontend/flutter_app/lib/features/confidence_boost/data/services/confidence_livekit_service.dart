@@ -152,7 +152,11 @@ class ConfidenceLiveKitService {
   /// Obtenir token spécialisé pour le Tribunal des Idées Impossibles
   Future<Map<String, dynamic>?> _getTribunalToken(String userId, String sessionId) async {
     try {
-      final tokenUrl = AppConfig.livekitTokenUrl.replaceAll('localhost', '192.168.1.44');
+      var tokenUrl = AppConfig.livekitTokenUrl.replaceAll('localhost', '192.168.1.44');
+      if (tokenUrl.contains(':8003')) {
+        tokenUrl = tokenUrl.replaceAll(':8003', ':8004');
+        _logger.i('🔧 Port corrigé de 8003 à 8004 pour le tribunal.');
+      }
       
       final participantName = 'tribunal_${userId}_${DateTime.now().millisecondsSinceEpoch}';
       final roomName = 'tribunal_idees_$sessionId';
@@ -699,9 +703,13 @@ class ConfidenceLiveKitService {
     String sessionId,
   ) async {
     try {
-      // Remplacer localhost par IP pour Android
-      final tokenUrl = AppConfig.livekitTokenUrl.replaceAll('localhost', '192.168.1.44');
-      _logger.i('🌐 URL remplacée: ${AppConfig.livekitTokenUrl} → $tokenUrl');
+      // Remplacer localhost par IP pour Android et forcer le port correct
+      var tokenUrl = AppConfig.livekitTokenUrl.replaceAll('localhost', '192.168.1.44');
+      if (tokenUrl.contains(':8003')) {
+        tokenUrl = tokenUrl.replaceAll(':8003', ':8004');
+        _logger.i('🔧 Port corrigé de 8003 à 8004.');
+      }
+      _logger.i('🌐 URL finale du token service: $tokenUrl');
 
       // Générer des identifiants uniques
       final participantName = 'flutter_${userId}_${DateTime.now().millisecondsSinceEpoch}';
