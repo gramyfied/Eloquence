@@ -272,18 +272,20 @@ class RobustLiveKitAgent:
             
         # STT avec fallback Vosk → OpenAI
         try:
-            stt = create_vosk_stt_with_fallback()
+            # DÉBOGAGE: Forcer l'utilisation de OpenAI STT pour valider le flux
+            logger.warning("🧪 MODE DÉBOGAGE: Utilisation de OpenAI STT au lieu de Vosk")
+            stt = create_openai_stt()
             components['stt'] = stt
-            logger.info("✅ STT avec fallback créé")
+            logger.info("✅ STT OpenAI (pour test) créé")
         except Exception as e:
             logger.error(f"❌ Erreur STT: {e}")
             raise
             
         # LLM avec fallback
         try:
-            llm_instance = create_mistral_llm()
+            llm_instance = openai.LLM(model="gpt-4o-mini")
             components['llm'] = llm_instance
-            logger.info("✅ LLM OpenAI créé")
+            logger.info("✅ LLM OpenAI natif créé")
         except Exception as e:
             logger.error(f"❌ Erreur LLM: {e}")
             raise
@@ -769,8 +771,8 @@ async def run_cosmic_voice_exercise(ctx: JobContext, exercise_config: ExerciseCo
         vad = silero.VAD.load()
         
         # STT pas nécessaire pour cosmic_voice (on analyse le pitch directement)
-        # Mais requis par LiveKit
-        stt = create_vosk_stt_with_fallback()
+        # Mais requis par LiveKit (mode débug)
+        stt = create_openai_stt()
         
         # LLM minimal (optionnel pour cosmic_voice)
         llm_instance = create_mistral_llm()
@@ -888,15 +890,17 @@ async def legacy_entrypoint(ctx: JobContext):
             raise
             
         try:
-            stt = create_vosk_stt_with_fallback()
-            logger.info("✅ STT avec fallback créé")
+            # DÉBOGAGE: Forcer l'utilisation de OpenAI STT pour valider le flux
+            logger.warning("🧪 MODE DÉBOGAGE: Utilisation de OpenAI STT au lieu de Vosk dans legacy_entrypoint")
+            stt = create_openai_stt()
+            logger.info("✅ STT OpenAI (pour test) créé")
         except Exception as e:
             logger.error(f"❌ Erreur STT: {e}")
             raise
             
         try:
-            llm_instance = create_mistral_llm()
-            logger.info("✅ LLM OpenAI créé")
+            llm_instance = openai.LLM(model="gpt-4o-mini")
+            logger.info("✅ LLM OpenAI natif créé")
         except Exception as e:
             logger.error(f"❌ Erreur LLM: {e}")
             raise
