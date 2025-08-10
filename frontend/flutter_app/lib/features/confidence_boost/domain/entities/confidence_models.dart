@@ -180,6 +180,16 @@ class ConfidenceMetrics extends HiveObject {
     required this.energyLevel,
     required this.timestamp,
   });
+
+  factory ConfidenceMetrics.fromJson(Map<String, dynamic> json) {
+    return ConfidenceMetrics(
+      confidenceLevel: (json['confidence_level'] ?? 0.0).toDouble(),
+      voiceClarity: (json['voice_clarity'] ?? 0.0).toDouble(),
+      speakingPace: (json['speaking_pace'] ?? 0.0).toDouble(),
+      energyLevel: (json['energy_level'] ?? 0.0).toDouble(),
+      timestamp: DateTime.now(),
+    );
+  }
 }
 
 // Message de conversation
