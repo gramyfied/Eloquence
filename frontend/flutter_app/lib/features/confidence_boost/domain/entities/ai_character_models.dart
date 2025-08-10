@@ -13,6 +13,7 @@ import 'confidence_scenario.dart';
 enum AICharacterType {
   thomas, // Manager expérimenté, coaching professionnel
   marie,  // Cliente experte, perspective utilisateur
+  juge_magistrat, // NOUVEAU
 }
 
 // Enum pour les états émotionnels des personnages
@@ -197,6 +198,8 @@ extension AICharacterTypeExtension on AICharacterType {
         return 'Thomas';
       case AICharacterType.marie:
         return 'Marie';
+      case AICharacterType.juge_magistrat:
+        return 'Juge Magistrat';
     }
   }
 
@@ -206,6 +209,8 @@ extension AICharacterTypeExtension on AICharacterType {
         return 'Manager expérimenté, expert en coaching professionnel';
       case AICharacterType.marie:
         return 'Cliente experte, apporte la perspective utilisateur';
+      case AICharacterType.juge_magistrat:
+        return 'Juge bienveillant du Tribunal des Idées Impossibles, expert en argumentation créative';
     }
   }
 
@@ -215,6 +220,8 @@ extension AICharacterTypeExtension on AICharacterType {
         return 'Leadership, présentation, management d\'équipe';
       case AICharacterType.marie:
         return 'Communication client, négociation, relation commerciale';
+      case AICharacterType.juge_magistrat:
+        return 'Argumentation, créativité, éloquence, pensée critique ludique';
     }
   }
 
@@ -233,6 +240,13 @@ extension AICharacterTypeExtension on AICharacterType {
           'Adaptation au public',
           'Storytelling',
           'Gestion des objections',
+        ];
+      case AICharacterType.juge_magistrat:
+        return [
+          'Écoute active et patiente',
+          'Questions créatives et inattendues',
+          'Évaluation d\'arguments impossibles',
+          'Verdicts humoristiques constructifs',
         ];
     }
   }

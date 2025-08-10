@@ -244,11 +244,18 @@ class RobustLiveKitAgent:
         except Exception as e:
             logger.error(f"❌ Échec reconnexion: {e}")
             
-    def create_robust_agent(self) -> Agent:
-        """Crée un agent robuste avec gestion d'erreurs"""
+    def create_robust_agent(self, dynamic_instructions: Optional[str] = None) -> Agent:
+        """Crée un agent robuste avec gestion d'erreurs et instructions dynamiques"""
         try:
+            instructions = dynamic_instructions or self.exercise_config.instructions
+            
+            if dynamic_instructions:
+                logger.info("✅ Utilisation du prompt dynamique fourni par le client.")
+            else:
+                logger.info("ℹ️ Utilisation du prompt statique du template serveur.")
+
             agent = Agent(
-                instructions=self.exercise_config.instructions,
+                instructions=instructions,
                 tools=[generate_confidence_metrics, send_confidence_feedback],
             )
             logger.info(f"🎯 Agent créé pour exercice: {self.exercise_config.exercise_id}")
@@ -342,8 +349,8 @@ class RobustLiveKitAgent:
             logger.error(f"❌ Même Silero TTS échoue: {e}")
             raise
             
-    async def run_exercise(self, ctx: JobContext):
-        """Execute l'exercice avec gestion robuste"""
+    async def run_exercise(self, ctx: JobContext, dynamic_metadata: Optional[Dict[str, Any]] = None):
+        """Execute l'exercice avec gestion robuste et métadonnées dynamiques"""
         self.is_running = True
         
         try:
@@ -359,8 +366,19 @@ class RobustLiveKitAgent:
             # Initialisation des composants
             components = await self.initialize_components()
             
-            # Création de l'agent
-            self.agent = self.create_robust_agent()
+            # Création de l'agent avec instructions dynamiques
+            # 1. Essayer de parser les métadonnées de la room
+            room_metadata = {}
+            try:
+                if ctx.room.metadata:
+                    room_metadata = json.loads(ctx.room.metadata)
+            except Exception:
+                logger.warning("N'a pas pu parser les métadonnées de la room.")
+
+            # 2. Récupérer le prompt du système
+            dynamic_instructions = room_metadata.get('system_prompt')
+
+            self.agent = self.create_robust_agent(dynamic_instructions=dynamic_instructions)
             
             # Création de la session
             self.session = AgentSession(**components)
@@ -695,7 +713,7 @@ async def robust_entrypoint(ctx: JobContext):
             
             # Tracer le parsing dans ExerciseManager
             logger.info("🔄 Appel ExerciseManager.get_exercise_from_metadata...")
-            exercise_config = ExerciseManager.get_exercise_from_metadata(metadata)
+            exercise_config, parsed_metadata = ExerciseManager.get_exercise_from_metadata(metadata)
             logger.info(f"✅ Exercice retourné par ExerciseManager:")
             logger.info(f"   - ID: '{exercise_config.exercise_id}'")
             logger.info(f"   - Titre: '{exercise_config.title}'")
@@ -721,7 +739,8 @@ async def robust_entrypoint(ctx: JobContext):
         else:
             # Créer l'agent robuste pour exercices conversationnels
             robust_agent = RobustLiveKitAgent(exercise_config)
-            await robust_agent.run_exercise(ctx)
+            # Transmettre les métadonnées parsées pour que l'agent puisse les utiliser
+            await robust_agent.run_exercise(ctx, dynamic_metadata=parsed_metadata)
         
     except Exception as e:
         logger.error(f"❌ ERREUR CRITIQUE dans l'agent robuste: {e}")
@@ -997,8 +1016,8 @@ class ExerciseManager:
     """Gestionnaire centralisé des exercices pour faciliter l'ajout de nouveaux types"""
     
     @staticmethod
-    def get_exercise_from_metadata(metadata: str) -> ExerciseConfig:
-        """Détermine l'exercice à partir des métadonnées"""
+    def get_exercise_from_metadata(metadata: str) -> (ExerciseConfig, Dict[str, Any]):
+        """Détermine l'exercice et retourne aussi les métadonnées parsées."""
         logger.info("🔍 EXERCICE MANAGER - PARSING MÉTADONNÉES")
         logger.info("="*50)
         logger.info(f"📥 Input metadata: '{metadata}'")
@@ -1053,7 +1072,7 @@ class ExerciseManager:
             logger.info(f"   - Titre: '{result.title}'")
             logger.info(f"   - Personnage: '{result.ai_character}'")
             logger.info("="*50)
-            return result
+            return result, data
                 
         except Exception as e:
             logger.error("❌ ERREUR PARSING MÉTADONNÉES")
@@ -1062,7 +1081,7 @@ class ExerciseManager:
             logger.error(f"   Metadata problématique: '{metadata}'")
             logger.error("   🔄 Fallback vers confidence_boost")
             logger.info("="*50)
-            return ExerciseTemplates.confidence_boost()
+            return ExerciseTemplates.confidence_boost(), {}
     
     
     @staticmethod
