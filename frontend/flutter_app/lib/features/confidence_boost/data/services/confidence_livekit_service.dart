@@ -8,6 +8,8 @@ import 'package:logger/logger.dart';
 import '../../../../core/config/network_config.dart';
 import '../../domain/entities/confidence_scenario.dart';
 import '../../domain/entities/confidence_models.dart';
+import 'ai_character_factory.dart';
+import '../../domain/entities/ai_character_models.dart';
 
 /// Extension pour les phases d'exercice
 enum ExercisePhase {
@@ -64,8 +66,10 @@ class ConfidenceLiveKitService {
   Future<bool> startTribunalIdeasSession({
     required String userId,
     String? sessionId,
+    required String debateTopic, // NOUVEAU: Le sujet du débat
   }) async {
     _logger.i("⚖️ Démarrage session Tribunal via LiveKit (logique simplifiée)");
+    _logger.d("   Sujet reçu: $debateTopic");
 
     if (_isConnected) {
       _logger.w("Une session est déjà en cours. Veuillez d'abord la fermer.");
@@ -78,12 +82,15 @@ class ConfidenceLiveKitService {
       title: 'Tribunal des Idées Impossibles',
       description: 'Défendez des idées impossibles devant un tribunal bienveillant.',
       difficulty: 'Intermédiaire',
-      prompt: 'Défendez une idée impossible avec conviction et éloquence.',
+      prompt: 'Vous êtes avocat(e) dans le Tribunal des Idées Impossibles. Défendez votre cause farfelue avec conviction, créativité et éloquence. Le juge est bienveillant mais exigeant - développez longuement vos arguments !',
       type: ConfidenceScenarioType.presentation,
-      durationSeconds: 900,
+      durationSeconds: 1200, // 20 minutes au lieu de 15
       tips: [
-        'Structurez votre argumentation', 'Utilisez des exemples créatifs',
-        'Maintenez votre conviction', 'Répondez aux objections avec assurance'
+        'Prenez votre temps pour développer vos arguments',
+        'Soyez créatif et original dans votre plaidoirie',
+        'Utilisez des exemples concrets et farfelus',
+        'Le juge apprécie l\'humour et la conviction',
+        'N\'hésitez pas à être théâtral et expressif',
       ],
       keywords: ['argumentation', 'créativité', 'éloquence', 'conviction'],
       icon: '⚖️',
@@ -113,8 +120,29 @@ class ConfidenceLiveKitService {
       _phaseController.add(ExercisePhase.connected);
 
       await _publishAudio();
-      
-      await _sendTribunalConfiguration();
+
+      // NOUVELLE LOGIQUE: Générer le prompt système dynamically
+      final dummyProfile = UserAdaptiveProfile(
+        userId: userId,
+        confidenceLevel: 5,
+        experienceLevel: 5,
+        strengths: [],
+        weaknesses: [],
+        preferredTopics: [],
+        preferredCharacter: AICharacterType.juge_magistrat,
+        lastSessionDate: DateTime.now(),
+        totalSessions: 0,
+        averageScore: 0,
+      );
+      final factory = AICharacterFactory();
+      final characterInstance = factory.createCharacter(
+        scenario: tribunalScenario,
+        userProfile: dummyProfile,
+        preferredCharacter: AICharacterType.juge_magistrat,
+      );
+      final systemPrompt = characterInstance.getSystemPrompt(debateTopic: debateTopic);
+
+      await _sendTribunalConfiguration(systemPrompt);
 
       _phaseController.add(ExercisePhase.ready);
       _logger.i('⚖️ Session Tribunal des Idées Impossibles prête.');
@@ -243,7 +271,7 @@ class ConfidenceLiveKitService {
 
 
   /// Envoyer configuration spécialisée pour le tribunal
-  Future<void> _sendTribunalConfiguration() async {
+  Future<void> _sendTribunalConfiguration(String systemPrompt) async {
     if (!_isConnected || localParticipant == null) return;
     try {
       final configMessage = {
@@ -252,10 +280,12 @@ class ConfidenceLiveKitService {
         'scenario_id': _currentScenario!.id,
         'session_id': _sessionId,
         'ai_character': 'juge_magistrat',
+        'system_prompt': systemPrompt,
       };
       final data = utf8.encode(jsonEncode(configMessage));
       await localParticipant!.publishData(data, reliable: true);
-      _logger.i("⚖️ Configuration du tribunal envoyée.");
+      _logger.i("⚖️ Configuration du tribunal avec prompt dynamique envoyée.");
+      _logger.d("   Prompt envoyé: $systemPrompt");
     } catch(e) {
       _logger.e("Erreur envoi configuration tribunal: $e");
     }
@@ -412,6 +442,7 @@ class ConfidenceLiveKitService {
         return await startTribunalIdeasSession(
           userId: 'reconnect_user',
           sessionId: _sessionId,
+          debateTopic: 'Sujet non disponible après reconnexion', // Placeholder pour la reconnexion
         );
       } else {
         return await startConfidenceBoostSession(

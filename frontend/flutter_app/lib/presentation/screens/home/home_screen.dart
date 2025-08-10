@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/navigation/navigation_state.dart';
 import '../../../features/confidence_boost/presentation/screens/confidence_boost_entry.dart';
-import '../../../features/confidence_boost/presentation/screens/tribunal_idees_screen.dart';
+import '../../../features/confidence_boost/presentation/screens/tribunal_idees_screen_real.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -66,7 +66,7 @@ class HomeScreen extends StatelessWidget {
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const TribunalIdeesScreen(),
+            builder: (_) => const TribunalIdeesScreenReal(),
           ),
         ),
       },

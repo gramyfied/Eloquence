@@ -42,7 +42,9 @@ class _TribunalIdeesScreenRealState extends ConsumerState<TribunalIdeesScreenRea
   double _exerciseScore = 0.0;
   bool _isLevelingUp = false;
   bool _isBadgeUnlocked = false;
+  bool _isShowingXPAnimation = false; // ← NOUVELLE VARIABLE
   bool _isExerciseActive = false;
+  bool _hasSessionStarted = false; // Pour différencier le premier démarrage
   
   // Getters pour accéder aux données de gamification
   int get _currentXP => _gamificationProfile?.totalXP ?? 0;
@@ -109,6 +111,11 @@ class _TribunalIdeesScreenRealState extends ConsumerState<TribunalIdeesScreenRea
     _initializeGamification();
     _generateNewTopic(); // Génère un sujet IA dès le démarrage
     _setupLiveKitListeners();
+      
+    // NOUVEAU: Démarrer automatiquement l'exercice - DÉSACTIVÉ POUR CORRECTION
+    /* WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startExercise();
+    }); */
   }
   
   /// Initialiser le système de gamification
@@ -395,6 +402,7 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
           ),
           
           // Overlays d'animation
+          if (_isShowingXPAnimation) _buildXPAnimation(),
           if (_isLevelingUp) _buildLevelUpAnimation(),
           if (_isBadgeUnlocked) _buildBadgeUnlockAnimation(),
           
@@ -834,8 +842,8 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
               AnimatedDefaultTextStyle(
                 duration: Duration(milliseconds: 500),
                 style: TextStyle(
-                  color: _isExerciseActive ? Color(0xFFFFD700) : Colors.white,
-                  fontSize: _isExerciseActive ? 24 : 22,
+                  color: Color(0xFFFFD700), // Toujours actif
+                  fontSize: 24, // Toujours grande taille
                   fontWeight: FontWeight.bold,
                 ),
                 child: Text(
@@ -850,7 +858,7 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
               AnimatedSwitcher(
                 duration: Duration(milliseconds: 300),
                 child: Text(
-                  _isExerciseActive ? 'En cours d\'audience...' : 'Maître des débats impossibles',
+                  'En cours d\'audience...', // Toujours en mode exercice
                   key: ValueKey(_isExerciseActive),
                   style: TextStyle(
                     color: Color(0xFFFFD700),
@@ -872,11 +880,11 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
               if (_isExerciseActive && _conversationMessages.isNotEmpty)
                 _buildCompactConversationArea(),
               
-              // Boutons d'action
-              if (!_isExerciseActive) _buildActionButtons(),
-              
-              // Contrôles pendant l'exercice (version compacte)
-              if (_isExerciseActive) _buildCompactControls(),
+              // Contrôles conditionnels
+              if (_isExerciseActive)
+                _buildCompactControls()
+              else
+                _buildEndSessionControls(),
               
               SizedBox(height: 16),
               
@@ -1031,51 +1039,6 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     );
   }
 
-  /// Boutons d'action (interface de bienvenue)
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _selectRandomTopic,
-            icon: Icon(Icons.refresh, size: 16),
-            label: Text(
-              'Nouveau sujet',
-              style: TextStyle(fontSize: 11),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _startExercise,
-            icon: Icon(Icons.play_arrow, size: 16),
-            label: Text(
-              'Commencer',
-              style: TextStyle(fontSize: 11),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFFD700),
-              foregroundColor: Colors.black,
-              padding: EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   /// Contrôles compacts pendant l'exercice
   Widget _buildCompactControls() {
     return Column(
@@ -1122,7 +1085,7 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
                   ),
                 ),
                 child: Text(
-                  'Terminer',
+                  'Terminer la Session',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -1132,6 +1095,51 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  /// Contrôles de fin de session
+  Widget _buildEndSessionControls() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _selectRandomTopic,
+            icon: Icon(Icons.refresh, size: 16),
+            label: Text(
+              'Nouveau Sujet',
+              style: TextStyle(fontSize: 11),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _startExercise,
+            icon: Icon(Icons.play_arrow, size: 16),
+            label: Text(
+              _hasSessionStarted ? 'Recommencer' : 'Commencer',
+              style: TextStyle(fontSize: 11),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFFFD700),
+              foregroundColor: Colors.black,
+              padding: EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -1660,20 +1668,87 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
       },
     );
   }
+
+  Widget _buildXPAnimation() {
+    return AnimatedBuilder(
+      animation: _xpAnimationController,
+      builder: (context, child) {
+        return Container(
+          color: Colors.green.withOpacity(0.2 * _xpAnimationController.value),
+          child: Center(
+            child: Transform.scale(
+              scale: 0.5 + (0.5 * _xpAnimationController.value),
+              child: Container(
+                padding: EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.5),
+                      blurRadius: 20,
+                      spreadRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      '+$_earnedXP XP',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Excellent travail !',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
   
   // MÉTHODES DE CONTRÔLE AVEC LIVEKIT
   
   /// Démarrer la session LiveKit spécialisée Tribunal
   Future<void> _startExercise() async {
+    _logger.i('📢 Démarrage exercice avec sujet: "$_currentDebateTopic"');
+    if (_currentDebateTopic.isEmpty) {
+      _logger.e('❌ Tentative de démarrer avec un sujet vide !');
+      _showErrorSnackBar('Le sujet du débat ne peut pas être vide.');
+      return;
+    }
+
     setState(() {
       _isExerciseActive = true;
       _isServiceConnected = false;
+      _hasSessionStarted = true; // Marquer que la session a commencé au moins une fois
     });
     
     try {
       // Utiliser la méthode spécialisée tribunal directement
       final success = await _livekitService.startTribunalIdeasSession(
         userId: 'tribunal_user_${DateTime.now().millisecondsSinceEpoch}',
+        debateTopic: _currentDebateTopic,
       );
 
       if (success) {
@@ -1760,11 +1835,15 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
     // Calcul XP avec bonus
     int earnedXP = _calculateXPWithBonus(score);
     
-    // Animation XP
+    // Animation XP (en premier)
     await _animateXPGain(earnedXP);
     
-    // Vérifications
+    // Attendre un peu avant les autres animations
+    await Future.delayed(Duration(milliseconds: 500));
+    
+    // Vérifications (dans l'ordre)
     _checkLevelUp();
+    await Future.delayed(Duration(milliseconds: 300));
     await _checkBadgeUnlock();
     _checkAchievementProgress();
     
@@ -1784,6 +1863,7 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
   Future<void> _animateXPGain(int xp) async {
     setState(() {
       _earnedXP = xp;
+      _isShowingXPAnimation = true; // ← NOUVELLE LIGNE
     });
     
     // Mettre à jour le profil avec les nouveaux XP
@@ -1792,22 +1872,23 @@ RÉPONDS UNIQUEMENT AVEC LE NOUVEAU SUJET CRÉATIF:''';
       final newLevel = UserGamificationProfile.calculateLevel(newTotalXP);
       final newXPRequired = UserGamificationProfile.calculateXPForNextLevel(newLevel);
       
-      final updatedProfile = _gamificationProfile!.copyWith(
-        totalXP: newTotalXP,
-        currentLevel: newLevel,
-        xpRequiredForNextLevel: newXPRequired,
-        lastSessionDate: DateTime.now(),
-        totalSessions: _gamificationProfile!.totalSessions + 1,
-      );
-      
-      await _gamificationRepository.updateUserProfile(updatedProfile);
-      
       setState(() {
-        _gamificationProfile = updatedProfile;
+        _gamificationProfile = _gamificationProfile?.copyWith(
+          totalXP: newTotalXP,
+          currentLevel: newLevel,
+          xpRequiredForNextLevel: newXPRequired,
+        );
       });
     }
     
-    _xpAnimationController.forward();
+    // Démarrer l'animation XP
+    _xpAnimationController.forward().then((_) {
+      setState(() {
+        _isShowingXPAnimation = false; // ← NOUVELLE LIGNE
+      });
+      _xpAnimationController.reset(); // ← NOUVELLE LIGNE
+    });
+    
     HapticFeedback.mediumImpact();
   }
   

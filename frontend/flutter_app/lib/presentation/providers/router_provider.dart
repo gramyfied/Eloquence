@@ -22,7 +22,7 @@ import '../../features/story_generator/presentation/screens/story_generator_home
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/widgets/auth_wrapper.dart';
-import '../../features/confidence_boost/presentation/screens/tribunal_idees_screen.dart';
+import '../../features/confidence_boost/presentation/screens/tribunal_idees_screen_real.dart';
 
 import '../../features/studio_situations_pro/presentation/screens/simulation_selection_screen.dart'; // NOUVEAU
 import '../../features/studio_situations_pro/presentation/screens/preparation_screen.dart';      // NOUVEAU
@@ -156,7 +156,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'tribunal_idees',
             parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
             builder: (BuildContext context, GoRouterState state) {
-              return const TribunalIdeesScreen();
+              return const TribunalIdeesScreenReal();
             },
           ),
           
@@ -214,7 +214,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               
               // NOUVEAU : Rediriger tribunal_idees vers le Tribunal des Idées
               if (exerciseId == 'tribunal_idees') {
-                return const TribunalIdeesScreen();
+                return const TribunalIdeesScreenReal();
               }
               
               return ExerciseActiveScreen(exerciseId: exerciseId);
