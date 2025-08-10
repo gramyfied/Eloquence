@@ -6,9 +6,13 @@ Détecte automatiquement le type d'exercice et route vers le bon système
 
 import os
 import logging
+import sys
 from typing import Optional
 from livekit import agents
 from livekit.agents import AutoSubscribe, JobContext, JobRequest, WorkerOptions, cli
+
+# Ajouter le répertoire courant au path pour les imports
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Configuration du logging
 logging.basicConfig(
@@ -17,7 +21,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger('unified_entrypoint')
 
-# Définition des types d'exercices
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Définition des listes d'exercices au niveau du module
 MULTI_AGENT_EXERCISES = {
     'studio_situations_pro',
     'simulation_entretien',
@@ -34,94 +43,84 @@ MULTI_AGENT_EXERCISES = {
 }
 
 INDIVIDUAL_EXERCISES = {
+    'confidence_boost',
     'tribunal_idees_impossibles',
-    'confidence_boost'
+    'cosmic_voice_control',
+    'job_interview'
 }
 
-async def unified_entrypoint(ctx: JobContext):
-    """Point d'entrée unifié qui route vers le bon système"""
+
+async def detect_exercise_from_context(ctx):
+    """Détection robuste du type d'exercice avec fallbacks multiples"""
+    
+    logger.info("🔍 DIAGNOSTIC: Détection d'exercice en cours...")
+    
+    # Méthode 1: Métadonnées de la room
+    exercise_type = None
+    if hasattr(ctx.room, 'metadata') and ctx.room.metadata:
+        try:
+            metadata = json.loads(ctx.room.metadata)
+            exercise_type = metadata.get('exercise_type')
+            logger.info(f"📋 Métadonnées détectées: {exercise_type}")
+        except Exception as e:
+            logger.warning(f"⚠️ Erreur parsing métadonnées: {e}")
+    
+    # Méthode 2: Nom de la room
+    if not exercise_type:
+        room_name = ctx.room.name.lower()
+        logger.info(f"🏠 Nom de room: {room_name}")
+        
+        if 'confidence' in room_name or 'boost' in room_name:
+            exercise_type = 'confidence_boost'
+        elif 'tribunal' in room_name or 'idees' in room_name:
+            exercise_type = 'tribunal_idees_impossibles'
+        elif 'studio' in room_name or 'situation' in room_name:
+            exercise_type = 'studio_situations_pro'
+        elif 'entretien' in room_name or 'interview' in room_name:
+            exercise_type = 'simulation_entretien'
+    
+    # Méthode 3: Participants (si des patterns spécifiques)
+    if not exercise_type and hasattr(ctx.room, 'remote_participants'):
+        participant_count = len(ctx.room.remote_participants)
+        if participant_count == 1:
+            exercise_type = 'confidence_boost'  # Exercice individuel par défaut
+    
+    # Méthode 4: Fallback par défaut
+    if not exercise_type:
+        exercise_type = 'confidence_boost'
+        logger.warning("⚠️ Aucune détection, fallback vers confidence_boost")
+    
+    logger.info(f"✅ Exercice détecté: {exercise_type}")
+    return exercise_type
+
+async def unified_entrypoint(ctx):
+    """Point d'entrée unifié avec routage intelligent"""
     
     logger.info("🚀 === UNIFIED ENTRYPOINT STARTED ===")
     logger.info(f"📍 Room: {ctx.room.name}")
-    logger.info(f"👥 Participant count: {len(ctx.room.remote_participants)}")
-    logger.info(f"🔍 DIAGNOSTIC: Unified router actif - Version Multi-Agents")
     
-    # Récupération des métadonnées pour identifier l'exercice
-    exercise_type = None
-    participant_metadata = {}
+    # Détection robuste de l'exercice
+    exercise_type = await detect_exercise_from_context(ctx)
     
-    # Chercher les métadonnées dans les participants
-    for participant in ctx.room.remote_participants.values():
-        if participant.metadata:
-            logger.info(f"Participant {participant.identity} metadata: {participant.metadata}")
-            try:
-                import json
-                metadata = json.loads(participant.metadata)
-                participant_metadata = metadata
-                
-                # Détecter le type d'exercice
-                if 'exercise' in metadata:
-                    exercise_type = metadata['exercise']
-                elif 'exerciseType' in metadata:
-                    exercise_type = metadata['exerciseType']
-                elif 'exercise_type' in metadata:
-                    exercise_type = metadata['exercise_type']
-                    
-                logger.info(f"Detected exercise type: {exercise_type}")
-                break
-            except Exception as e:
-                logger.error(f"Error parsing metadata: {e}")
-    
-    # Si pas d'exercice détecté dans les métadonnées, essayer le nom de la room
-    if not exercise_type and ctx.room.name:
-        room_name_lower = ctx.room.name.lower()
-        logger.info(f"🔎 Analyse du nom de room: '{ctx.room.name}'")
-        
-        # Détecter depuis le nom de la room
-        if 'studio' in room_name_lower or 'situation' in room_name_lower:
-            exercise_type = 'studio_situations_pro'
-            logger.info("✅ Détecté: STUDIO SITUATIONS PRO (multi-agents)")
-        elif 'tribunal' in room_name_lower:
-            exercise_type = 'tribunal_idees_impossibles'
-            logger.info("✅ Détecté: TRIBUNAL IDÉES (individuel)")
-        elif 'confidence' in room_name_lower or 'boost' in room_name_lower:
-            exercise_type = 'confidence_boost'
-            logger.info("✅ Détecté: CONFIDENCE BOOST (individuel)")
-        else:
-            logger.warning(f"⚠️ Type d'exercice non reconnu dans '{ctx.room.name}'")
-    
-    logger.info(f"🎯 Final exercise type determined: {exercise_type}")
-    logger.info("="*60)
-    
-    # Router vers le bon système
+    # Routage vers le bon système
     if exercise_type in MULTI_AGENT_EXERCISES:
-        logger.info("🎭 ROUTING TO MULTI-AGENT SYSTEM 🎭")
-        logger.info(f"   Exercise: {exercise_type}")
-        logger.info(f"   Loading: multi_agent_main.multiagent_entrypoint")
-        logger.info("="*60)
-        from multi_agent_main import multiagent_entrypoint, detect_exercise_from_metadata
-        import json
-        
-        # La logique multi-agent a besoin de la route et des données utilisateur parsées
-        route, user_data = detect_exercise_from_metadata(json.dumps(participant_metadata))
-        
-        await multiagent_entrypoint(ctx, route, user_data)
-        logger.info("✅ Multi-agent session completed")
-        
-    elif exercise_type in INDIVIDUAL_EXERCISES:
-        logger.info("👤 ROUTING TO INDIVIDUAL SYSTEM 👤")
-        logger.info(f"   Exercise: {exercise_type}")
-        logger.info(f"   Loading: main.robust_entrypoint")
-        logger.info("="*60)
-        from main import robust_entrypoint
-        await robust_entrypoint(ctx)
-        logger.info("✅ Individual session completed")
-        
+        logger.info(f"🎭 Routage vers MULTI-AGENT pour {exercise_type}")
+        try:
+            from multi_agent_main import multiagent_entrypoint
+            await multiagent_entrypoint(ctx)
+        except ImportError as e:
+            logger.error(f"❌ Erreur import multi_agent_main: {e}")
+            # Fallback vers individual
+            from main import robust_entrypoint
+            await robust_entrypoint(ctx)
     else:
-        logger.warning(f"⚠️ Unknown exercise type: {exercise_type}, defaulting to individual system")
-        logger.info("🔄 FALLBACK TO INDIVIDUAL SYSTEM")
-        from main import robust_entrypoint
-        await robust_entrypoint(ctx)
+        logger.info(f"👤 Routage vers INDIVIDUAL pour {exercise_type}")
+        try:
+            from main import robust_entrypoint
+            await robust_entrypoint(ctx)
+        except ImportError as e:
+            logger.error(f"❌ Erreur import main: {e}")
+            raise
 
 async def request_fnc(req: JobRequest) -> None:
     """Accepter toutes les requêtes de job"""
