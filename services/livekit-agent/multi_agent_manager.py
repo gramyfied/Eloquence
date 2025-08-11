@@ -2,6 +2,7 @@
 Gestionnaire des interactions multi-agents pour Studio Situations Pro
 """
 import asyncio
+import random
 import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
@@ -52,7 +53,73 @@ class MultiAgentManager:
         self.speaking_times: Dict[str, float] = {agent_id: 0.0 for agent_id in self.agents}
         self.interaction_count: Dict[str, int] = {agent_id: 0 for agent_id in self.agents}
         self.is_session_active = False
-        
+        # Mémoire pour éviter les répétitions de Michel
+        self._michel_last_phrase: Optional[str] = None
+        # Mémoire de la dernière réaction par agent pour limiter les redites
+        self._last_reaction_by_agent: Dict[str, str] = {}
+    def get_michel_prompt(self, primary_response: str, conversation_count: int) -> str:
+        """Prompts variés pour Michel selon le contexte.
+
+        Remarque: self.config.subject peut ne pas exister dans la config actuelle.
+        On fait un fallback sur exercise_id lisible.
+        """
+        # Sujet/fallback lisible
+        subject = getattr(self.config, 'subject', self.config.exercise_id.replace('_', ' '))
+
+        # Première intervention : se présenter
+        if conversation_count == 0:
+            return (
+                f"Michel: Bonjour et bienvenue dans notre débat ! Je suis Michel Dubois et nous allons "
+                f"explorer ensemble {subject}. Commençons par vous écouter."
+            )
+
+        # Interventions suivantes : formules variées
+        formules_transition = [
+            "Michel: Très intéressant ! Sarah, votre point de vue de journaliste ?",
+            "Michel: Creusons ce point. Marcus, qu'en dit l'expert ?",
+            "Michel: Permettez-moi de relancer le débat...",
+            "Michel: Voilà qui mérite d'être approfondi !",
+            "Michel: Excellent ! Continuons sur cette lancée...",
+            "Michel: C'est exactement le type de réflexion que nous cherchons !",
+            "Michel: Passionnant ! Et vous, que répondez-vous à cela ?",
+            "Michel: Voilà qui va faire réagir nos invités !",
+            "Michel: On touche là un point crucial...",
+            "Michel: Cette perspective ouvre de nouvelles questions...",
+        ]
+
+        # Sollicitations utilisateur
+        formules_sollicitation = [
+            "Michel: Et vous, qu'en pensez-vous ? Votre avis nous intéresse !",
+            "Michel: Nous aimerions connaître votre position sur ce point...",
+            "Michel: Vous qui nous écoutez, quelle est votre réaction ?",
+            "Michel: Donnez-nous votre point de vue, c'est important !",
+            "Michel: Votre expérience peut enrichir ce débat...",
+        ]
+
+        # Relances contradictoires
+        formules_contradiction = [
+            "Michel: Attendez, n'y a-t-il pas une contradiction ici ?",
+            "Michel: Permettez-moi de jouer l'avocat du diable...",
+            "Michel: Mais certains pourraient objecter que...",
+            "Michel: N'est-ce pas un peu optimiste ?",
+            "Michel: Cette vision ne fait-elle pas l'impasse sur...",
+        ]
+
+        lower = primary_response.lower() if primary_response else ""
+        if primary_response and ("?" in primary_response or "pensez" in lower):
+            pool = formules_sollicitation
+        elif any(word in lower for word in ["toujours", "jamais", "certain", "évident"]):
+            pool = formules_contradiction
+        else:
+            pool = formules_transition
+
+        # Éviter la répétition immédiate
+        if self._michel_last_phrase in pool and len(pool) > 1:
+            pool = [p for p in pool if p != self._michel_last_phrase]
+        choice = random.choice(pool)
+        self._michel_last_phrase = choice
+        return choice
+
     def initialize_session(self):
         """Initialise une nouvelle session de simulation"""
         logger.info(f"🎭 Initialisation session multi-agents: {self.config.exercise_id}")
@@ -133,8 +200,8 @@ class MultiAgentManager:
             user_message
         )
         
-        # Déclencher les réactions des autres agents si nécessaire
-        secondary_responses = await self.trigger_agent_reactions(
+        # Déclencher les réactions des autres agents si nécessaire (version parallèle)
+        secondary_responses = await self.trigger_agent_reactions_parallel(
             responding_agent_id, 
             primary_response
         )
@@ -219,13 +286,20 @@ class MultiAgentManager:
         
         # Construire le contexte pour l'agent
         context = self.build_agent_context(agent_id, user_message)
-        
-        # Simuler le temps de réflexion
-        await asyncio.sleep(0.5)
-        
-        # Générer une réponse contextuelle basée sur la personnalité
-        # (En production, ceci appellerait le LLM)
-        response = await self.simulate_agent_response(agent, context, user_message)
+
+        # Simuler le temps de réflexion (réduit pour plus de réactivité)
+        await asyncio.sleep(0.2)
+
+        # Gestion spécifique Michel (modérateur) pour éviter la répétition
+        if agent.interaction_style == InteractionStyle.MODERATOR and agent.name.lower().startswith("michel"):
+            conversation_count = len([e for e in self.conversation_history if e.speaker_id == agent_id])
+            response = self.get_michel_prompt(user_message, conversation_count)
+            logger.info(f"🎭 Michel varie ses formules (conversation_count: {conversation_count})")
+        else:
+            # Générer une réponse contextuelle basée sur la personnalité
+            # (En production, ceci appellerait le LLM)
+            raw = await self.simulate_agent_response(agent, context, user_message)
+            response = self._sanitize_generation(agent, raw, user_message)
         
         # Mettre à jour les métriques
         speaking_duration = 3.0  # Durée simulée en secondes
@@ -258,6 +332,7 @@ class MultiAgentManager:
             from llm_optimizer import llm_optimizer
             
             # Construire le prompt avec la personnalité complète de l'agent
+            first_name = agent.name.split()[0]
             system_prompt = f"""Tu es {agent.name}, {agent.role}.
 
 PERSONNALITÉ:
@@ -275,15 +350,20 @@ CONTEXTE DE LA CONVERSATION:
 AUTRES PARTICIPANTS:
 {', '.join([a.name + ' (' + a.role + ')' for a in self.agents.values() if a.agent_id != agent.agent_id])}
 
-INSTRUCTIONS:
+ INSTRUCTIONS:
 - Réponds TOUJOURS en français
-- Commence par t'identifier: "Je suis {agent.name}"
+- Commence ta phrase par "{first_name}:" (sans te présenter)
 - Reste dans ton personnage et ton style
-- Réponds de manière concise (2-3 phrases max)
+- Réponds de manière concise (2-4 phrases, parfois 1 seule quand c'est une interjection)
 - Adapte ton ton selon ton rôle ({agent.role})
 - Si tu es modérateur, dirige la conversation
 - Si tu es expert, apporte des détails techniques
-- Si tu es challenger, pose des questions critiques"""
+- Si tu es challenger, pose des questions critiques
+- NE PARAPHRASE PAS le message précédent: ajoute au moins une idée NOUVELLE (exemple, précision, nuance).
+- Si tu n'es pas d'accord, coupe brièvement la parole avec une courte interjection avant d'expliquer (ex: "Attends, pas d'accord sur...")
+- Si tu es challenger (Sarah), adopte une posture affirmée de contradicteur constructif.
+- Si tu es expert (Marcus), reste neutre, factuel, clarifie et précise, sans t'auto-interviewer.
+"""
 
             # Messages pour l'optimiseur
             messages = [
@@ -373,118 +453,258 @@ INSTRUCTIONS:
         else:
             return "Je prends note de votre point. Continuons."
     
-    async def trigger_agent_reactions(self, primary_agent_id: str, primary_response: str) -> List[Dict]:
-        """CORRECTION: Déclenche les réactions avec fallback de sécurité"""
-        
-        reactions = []
-        
-        # Déterminer si d'autres agents doivent réagir
-        should_react = await self.should_trigger_reactions(primary_response)
-        
+    async def trigger_agent_reactions_parallel(self, primary_agent_id: str, primary_response: str) -> List[Dict]:
+        """Génération parallèle des réactions pour plus de rapidité"""
+
+        reactions: List[Dict] = []
+
+        # Vérifier si des réactions sont nécessaires
+        should_react = await self.should_trigger_reactions_smart(primary_response)
+
+        # Dynamiser: si le modérateur parle, forcer au moins une réaction
+        primary_agent = self.agents.get(primary_agent_id)
+        if not should_react and primary_agent and primary_agent.interaction_style == InteractionStyle.MODERATOR:
+            logger.info("🎯 Forçage: au moins une réaction après l'intervention du modérateur")
+            should_react = True
+
         if not should_react:
-            # Fallback de sécurité pour débat TV
-            if len(self.agents) > 1 and len(self.conversation_history) >= 1:
-                logger.info("🔄 Fallback activé: Force réaction pour débat TV dynamique")
-                should_react = True
-            else:
-                logger.info("🤷 Aucune réaction déclenchée")
-                return reactions
-            
-        # Attendre un peu pour simuler une réaction naturelle
-        await asyncio.sleep(0.5)
-        
-        # Sélectionner les agents qui vont réagir (méthode corrigée)
+            logger.info("🤷 Aucune réaction déclenchée")
+            return reactions
+
+        # Sélectionner les agents réactifs
         reacting_agents = self.select_reacting_agents(primary_agent_id, primary_response)
-        
-        logger.info(f"🎭 {len(reacting_agents)} agents vont réagir: {[self.agents[aid].name for aid in reacting_agents]}")
-        
-        for i, agent_id in enumerate(reacting_agents):
+        if not reacting_agents:
+            # Fallback: privilégier challenger puis expert
+            fallback_list = []
+            challenger = self.find_agent_by_style(InteractionStyle.CHALLENGER)
+            expert = self.find_agent_by_style(InteractionStyle.EXPERT)
+            if challenger and challenger.agent_id != primary_agent_id:
+                fallback_list.append(challenger.agent_id)
+            if expert and expert.agent_id != primary_agent_id:
+                fallback_list.append(expert.agent_id)
+            if not fallback_list:
+                fallback_list = [aid for aid in self.agents if aid != primary_agent_id][:1]
+            reacting_agents = fallback_list
+            if not reacting_agents:
+                return reactions
+
+        logger.info(
+            f"🎭 {len(reacting_agents)} agents vont réagir: "
+            f"{[self.agents[aid].name for aid in reacting_agents]}"
+        )
+
+        # Générer toutes les réactions EN PARALLÈLE (avec micro-jitter + priorité mention)
+        start_parallel = datetime.now()
+        tasks = []
+        for idx, agent_id in enumerate(reacting_agents):
             agent = self.agents[agent_id]
-            
-            # Générer une réaction courte
-            reaction = await self.generate_agent_reaction(agent, primary_response)
-            
-            if reaction:
-                reactions.append({
-                    "agent_id": agent_id,
-                    "agent_name": agent.name,
-                    "reaction": reaction,
-                    "delay_ms": 500 + (i * 700)  # Délais plus naturels
-                })
-                
-                # Ajouter à l'historique
-                reaction_entry = ConversationEntry(
-                    speaker_id=agent_id,
-                    speaker_name=agent.name,
-                    message=reaction,
-                    timestamp=datetime.now(),
-                    is_user=False
-                )
-                self.conversation_history.append(reaction_entry)
-        
-        logger.info(f"✅ {len(reactions)} réactions générées avec délais: {[r['delay_ms'] for r in reactions]}")
+            # Petites micro-pauses échelonnées pour désynchroniser légèrement les LLM
+            async def _one(agent_local: AgentPersonality):
+                await asyncio.sleep(0.05 * (idx + 1))
+                return await self.generate_agent_reaction_with_retry(agent_local, primary_response)
+
+            task = _one(agent)
+            tasks.append(task)
+
+        # Attendre toutes les réactions (max 3 secondes)
+        try:
+            reactions_results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=3.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ Timeout sur génération des réactions")
+            reactions_results = ["Timeout"] * len(tasks)
+
+        # Traiter les résultats
+        for i, reaction in enumerate(reactions_results):
+            agent_id = reacting_agents[i]
+            agent = self.agents[agent_id]
+
+            if isinstance(reaction, Exception) or reaction == "Timeout" or not reaction:
+                logger.warning(f"⚠️ Réaction échouée pour {agent.name}")
+                reaction = f"{agent.name.split()[0]}: C'est un point intéressant..."
+            else:
+                # Anti-écho: si la réaction répète trop la réponse principale, la raccourcir
+                if primary_response and reaction:
+                    pr = primary_response.strip().lower()
+                    rx = reaction.strip().lower()
+                    if rx.startswith(pr[:80]):
+                        reaction = f"{agent.name.split()[0]}: Je propose une nuance…"
+
+            # Éviter de répéter exactement la dernière réaction de cet agent
+            last_reac = self._last_reaction_by_agent.get(agent_id, "")
+            if reaction.strip().lower() == last_reac.strip().lower():
+                reaction = f"{agent.name.split()[0]}: Pour compléter, j'ajouterais un autre angle."
+
+            reactions.append({
+                "agent_id": agent_id,
+                "agent_name": agent.name,
+                "reaction": reaction,
+                # Délais plus courts pour plus de réactivité et permettre des coupes de parole
+                "delay_ms": 120 + (i * 300),
+            })
+
+            # Ajouter à l'historique
+            reaction_entry = ConversationEntry(
+                speaker_id=agent_id,
+                speaker_name=agent.name,
+                message=reaction,
+                timestamp=datetime.now(),
+                is_user=False,
+            )
+            self.conversation_history.append(reaction_entry)
+            self._last_reaction_by_agent[agent_id] = reaction
+
+        elapsed = (datetime.now() - start_parallel).total_seconds()
+        logger.info(f"✅ {len(reactions)} réactions générées en parallèle en {elapsed:.1f}s")
         return reactions
+
+    async def generate_agent_reaction_with_retry(self, agent: AgentPersonality, primary_response: str) -> str:
+        """Génération de réaction avec retry automatique"""
+
+        for attempt in range(2):
+            try:
+                return await self.generate_agent_reaction_smart(agent, primary_response)
+            except Exception as e:
+                logger.warning(f"Tentative {attempt+1} échouée pour {agent.name}: {e}")
+                if attempt == 0:
+                    await asyncio.sleep(0.1)
+
+        # Fallback final
+        return f"{agent.name.split()[0]}: Je prends note de ce point."
     
-    async def should_trigger_reactions(self, primary_response: str) -> bool:
-        """CORRECTION: Détermine si des réactions doivent être déclenchées - Version assouplie"""
-        
-        # Détecter les mentions directes d'agents (distribution de parole)
+    async def should_trigger_reactions_smart(self, primary_response: str) -> bool:
+        """Triggers intelligents pour débat naturel (priorité aux mentions explicites)."""
+
+        # 1) Mentions directes → priorité absolue
         agent_mentions = self._detect_agent_mentions(primary_response)
         if agent_mentions:
-            logger.info(f"🎯 Distribution de parole détectée: {agent_mentions}")
+            logger.info(f"🎯 Mention directe détectée: {agent_mentions}")
             return True
-        
-        # Triggers plus permissifs pour débat TV naturel
-        lower_resp = primary_response.lower()
-        triggers = [
-            "?" in primary_response,  # Question posée
-            len(primary_response) > 100,  # Réponse suffisante
-            any(word in lower_resp for word in [
-                "mais", "cependant", "toutefois", "donc", "alors", "ainsi",
-                "néanmoins", "pourtant", "en effet", "d'ailleurs"
-            ]),
-            datetime.now() - self.last_speaker_change > timedelta(seconds=15),  # Rythme plus dynamique
-            any(phrase in lower_resp for phrase in [
-                # Mots-clés de distribution et de débat TV
-                "votre point de vue", "qu'en pensez-vous", "votre avis", "donnons la parole",
-                "passons à", "écoutons", "que diriez-vous",
-                # Nouveaux triggers débat TV / conversationnels
-                "bonjour", "parlons", "discutons", "abordons", "évoquons",
-                "intelligence", "technologie", "sujet", "question", "problème",
-                "artificielle", "innovation", "développement", "impact", "avenir",
-                "société", "économie", "éthique", "risque", "opportunité"
-            ]),
-            # Trigger par défaut pour débat TV dynamique
-            (len(self.conversation_history) >= 1 and len(self.agents) > 1)
+
+        # 2) Laisser s'installer: pas de réactions très tôt
+        if len(self.conversation_history) < 3:
+            return False
+
+        # 3) Éviter l'emballement: deux derniers messages IA → pause
+        recent_last_two = [e for e in self.conversation_history[-2:] if not e.is_user]
+        if len(recent_last_two) == 2:
+            logger.info("🔇 Pause: deux messages IA consécutifs")
+            return False
+
+        # Triggers basés sur le contenu (sélectifs)
+        content_triggers = [
+            self._contains_controversial_statement(primary_response),
+            self._contains_direct_question(primary_response),
+            self._user_needs_help(primary_response),
+            self._topic_needs_expert_input(primary_response),
         ]
-        
-        result = any(triggers)
-        logger.info(f"🤔 Should trigger reactions? {result}")
+
+        # Triggers temporels (moins fréquents)
+        time_triggers = [
+            self._user_silent_too_long(),  # 45 secondes
+            self._agent_monopolizes_conversation(),
+        ]
+
+        content_score = sum(1 for t in content_triggers if t)
+        time_score = sum(1 for t in time_triggers if t)
+
+        should_react = content_score >= 1 or time_score >= 1
         logger.info(
-            "   Triggers: Question=%s, Long=%s, Keywords=%s, Time=%s, Distribution/Keywords=%s, Default=%s",
-            triggers[0], triggers[1], triggers[2], triggers[3], triggers[4], triggers[5]
+            f"🤔 Should trigger reactions? {should_react} (content: {content_score}, time: {time_score})"
         )
-        
-        return result
+        return should_react
+
+    def _contains_controversial_statement(self, text: str) -> bool:
+        """Détecte les affirmations controversées qui méritent réaction"""
+        if not text:
+            return False
+        controversial_indicators = [
+            "jamais", "toujours", "impossible", "évident", "certain",
+            "faux", "erreur", "problème majeur", "catastrophe", "révolution",
+        ]
+        lower = text.lower()
+        return any(word in lower for word in controversial_indicators)
+
+    def _contains_direct_question(self, text: str) -> bool:
+        """Détecte les vraies questions (pas les rhétoriques)"""
+        if not text:
+            return False
+        lower = text.lower()
+        return ("?" in text) and any(
+            word in lower for word in [
+                "comment", "pourquoi", "quand", "où", "qui", "que pensez", "votre avis"
+            ]
+        )
+
+    def _user_silent_too_long(self) -> bool:
+        """Utilisateur silencieux depuis 45 secondes"""
+        last_user_message = None
+        for entry in reversed(self.conversation_history):
+            if entry.is_user:
+                last_user_message = entry
+                break
+
+        if last_user_message:
+            silence_duration = (datetime.now() - last_user_message.timestamp).seconds
+            return silence_duration > 45
+
+        return False
+
+    def _user_needs_help(self, text: str) -> bool:
+        """Heuristique simple: l'utilisateur demande de l'aide/clarification"""
+        if not text:
+            return False
+        lower = text.lower()
+        return any(
+            phrase in lower
+            for phrase in [
+                "je ne comprends pas", "peux-tu expliquer", "peux vous expliquer",
+                "expliquer", "comment faire", "aide-moi", "besoin d'aide",
+            ]
+        )
+
+    def _topic_needs_expert_input(self, text: str) -> bool:
+        """Heuristique: mots-clés techniques → inviter l'expert"""
+        if not text:
+            return False
+        lower = text.lower()
+        keywords = [
+            "technique", "techniquement", "architecture", "implémentation",
+            "algorithme", "données", "sécurité", "performance",
+        ]
+        return any(k in lower for k in keywords)
+
+    def _agent_monopolizes_conversation(self) -> bool:
+        """Vérifie si le même agent parle trop d'affilée"""
+        last_non_user = [e for e in reversed(self.conversation_history) if not e.is_user][:3]
+        if len(last_non_user) < 3:
+            return False
+        names = {e.speaker_id for e in last_non_user}
+        return len(names) == 1
     
     def _detect_agent_mentions(self, text: str) -> List[str]:
-        """Détecte les mentions explicites d'agents dans le texte"""
+        """Détecte les mentions explicites d'agents dans le texte (prénom, variantes, deux-points)."""
         mentioned_agents = []
         text_lower = text.lower()
         
         for agent_id, agent in self.agents.items():
             # Chercher le prénom de l'agent
             first_name = agent.name.split()[0].lower()
+            full_name = agent.name.lower()
             
             # Patterns de distribution de parole
             patterns = [
                 f"{first_name},",  # "Sarah, votre avis ?"
                 f"{first_name} ?",  # "Et vous Sarah ?"
+                f"{first_name}:",  # "Sarah: ..." (au cas où)
                 f"à {first_name}",  # "Donnons la parole à Sarah"
                 f"écoutons {first_name}",  # "Écoutons Sarah"
                 f"{first_name} que",  # "Sarah que pensez-vous"
                 f"{first_name} qu",  # "Sarah qu'en dites-vous"
                 f"passons à {first_name}",  # "Passons à Sarah"
+                f"{full_name}",  # nom complet (sécurité)
             ]
             
             for pattern in patterns:
@@ -496,7 +716,11 @@ INSTRUCTIONS:
         return mentioned_agents
     
     def select_reacting_agents(self, primary_agent_id: str, primary_response: str) -> List[str]:
-        """CORRECTION: Sélectionne les agents qui vont réagir - Version corrigée"""
+        """Sélectionne les agents qui vont réagir.
+        - Si mention explicite d'un agent, il est prioritaire
+        - Si le modérateur pose une question à X, forcer X à réagir (si disponible)
+        - Sinon, styles complémentaires
+        """
         
         # Agents disponibles (excluant l'agent principal)
         available_agents = [aid for aid in self.agents.keys() if aid != primary_agent_id]
@@ -522,6 +746,17 @@ INSTRUCTIONS:
                 selected = available_agents[:2]
                 logger.info(f"✅ Agent principal mentionné, autres réagissent: {[self.agents[aid].name for aid in selected]}")
                 return selected
+
+        # Mention directe simple d'un agent précis (ex: "Sarah:", "Sarah,")
+        # Si le modérateur est primaire et qu'un autre agent est détecté, forcer sa présence
+        primary_agent = self.agents[primary_agent_id]
+        if primary_agent.interaction_style == InteractionStyle.MODERATOR and mentioned_agents:
+            target = [aid for aid in mentioned_agents if aid != primary_agent_id]
+            if target:
+                # forcer le premier mentionné
+                forced = target[0]
+                others = [aid for aid in available_agents if aid != forced]
+                return [forced] + (others[:1] if others else [])
         
         # Sinon, sélection normale avec priorité aux styles complémentaires
         selected: List[str] = []
@@ -540,12 +775,27 @@ INSTRUCTIONS:
             remaining = [aid for aid in available_agents if aid not in selected]
             selected.extend(remaining[: 2 - len(selected)])
         
+        # Heuristique: forcer la présence du challenger (Sarah) sur sujets controversés ou questions directes
+        if (self._contains_controversial_statement(primary_response) or self._contains_direct_question(primary_response)):
+            challenger = self.find_agent_by_style(InteractionStyle.CHALLENGER)
+            if challenger and challenger.agent_id not in selected and challenger.agent_id != primary_agent_id:
+                if len(selected) >= 2:
+                    selected[-1] = challenger.agent_id
+                else:
+                    selected.append(challenger.agent_id)
+
         logger.info(f"✅ Sélection complémentaire: {[self.agents[aid].name for aid in selected]}")
         return selected
     
     async def generate_agent_reaction(self, agent: AgentPersonality, primary_response: str) -> str:
         """Génère une vraie réaction d'agent via LLM optimisé"""
-        
+        # Gestion spécifique Michel (modérateur) pour variété rapide sans LLM
+        if agent.interaction_style == InteractionStyle.MODERATOR and agent.name.lower().startswith("michel"):
+            conversation_count = len([e for e in self.conversation_history if e.speaker_id == agent.agent_id])
+            michel_text = self.get_michel_prompt(primary_response, conversation_count)
+            logger.info(f"🎭 Michel varie ses formules (conversation_count: {conversation_count})")
+            return michel_text
+
         try:
             from llm_optimizer import llm_optimizer
             
@@ -555,10 +805,11 @@ Style: {agent.interaction_style.value}
 
 Un autre participant vient de dire: "{primary_response[:200]}"
 
-Génère une RÉACTION TRÈS COURTE (1 phrase max) qui:
+Génère une RÉACTION NATURELLE et DYNAMIQUE (1 à 2 phrases max) qui:
 - Reste dans ton personnage
 - Montre que tu écoutes activement
 - Prépare une transition ou relance
+- Peut commencer par une interjection si tu n'es pas d'accord (ex: "Attends,")
 - Commence par ton prénom
 
 Exemples selon ton style:
@@ -571,29 +822,141 @@ Exemples selon ton style:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": "Génère ta réaction courte."}
             ]
-            
-            # Réaction rapide = conversation simple avec GPT-3.5
+
+            # Ajouter un court contexte récent pour la mémoire
+            recent_lines = []
+            for entry in self.conversation_history[-3:]:
+                role_label = "Utilisateur" if entry.is_user else entry.speaker_name
+                recent_lines.append(f"- {role_label}: {entry.message[:120]}")
+            recent_context = "\n".join(recent_lines) if recent_lines else "(aucun)"
+            system_prompt += f"\nCONTEXTE RÉCENT:\n{recent_context}\n"
+            # Réinjecter le prompt mis à jour dans les messages
+            messages[0]['content'] = system_prompt
+
+            # Choisir un type de tâche pertinent pour forcer un modèle plus intelligent
+            if agent.interaction_style == InteractionStyle.EXPERT:
+                task_type = 'technical_explanation'
+            elif agent.interaction_style == InteractionStyle.CHALLENGER:
+                task_type = 'complex_reasoning'
+            elif agent.interaction_style == InteractionStyle.MODERATOR:
+                task_type = 'debate_moderation'
+            else:
+                task_type = 'multi_agent_orchestration'
+
             complexity = {
-                'num_agents': 1,
-                'context_length': len(primary_response),
-                'interaction_depth': 1
+                'num_agents': len(self.agents),
+                'context_length': len(primary_response) + len(recent_context),
+                'interaction_depth': len(self.conversation_history)
             }
-            
-            # Utiliser l'optimiseur avec cache et modèle léger pour les réactions
+
             result = await llm_optimizer.get_optimized_response(
                 messages=messages,
-                task_type='simple_conversation',  # Réaction simple = modèle léger
+                task_type=task_type,
                 complexity=complexity,
                 use_cache=True,
-                cache_ttl=300  # Cache de 5 minutes pour les réactions
+                cache_ttl=300
             )
             
             logger.debug(f"✅ Réaction optimisée pour {agent.name} (modèle: {result['model']}, cache: {result['cached']})")
-            return result['response']
+            return self._sanitize_generation(agent, result['response'], primary_response)
             
         except Exception as e:
             logger.error(f"❌ Erreur réaction LLM {agent.name}: {e}")
-            return f"{agent.name}: Je prends note de ce point."
+            return f"{agent.name.split()[0]}: Je prends note de ce point."
+
+    async def generate_agent_reaction_smart(self, agent: AgentPersonality, primary_response: str) -> str:
+        """Génère des réactions naturelles et contradictoires"""
+
+        conversation_count = len(
+            [e for e in self.conversation_history if e.speaker_id == agent.agent_id]
+        )
+
+        if agent.interaction_style == InteractionStyle.MODERATOR:
+            # Michel : Animation variée
+            return self.get_michel_prompt(primary_response, conversation_count)
+
+        elif agent.interaction_style == InteractionStyle.CHALLENGER:
+            # Sarah : Journaliste qui challenge
+            prompt = f"""Tu es Sarah Johnson, journaliste investigatrice expérimentée.
+
+Quelqu'un vient de dire: "{primary_response[:200]}"
+
+STYLE: Journaliste qui QUESTIONNE et CHALLENGE (posture affirmée, contradictrice mais constructive). Tu ne poses pas de questions à Michel (modérateur), tu interpelles l'EXPERT ou l'Utilisateur.
+
+Génère une RÉACTION COURTE (1-2 phrases) qui:
+- QUESTIONNE un point précis
+- DEMANDE des PREUVES ou EXEMPLES  
+- SOULÈVE une OBJECTION ou LIMITE
+- PEUT COUPER brièvement la parole si nécessaire (ex: "Attends,")
+- RESTE PROFESSIONNELLE mais INCISIVE
+- Commence par "Sarah:"
+
+IMPORTANT: Varie tes formules, ne répète jamais "Je suis Sarah Johnson"."""
+
+        elif agent.interaction_style == InteractionStyle.EXPERT:
+            # Marcus : Expert qui nuance
+            prompt = f"""Tu es Marcus Thompson, expert technique reconnu.
+
+Quelqu'un vient de dire: "{primary_response[:200]}"
+
+STYLE: Expert qui NUANCE et PRÉCISE (apporte la complexité technique). Ne pose pas de questions à toi-même, ne questionne pas le modérateur; adresse-toi à l'Utilisateur ou réponds au Challenger.
+
+Génère une RÉACTION COURTE (1-2 phrases) qui:
+- NUANCE ou CORRIGE techniquement
+- AJOUTE une PRÉCISION importante
+- MENTIONNE une LIMITATION ou COMPLEXITÉ
+- APPORTE l'EXPERTISE technique
+- Commence par "Marcus:"
+
+IMPORTANT: Varie tes formules, ne répète jamais "Je suis Marcus Thompson"."""
+
+        else:
+            # Prompt générique
+            prompt = f"""Tu es {agent.name}, {agent.role}.
+        
+Réagis naturellement à: "{primary_response[:200]}"
+
+Génère une réaction courte et naturelle qui commence par "{agent.name.split()[0]}:"
+Varie tes formules, ne te présente pas à chaque fois."""
+
+        # Ajouter un court contexte des 3 derniers messages pour la mémoire
+        recent_lines = []
+        for entry in self.conversation_history[-3:]:
+            role_label = "Utilisateur" if entry.is_user else entry.speaker_name
+            recent_lines.append(f"- {role_label}: {entry.message[:120]}")
+        recent_context = "\n".join(recent_lines) if recent_lines else "(aucun)"
+        prompt += f"\n\nCONTEXTE RÉCENT:\n{recent_context}\n"
+
+        # Appel LLM optimisé
+        try:
+            from llm_optimizer import llm_optimizer
+
+            messages = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": "Génère ta réaction naturelle."},
+            ]
+
+            # Sélectionner un type de tâche plus pertinent
+            if agent.interaction_style == InteractionStyle.EXPERT:
+                task_type = 'technical_explanation'
+            elif agent.interaction_style == InteractionStyle.CHALLENGER:
+                task_type = 'complex_reasoning'
+            else:
+                task_type = 'multi_agent_orchestration'
+
+            result = await llm_optimizer.get_optimized_response(
+                messages=messages,
+                task_type=task_type,
+                complexity={'num_agents': len(self.agents), 'context_length': len(primary_response) + len(recent_context), 'interaction_depth': len(self.conversation_history)},
+                use_cache=True,
+                cache_ttl=300,
+            )
+
+            return self._sanitize_generation(agent, result['response'], primary_response)
+
+        except Exception as e:
+            logger.error(f"❌ Erreur LLM pour {agent.name}: {e}")
+            return f"{agent.name.split()[0]}: C'est un point intéressant à creuser."
     
     def build_agent_context(self, agent_id: str, user_message: str) -> str:
         """Construit le contexte pour un agent spécifique"""
@@ -628,6 +991,49 @@ Exemples selon ton style:
                     context_parts.append(f"- {entry.speaker_name}: {entry.message[:100]}...")
         
         return "\n".join(context_parts)
+
+    def _sanitize_generation(self, agent: AgentPersonality, generated: str, reference_text: str) -> str:
+        """Nettoie les sorties LLM: évite auto‑références et répétitions de la phrase source."""
+        if not generated:
+            return f"{agent.name.split()[0]}: ..."
+
+        text = generated.strip()
+        first_name = agent.name.split()[0]
+        # 1) Forcer le préfixe unique "Prénom:"
+        #    Supprimer toute auto-présentation type "Je suis ..." répétée
+        lowers = text.lower()
+        if lowers.startswith("je suis ") or lowers.startswith("moi c'est "):
+            # Couper la partie présentation
+            parts = text.split(". ", 1)
+            text = parts[1] if len(parts) > 1 else text
+            text = text.lstrip()
+
+        # Supprimer un doublon de préfixe "Nom:" si présent
+        for sep in [":", "-", "—"]:
+            prefix = f"{agent.name}{sep}"
+            if text.lower().startswith(prefix.lower()):
+                text = text[len(prefix):].lstrip()
+            prefix2 = f"{first_name}{sep}"
+            if text.lower().startswith(prefix2.lower()):
+                text = text[len(prefix2):].lstrip()
+
+        # 2) Réduire l'écho: si la génération répète mot à mot la phrase de référence
+        if reference_text:
+            ref = reference_text.strip()
+            # si le début de la réponse est quasi identique au ref, tronquer
+            if text[:80].lower() == ref[:80].lower():
+                text = "" if len(text) <= len(ref) else text[len(ref):]
+                text = text.lstrip(' .:\-—')
+
+        # 3) Enlever auto‑questions internes type "Marcus: Marcus pense que..." → garder le contenu
+        if text.lower().startswith(f"{first_name.lower()} "):
+            text = text.split(' ', 1)[1].lstrip()
+
+        # 4) Finaliser avec préfixe propre
+        clean = text.strip()
+        if not clean:
+            clean = "C'est un point intéressant."
+        return f"{first_name}: {clean}"
     
     def get_session_metrics(self) -> Dict[str, Any]:
         """Obtient les métriques de la session"""

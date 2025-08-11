@@ -310,7 +310,7 @@ class MultiAgentLiveKitService:
             
             # Faire parler chaque agent avec sa propre voix
             if hasattr(self, 'session') and self.session and responses_to_speak:
-                await self.speak_multiple_agents(responses_to_speak)
+                await self.speak_multiple_agents_robust(responses_to_speak)
             
             # Retourner un texte formaté pour le log/display
             formatted_text = f"[{responses_to_speak[0]['agent'].name}]: {responses_to_speak[0]['text']}"
@@ -323,62 +323,87 @@ class MultiAgentLiveKitService:
             logger.error(f"❌ Erreur orchestration multi-agents: {e}")
             return "[Système]: Je rencontre un problème technique. Pouvez-vous reformuler ?"
     
-    async def speak_multiple_agents(self, responses_to_speak: list):
-        """Fait parler plusieurs agents avec leurs voix distinctes"""
-        try:
-            api_key = os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                logger.warning("⚠️ Pas de clé OpenAI, utilisation d'une voix unique")
-                # Fallback : tout dire avec une seule voix
-                full_text = " ".join([f"{r['agent'].name} dit: {r['text']}" for r in responses_to_speak])
-                await self.session.say(text=full_text)
-                return
-            
-            for resp_data in responses_to_speak:
-                agent = resp_data['agent']
-                text = resp_data['text']
-                delay = resp_data['delay']
-                
-                # Attendre le délai si nécessaire
-                if delay > 0:
-                    await asyncio.sleep(delay / 1000.0)
-                
-                # Créer un TTS avec la voix spécifique de l'agent
-                voice = agent.voice_config.get('voice', 'alloy')
-                speed = agent.voice_config.get('speed', 1.0)
-                
-                logger.info(f"🔊 {agent.name} parle avec la voix: {voice} (vitesse: {speed})")
-                
-                # Créer temporairement un nouveau TTS avec la bonne voix
+    async def speak_multiple_agents_robust(self, responses_to_speak: list):
+        """Version robuste avec retry et fallbacks multiples"""
+        for resp_data in responses_to_speak:
+            agent = resp_data['agent']
+            text = resp_data['text']
+            delay = resp_data['delay']
+
+            # Attendre le délai
+            if delay and delay > 0:
+                await asyncio.sleep(delay / 1000.0)
+
+            # Nettoyer un éventuel préfixe "Nom: " pour éviter doublons au TTS
+            sanitized_text = self._strip_name_prefix(agent, text)
+
+            # Retry avec fallbacks progressifs
+            success = False
+            for attempt in range(3):
                 try:
-                    temp_tts = openai.TTS(
-                        voice=voice,
-                        api_key=api_key,
-                        model="tts-1",
-                        speed=speed
-                    )
-                    
-                    # Remplacer temporairement le TTS de la session
-                    original_tts = self.session._tts if hasattr(self.session, '_tts') else None
-                    self.session._tts = temp_tts
-                    
-                    # Faire parler l'agent avec sa voix
-                    await self.session.say(text=f"{agent.name}: {text}")
-                    
-                    # Restaurer le TTS original
-                    if original_tts:
-                        self.session._tts = original_tts
-                        
-                except Exception as tts_error:
-                    logger.warning(f"⚠️ Erreur TTS pour {agent.name}: {tts_error}")
-                    # Fallback : utiliser la voix par défaut
-                    await self.session.say(text=f"{agent.name} dit: {text}")
-                    
-        except Exception as e:
-            logger.error(f"❌ Erreur speak_multiple_agents: {e}")
-            # Fallback : tout dire d'un coup
-            full_text = " ".join([f"{r['agent'].name}: {r['text']}" for r in responses_to_speak])
-            await self.session.say(text=full_text)
+                    if attempt == 0:
+                        # Tentative 1: TTS avec voix spécifique
+                        voice_dbg = agent.voice_config.get('voice', 'alloy')
+                        logger.info(f"🔊 {agent.name} parle avec voix {voice_dbg} (tentative {attempt+1})")
+                        await self._speak_with_agent_voice_safe(agent, sanitized_text)
+                    elif attempt == 1:
+                        # Tentative 2: TTS par défaut avec nom
+                        await self.session.say(text=f"{agent.name}: {sanitized_text}")
+                    else:
+                        # Tentative 3: Fallback minimal
+                        await self.session.say(text=sanitized_text)
+
+                    success = True
+                    logger.info(f"✅ {agent.name} a parlé (tentative {attempt+1})")
+                    break
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Tentative {attempt+1} échouée pour {agent.name}: {e}")
+                    if attempt < 2:
+                        await asyncio.sleep(0.2)  # Pause avant retry
+
+            if not success:
+                logger.error(f"❌ Impossible de faire parler {agent.name}")
+
+    async def _speak_with_agent_voice_safe(self, agent: AgentPersonality, text: str):
+        """Méthode sécurisée pour parler avec la voix de l'agent via session.say avec TTS temporaire"""
+
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            raise Exception("Pas de clé OpenAI")
+
+        voice = agent.voice_config.get('voice', 'alloy')
+        speed = agent.voice_config.get('speed', 1.0)
+
+        # Créer temporairement un TTS avec la bonne voix et l'injecter le temps d'un say
+        temp_tts = openai.TTS(
+            voice=voice,
+            api_key=api_key,
+            model="tts-1",
+            speed=speed
+        )
+
+        original_tts = getattr(self.session, '_tts', None)
+        try:
+            self.session._tts = temp_tts
+            await self.session.say(text=f"{agent.name}: {text}")
+        finally:
+            if original_tts is not None:
+                self.session._tts = original_tts
+
+    def _strip_name_prefix(self, agent: AgentPersonality, text: str) -> str:
+        """Supprime un éventuel préfixe "Nom:" pour éviter double annonce au TTS."""
+        if not text:
+            return text
+        first_name = agent.name.split()[0]
+        candidates = [agent.name, first_name]
+        cleaned = text
+        for cand in candidates:
+            for sep in [":", "-", "—"]:
+                prefix = f"{cand}{sep}"
+                if cleaned.strip().lower().startswith(prefix.lower()):
+                    cleaned = cleaned.strip()[len(prefix):].lstrip()
+        return cleaned
     
     async def update_tts_voice(self, agent: AgentPersonality):
         """Met à jour dynamiquement la voix TTS pour correspondre à l'agent"""
