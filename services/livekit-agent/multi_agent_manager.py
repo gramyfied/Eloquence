@@ -374,7 +374,7 @@ INSTRUCTIONS:
             return "Je prends note de votre point. Continuons."
     
     async def trigger_agent_reactions(self, primary_agent_id: str, primary_response: str) -> List[Dict]:
-        """Déclenche les réactions des autres agents si approprié"""
+        """CORRECTION: Déclenche les réactions avec fallback de sécurité"""
         
         reactions = []
         
@@ -382,15 +382,23 @@ INSTRUCTIONS:
         should_react = await self.should_trigger_reactions(primary_response)
         
         if not should_react:
-            return reactions
+            # Fallback de sécurité pour débat TV
+            if len(self.agents) > 1 and len(self.conversation_history) >= 1:
+                logger.info("🔄 Fallback activé: Force réaction pour débat TV dynamique")
+                should_react = True
+            else:
+                logger.info("🤷 Aucune réaction déclenchée")
+                return reactions
             
         # Attendre un peu pour simuler une réaction naturelle
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(0.5)
         
-        # Sélectionner 1-2 agents pour réagir (en passant la réponse primaire pour détecter les mentions)
+        # Sélectionner les agents qui vont réagir (méthode corrigée)
         reacting_agents = self.select_reacting_agents(primary_agent_id, primary_response)
         
-        for agent_id in reacting_agents:
+        logger.info(f"🎭 {len(reacting_agents)} agents vont réagir: {[self.agents[aid].name for aid in reacting_agents]}")
+        
+        for i, agent_id in enumerate(reacting_agents):
             agent = self.agents[agent_id]
             
             # Générer une réaction courte
@@ -401,7 +409,7 @@ INSTRUCTIONS:
                     "agent_id": agent_id,
                     "agent_name": agent.name,
                     "reaction": reaction,
-                    "delay_ms": 1500 + (len(reactions) * 1000)  # Délai progressif
+                    "delay_ms": 500 + (i * 700)  # Délais plus naturels
                 })
                 
                 # Ajouter à l'historique
@@ -414,10 +422,11 @@ INSTRUCTIONS:
                 )
                 self.conversation_history.append(reaction_entry)
         
+        logger.info(f"✅ {len(reactions)} réactions générées avec délais: {[r['delay_ms'] for r in reactions]}")
         return reactions
     
     async def should_trigger_reactions(self, primary_response: str) -> bool:
-        """Détermine si des réactions doivent être déclenchées"""
+        """CORRECTION: Détermine si des réactions doivent être déclenchées - Version assouplie"""
         
         # Détecter les mentions directes d'agents (distribution de parole)
         agent_mentions = self._detect_agent_mentions(primary_response)
@@ -425,20 +434,38 @@ INSTRUCTIONS:
             logger.info(f"🎯 Distribution de parole détectée: {agent_mentions}")
             return True
         
-        # Règles pour déclencher des réactions
+        # Triggers plus permissifs pour débat TV naturel
+        lower_resp = primary_response.lower()
         triggers = [
             "?" in primary_response,  # Question posée
-            len(primary_response) > 200,  # Réponse longue
-            any(word in primary_response.lower() for word in ["mais", "cependant", "toutefois"]),
-            datetime.now() - self.last_speaker_change > timedelta(seconds=30),  # Trop long sans interaction
-            # Mots-clés de distribution de parole
-            any(phrase in primary_response.lower() for phrase in [
+            len(primary_response) > 100,  # Réponse suffisante
+            any(word in lower_resp for word in [
+                "mais", "cependant", "toutefois", "donc", "alors", "ainsi",
+                "néanmoins", "pourtant", "en effet", "d'ailleurs"
+            ]),
+            datetime.now() - self.last_speaker_change > timedelta(seconds=15),  # Rythme plus dynamique
+            any(phrase in lower_resp for phrase in [
+                # Mots-clés de distribution et de débat TV
                 "votre point de vue", "qu'en pensez-vous", "votre avis", "donnons la parole",
-                "passons à", "écoutons", "que diriez-vous"
-            ])
+                "passons à", "écoutons", "que diriez-vous",
+                # Nouveaux triggers débat TV / conversationnels
+                "bonjour", "parlons", "discutons", "abordons", "évoquons",
+                "intelligence", "technologie", "sujet", "question", "problème",
+                "artificielle", "innovation", "développement", "impact", "avenir",
+                "société", "économie", "éthique", "risque", "opportunité"
+            ]),
+            # Trigger par défaut pour débat TV dynamique
+            (len(self.conversation_history) >= 1 and len(self.agents) > 1)
         ]
         
-        return any(triggers)
+        result = any(triggers)
+        logger.info(f"🤔 Should trigger reactions? {result}")
+        logger.info(
+            "   Triggers: Question=%s, Long=%s, Keywords=%s, Time=%s, Distribution/Keywords=%s, Default=%s",
+            triggers[0], triggers[1], triggers[2], triggers[3], triggers[4], triggers[5]
+        )
+        
+        return result
     
     def _detect_agent_mentions(self, text: str) -> List[str]:
         """Détecte les mentions explicites d'agents dans le texte"""
@@ -468,43 +495,53 @@ INSTRUCTIONS:
         
         return mentioned_agents
     
-    def select_reacting_agents(self, exclude_agent_id: str, primary_response: str = "") -> List[str]:
-        """Sélectionne les agents qui vont réagir, en priorisant ceux mentionnés"""
+    def select_reacting_agents(self, primary_agent_id: str, primary_response: str) -> List[str]:
+        """CORRECTION: Sélectionne les agents qui vont réagir - Version corrigée"""
         
-        eligible_agents = [
-            agent_id for agent_id in self.agents
-            if agent_id != exclude_agent_id
-        ]
+        # Agents disponibles (excluant l'agent principal)
+        available_agents = [aid for aid in self.agents.keys() if aid != primary_agent_id]
         
-        if not eligible_agents:
+        if not available_agents:
             return []
         
-        # Vérifier si des agents spécifiques sont mentionnés
+        # Détecter les mentions directes
         mentioned_agents = self._detect_agent_mentions(primary_response)
         
-        # Si des agents sont mentionnés, les prioriser
+        # Gestion intelligente des mentions
         if mentioned_agents:
-            # Filtrer pour ne garder que les agents éligibles qui sont mentionnés
-            prioritized_agents = [
-                agent_id for agent_id in mentioned_agents
-                if agent_id in eligible_agents
-            ]
+            # Prendre les agents mentionnés qui ne sont pas l'agent principal
+            mentioned_others = [aid for aid in mentioned_agents if aid != primary_agent_id]
             
-            if prioritized_agents:
-                logger.info(f"🎯 Agents priorisés car mentionnés: {[self.agents[aid].name for aid in prioritized_agents]}")
-                # Retourner tous les agents mentionnés (max 3 pour éviter la cacophonie)
-                return prioritized_agents[:3]
+            if mentioned_others:
+                # Des autres agents sont mentionnés → ils réagissent
+                selected = mentioned_others[:2]
+                logger.info(f"✅ Autres agents mentionnés sélectionnés: {[self.agents[aid].name for aid in selected]}")
+                return selected
+            else:
+                # Seul l'agent principal est mentionné → les autres réagissent naturellement
+                selected = available_agents[:2]
+                logger.info(f"✅ Agent principal mentionné, autres réagissent: {[self.agents[aid].name for aid in selected]}")
+                return selected
         
-        # Sinon, utiliser la logique habituelle : prioriser les agents qui ont moins parlé
-        sorted_agents = sorted(
-            eligible_agents,
-            key=lambda x: self.interaction_count.get(x, 0)
-        )
+        # Sinon, sélection normale avec priorité aux styles complémentaires
+        selected: List[str] = []
+        primary_agent = self.agents[primary_agent_id]
         
-        # Sélectionner 1-2 agents
-        import random
-        num_reactions = min(random.randint(1, 2), len(sorted_agents))
-        return sorted_agents[:num_reactions]
+        # Prioriser les agents avec des styles complémentaires
+        for agent_id in available_agents:
+            agent = self.agents[agent_id]
+            if agent.interaction_style != primary_agent.interaction_style:
+                selected.append(agent_id)
+                if len(selected) >= 2:
+                    break
+        
+        # Si pas assez d'agents complémentaires, compléter avec les autres
+        if len(selected) < 2:
+            remaining = [aid for aid in available_agents if aid not in selected]
+            selected.extend(remaining[: 2 - len(selected)])
+        
+        logger.info(f"✅ Sélection complémentaire: {[self.agents[aid].name for aid in selected]}")
+        return selected
     
     async def generate_agent_reaction(self, agent: AgentPersonality, primary_response: str) -> str:
         """Génère une vraie réaction d'agent via LLM optimisé"""

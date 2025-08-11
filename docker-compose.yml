@@ -125,7 +125,6 @@ services:
       - eloquence-network
     env_file:
       - .env
-      - ./services/livekit-agent/.env
     environment:
       - LIVEKIT_URL=ws://livekit-server:7880
       - LIVEKIT_API_KEY=devkey
