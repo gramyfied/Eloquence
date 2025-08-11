@@ -51,45 +51,58 @@ INDIVIDUAL_EXERCISES = {
 
 
 async def detect_exercise_from_context(ctx):
-    """Détection robuste du type d'exercice avec fallbacks multiples"""
-    
-    logger.info("🔍 DIAGNOSTIC: Détection d'exercice en cours...")
-    
-    # Méthode 1: Métadonnées de la room
+    """Détection robuste de l'exercice avec support multi-agents"""
+
+    room_name = ctx.room.name.lower()
     exercise_type = None
+
+    logger.info("🔍 DIAGNOSTIC: Détection d'exercice en cours...")
+    logger.info(f"🏠 Nom de room: {room_name}")
+
+    # Méthode 1: Métadonnées de la room (priorité)
     if hasattr(ctx.room, 'metadata') and ctx.room.metadata:
         try:
             metadata = json.loads(ctx.room.metadata)
-            exercise_type = metadata.get('exercise_type')
-            logger.info(f"📋 Métadonnées détectées: {exercise_type}")
-        except Exception as e:
-            logger.warning(f"⚠️ Erreur parsing métadonnées: {e}")
-    
-    # Méthode 2: Nom de la room
+            if 'exercise_type' in metadata:
+                exercise_type = metadata['exercise_type']
+                logger.info(f"✅ Exercice depuis métadonnées room: {exercise_type}")
+        except json.JSONDecodeError:
+            logger.warning("⚠️ Métadonnées room JSON invalides")
+
+    # Méthode 2: Métadonnées des participants
+    if not exercise_type and hasattr(ctx.room, 'remote_participants'):
+        for participant in ctx.room.remote_participants:
+            if hasattr(participant, 'metadata') and participant.metadata:
+                try:
+                    metadata = json.loads(participant.metadata)
+                    if 'exercise_type' in metadata:
+                        exercise_type = metadata['exercise_type']
+                        logger.info(f"✅ Exercice depuis métadonnées participant: {exercise_type}")
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+    # ✅ CORRECTION CRITIQUE: Force multi-agents pour confidence_boost
+    if exercise_type == 'confidence_boost':
+        exercise_type = 'debat_contradictoire'  # Force débat TV
+        logger.info("🧪 CORRECTION: confidence_boost → debat_contradictoire (force multi-agents)")
+
+    # Méthode 3: Analyse du nom de room (patterns)
     if not exercise_type:
-        room_name = ctx.room.name.lower()
-        logger.info(f"🏠 Nom de room: {room_name}")
-        
-        if 'confidence' in room_name or 'boost' in room_name:
-            exercise_type = 'confidence_boost'
-        elif 'tribunal' in room_name or 'idees' in room_name:
+        if 'tribunal' in room_name or 'idees' in room_name:
             exercise_type = 'tribunal_idees_impossibles'
         elif 'studio' in room_name or 'situation' in room_name:
             exercise_type = 'studio_situations_pro'
         elif 'entretien' in room_name or 'interview' in room_name:
             exercise_type = 'simulation_entretien'
-    
-    # Méthode 3: Participants (si des patterns spécifiques)
-    if not exercise_type and hasattr(ctx.room, 'remote_participants'):
-        participant_count = len(ctx.room.remote_participants)
-        if participant_count == 1:
-            exercise_type = 'confidence_boost'  # Exercice individuel par défaut
-    
+        elif 'debat' in room_name or 'contradictoire' in room_name:
+            exercise_type = 'debat_contradictoire'
+
     # Méthode 4: Fallback par défaut
     if not exercise_type:
-        exercise_type = 'confidence_boost'
-        logger.warning("⚠️ Aucune détection, fallback vers confidence_boost")
-    
+        exercise_type = 'debat_contradictoire'  # ✅ CHANGÉ: Multi-agents par défaut
+        logger.warning("⚠️ Aucune détection, fallback vers debat_contradictoire")
+
     logger.info(f"✅ Exercice détecté: {exercise_type}")
     return exercise_type
 
