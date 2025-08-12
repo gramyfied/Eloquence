@@ -71,7 +71,13 @@ async def detect_exercise_from_context(ctx):
 
     # Méthode 2: Métadonnées des participants
     if not exercise_type and hasattr(ctx.room, 'remote_participants'):
-        for participant in ctx.room.remote_participants:
+        participants = ctx.room.remote_participants
+        try:
+            # LiveKit Python expose souvent un dict {id: Participant}
+            iterable = participants.values() if isinstance(participants, dict) else participants
+        except Exception:
+            iterable = participants
+        for participant in iterable:
             if hasattr(participant, 'metadata') and participant.metadata:
                 try:
                     metadata = json.loads(participant.metadata)
@@ -82,14 +88,13 @@ async def detect_exercise_from_context(ctx):
                 except json.JSONDecodeError:
                     continue
 
-    # ✅ CORRECTION CRITIQUE: Force multi-agents pour confidence_boost
-    if exercise_type == 'confidence_boost':
-        exercise_type = 'debat_contradictoire'  # Force débat TV
-        logger.info("🧪 CORRECTION: confidence_boost → debat_contradictoire (force multi-agents)")
+    # Ne pas forcer de reroutage: respecter le type détecté
 
     # Méthode 3: Analyse du nom de room (patterns)
     if not exercise_type:
-        if 'tribunal' in room_name or 'idees' in room_name:
+        if 'confidence_boost' in room_name:
+            exercise_type = 'confidence_boost'
+        elif 'tribunal' in room_name or 'idees' in room_name:
             exercise_type = 'tribunal_idees_impossibles'
         elif 'studio' in room_name or 'situation' in room_name:
             exercise_type = 'studio_situations_pro'
@@ -100,8 +105,8 @@ async def detect_exercise_from_context(ctx):
 
     # Méthode 4: Fallback par défaut
     if not exercise_type:
-        exercise_type = 'debat_contradictoire'  # ✅ CHANGÉ: Multi-agents par défaut
-        logger.warning("⚠️ Aucune détection, fallback vers debat_contradictoire")
+        exercise_type = 'confidence_boost'  # ✅ Fallback INDIVIDUEL par défaut
+        logger.warning("⚠️ Aucune détection, fallback vers confidence_boost")
 
     logger.info(f"✅ Exercice détecté: {exercise_type}")
     return exercise_type

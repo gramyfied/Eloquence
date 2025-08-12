@@ -1,0 +1,309 @@
+# ================================================================
+# DOCKER COMPOSE PRODUCTION SÉCURISÉ ELOQUENCE
+# ================================================================
+# Configuration optimisée pour Scaleway avec sécurité maximale
+# ================================================================
+
+services:
+  # === REVERSE PROXY NGINX SÉCURISÉ ===
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: eloquence_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../nginx/conf.d:/etc/nginx/conf.d:ro
+      - ../../security/certs:/etc/ssl/certs:ro
+      - ../../security/logs/nginx:/var/log/nginx
+    networks:
+      - eloquence-frontend
+      - eloquence-backend
+    depends_on:
+      - eloquence-api
+      - livekit
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+  # === REDIS SÉCURISÉ ===
+  redis:
+    image: redis:7.2-alpine
+    container_name: eloquence_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+      - ../../redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - eloquence-backend
+    environment:
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - redis_password
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$$(cat /run/secrets/redis_password)", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    user: "999:999"
+    cap_drop:
+      - ALL
+
+  # === API PRINCIPALE SÉCURISÉE ===
+  eloquence-api:
+    build:
+      context: ../../services/eloquence-api
+      dockerfile: Dockerfile.secure
+    container_name: eloquence_api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - eloquence-backend
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://:$$(cat /run/secrets/redis_password)@redis:6379/0
+    env_file:
+      - .env.production
+    secrets:
+      - redis_password
+      - jwt_secret
+      - encryption_key
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/logs
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    user: "1000:1000"
+
+  # === VOSK STT SÉCURISÉ ===
+  vosk-stt:
+    build:
+      context: ../../services/vosk-stt-analysis
+      dockerfile: Dockerfile.secure
+    container_name: eloquence_vosk
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8002:8002"
+    networks:
+      - eloquence-backend
+    volumes:
+      - vosk-models:/app/models:ro
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+
+  # === MISTRAL IA SÉCURISÉ ===
+  mistral:
+    build:
+      context: ../../services/mistral-conversation
+      dockerfile: Dockerfile.secure
+    container_name: eloquence_mistral
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8001:8001"
+    networks:
+      - eloquence-backend
+    env_file:
+      - .env.production
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+
+  # === LIVEKIT SÉCURISÉ ===
+  livekit:
+    image: livekit/livekit-server:v1.5.2
+    container_name: eloquence_livekit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "40000-40100:40000-40100/udp"
+    networks:
+      - eloquence-backend
+    environment:
+      - LIVEKIT_CONFIG=/etc/livekit.yaml
+    volumes:
+      - ../../services/livekit/livekit.production.yaml:/etc/livekit.yaml:ro
+    secrets:
+      - livekit_secret
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7880/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+  # === MONITORING SÉCURISÉ ===
+  monitoring:
+    build:
+      context: ../../monitoring
+      dockerfile: Dockerfile
+    container_name: eloquence_monitoring
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - eloquence-backend
+    volumes:
+      - monitoring-data:/data
+      - ../../monitoring/config:/etc/monitoring:ro
+      - ../../security/logs:/logs:ro
+    environment:
+      - ENVIRONMENT=production
+    env_file:
+      - .env.production
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+
+# === RÉSEAUX SÉCURISÉS ===
+networks:
+  eloquence-frontend:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  
+  eloquence-backend:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+# === VOLUMES PERSISTANTS ===
+volumes:
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/eloquence/redis
+  
+  vosk-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/eloquence/vosk-models
+  
+  monitoring-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/eloquence/monitoring
+
+# === SECRETS DOCKER ===
+secrets:
+  redis_password:
+    file: ./security/secrets/redis_password
+  jwt_secret:
+    file: ./security/secrets/jwt_secret
+  encryption_key:
+    file: ./security/secrets/encryption_key
+  livekit_secret:
+    file: ./security/secrets/livekit_secret
+
+# === CONFIGURATION DE SÉCURITÉ GLOBALE ===
+x-security-defaults: &security-defaults
+  security_opt:
+    - no-new-privileges:true
+  read_only: true
+  cap_drop:
+    - ALL
+  tmpfs:
+    - /tmp
+  user: "1000:1000"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+    labels: "service,environment"
+
+# === HEALTHCHECK GLOBAL ===
+x-healthcheck: &default-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 20s

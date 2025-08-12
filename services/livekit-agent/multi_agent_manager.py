@@ -4,6 +4,7 @@ Gestionnaire des interactions multi-agents pour Studio Situations Pro
 import asyncio
 import random
 import json
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -52,11 +53,76 @@ class MultiAgentManager:
         self.last_speaker_change = datetime.now()
         self.speaking_times: Dict[str, float] = {agent_id: 0.0 for agent_id in self.agents}
         self.interaction_count: Dict[str, int] = {agent_id: 0 for agent_id in self.agents}
+        # Compteurs d'équilibrage de participation
+        self.participation_counts: Dict[str, int] = {agent_id: 0 for agent_id in self.agents}
         self.is_session_active = False
         # Mémoire pour éviter les répétitions de Michel
         self._michel_last_phrase: Optional[str] = None
         # Mémoire de la dernière réaction par agent pour limiter les redites
         self._last_reaction_by_agent: Dict[str, str] = {}
+        # Pré-optimisation du pipeline de réponses (cache, pool, templates)
+        try:
+            self._optimize_response_pipeline()
+        except Exception as _:
+            pass
+
+    def _detect_all_interpellations(self, text: str, source_id: str = None) -> List[str]:
+        """Détecte TOUTES les interpellations (humain ou agent) vers n'importe quel agent cible"""
+        interpellations: List[str] = []
+        if not text:
+            return interpellations
+
+        text_lower = text.lower().strip()
+
+        # Liste de tous les agents cibles (exclure la source si spécifiée)
+        target_agents: Dict[str, AgentPersonality] = {}
+        for agent_id, agent in self.agents.items():
+            if agent_id != source_id:
+                target_agents[agent_id] = agent
+
+        logger.info(f"🔍 DÉTECTION INTERPELLATIONS dans: '{text[:100]}...'")
+        logger.info(f"🎯 Agents cibles: {list(target_agents.keys())}")
+
+        for agent_id, agent in target_agents.items():
+            agent_name_full = agent.name.lower()
+            first_name = agent_name_full.split()[0]
+
+            interpellation_patterns = [
+                f"{first_name},",
+                f"{first_name} ",
+                f"{first_name}?",
+                f"{first_name}:",
+                f"{first_name} que",
+                f"{first_name} comment",
+                f"{first_name} pouvez",
+                f"{first_name} qu'en",
+                f"{first_name} votre",
+                f"à {first_name}",
+                f"pour {first_name}",
+                f"et vous {first_name}",
+                f"à vous {first_name}",
+                f"question pour {first_name}",
+                f"demande à {first_name}",
+                f"{first_name} pourriez",
+                f"{first_name} avez-vous",
+                f"alors {first_name}",
+                f"donc {first_name}",
+                f"maintenant {first_name}",
+                f"{first_name} justement",
+            ]
+
+            for pattern in interpellation_patterns:
+                if pattern in text_lower:
+                    interpellations.append(agent_id)
+                    logger.info(f"✅ INTERPELLATION DÉTECTÉE: '{pattern}' → {agent.name}")
+                    break
+
+        if interpellations:
+            logger.info(f"🎯 INTERPELLATIONS FINALES: {[self.agents[aid].name for aid in interpellations]}")
+        else:
+            logger.info(f"❌ AUCUNE INTERPELLATION détectée dans: '{text[:50]}...'")
+
+        return interpellations
     def get_michel_prompt(self, primary_response: str, conversation_count: int) -> str:
         """Prompts variés pour Michel selon le contexte.
 
@@ -173,48 +239,49 @@ class MultiAgentManager:
         return None
     
     async def handle_user_input(self, user_message: str) -> Dict[str, Any]:
-        """Gère l'input utilisateur et orchestre les réponses des agents"""
-        
+        """Gère l'input utilisateur avec réactivité optimisée et compatibilité descendante"""
+
         if not self.is_session_active:
             logger.warning("⚠️ Session inactive, initialisation...")
             self.initialize_session()
-        
-        # Ajouter le message utilisateur à l'historique
-        user_entry = ConversationEntry(
-            speaker_id="user",
-            speaker_name="Utilisateur",
-            message=user_message,
-            timestamp=datetime.now(),
-            is_user=True
-        )
-        self.conversation_history.append(user_entry)
-        
-        logger.info(f"👤 Message utilisateur reçu: {user_message[:50]}...")
-        
-        # Déterminer quel agent doit répondre
-        responding_agent_id = await self.determine_next_speaker(user_message)
-        
-        # Générer la réponse de l'agent principal
-        primary_response = await self.generate_agent_response(
-            responding_agent_id, 
-            user_message
-        )
-        
-        # Déclencher les réactions des autres agents si nécessaire (version parallèle)
-        secondary_responses = await self.trigger_agent_reactions_parallel(
-            responding_agent_id, 
-            primary_response
-        )
-        
-        # Construire la réponse complète
+
+        # Nouveau pipeline optimisé
+        enriched = await self.process_user_input(user_message, user_id="user")
+
+        # Adapter le résultat au format attendu (principal + secondaires)
+        primary_speaker: Optional[str] = None
+        primary_response: str = ""
+        secondary_responses: List[Dict[str, Any]] = []
+
+        responses = enriched.get('responses', []) if isinstance(enriched, dict) else []
+        if responses:
+            primary = responses[0]
+            primary_speaker = primary.get('agent_id')
+            primary_response = primary.get('content') or primary.get('reaction') or ""
+
+            for r in responses[1:]:
+                secondary_responses.append({
+                    'agent_id': r.get('agent_id'),
+                    'agent_name': r.get('agent_name'),
+                    'reaction': r.get('content') or r.get('reaction') or "",
+                    'delay_ms': 300
+                })
+
+        # Fallback si aucune réponse
+        if not primary_speaker:
+            responding_agent_id = await self.determine_next_speaker(user_message)
+            primary_response = await self.generate_agent_response(responding_agent_id, user_message)
+            secondary_responses = await self.trigger_agent_reactions_parallel(responding_agent_id, primary_response)
+            primary_speaker = responding_agent_id
+
         response = {
-            "primary_speaker": responding_agent_id,
+            "primary_speaker": primary_speaker,
             "primary_response": primary_response,
             "secondary_responses": secondary_responses,
             "conversation_history": [entry.to_dict() for entry in self.conversation_history[-10:]],
             "session_metrics": self.get_session_metrics()
         }
-        
+
         return response
     
     async def determine_next_speaker(self, user_message: str) -> str:
@@ -262,7 +329,144 @@ class MultiAgentManager:
             return list(self.agents.keys())[0]
             
         return self.current_speaker or list(self.agents.keys())[0]
-    
+
+    async def _select_responding_agents(self, user_input: str, current_speaker: Optional[str] = None) -> List[str]:
+        """Sélectionne les agents qui vont répondre pour un input utilisateur.
+        Implémentation minimale et robuste: choisir un agent principal adapté.
+        """
+        try:
+            primary_agent_id = await self.determine_next_speaker(user_input)
+            if primary_agent_id:
+                return [primary_agent_id]
+        except Exception as e:
+            logger.warning(f"⚠️ Sélection agents: erreur, fallback simple ({e})")
+
+        # Fallback: utiliser l'orateur courant ou le premier agent disponible
+        if current_speaker and current_speaker in self.agents:
+            return [current_speaker]
+        agent_ids = list(self.agents.keys())
+        return [agent_ids[0]] if agent_ids else []
+
+    async def process_user_input(self, user_input: str, user_id: str = "user") -> Dict[str, Any]:
+        """Traite l'input utilisateur avec réactivité optimisée"""
+        try:
+            start_time = time.time()
+
+            # Ajouter le message utilisateur à l'historique
+            user_entry = ConversationEntry(
+                speaker_id=user_id,
+                speaker_name="Utilisateur",
+                message=user_input,
+                timestamp=datetime.now(),
+                is_user=True
+            )
+            self.conversation_history.append(user_entry)
+
+            # 1. Détection prioritaire des interpellations universelles (tous agents)
+            interpelled_agents = self._detect_all_interpellations(user_input, source_id=None)
+
+            if interpelled_agents:
+                logger.info(
+                    f"🚨 INTERPELLATIONS UTILISATEUR DÉTECTÉES: "
+                    f"{[self.agents[aid].name for aid in interpelled_agents]}"
+                )
+                forced_responses = await self._force_interpellation_response(
+                    interpelled_agents, user_input, source_id=None
+                )
+
+                processing_time = time.time() - start_time
+                logger.info(f"⚡ INTERPELLATIONS TRAITÉES en {processing_time:.2f}s")
+
+                return {
+                    'responses': forced_responses,
+                    'type': 'user_interpellation_response',
+                    'processing_time': processing_time,
+                    'interpelled_agents': interpelled_agents,
+                    'source': 'user'
+                }
+
+            # 2. Traitement normal avec équilibrage
+            responding_agents = await self._select_responding_agents(user_input, current_speaker=self.current_speaker)
+
+            # 3. Génération parallèle pour optimiser la vitesse
+            response_tasks: List[tuple[str, asyncio.Task]] = []
+            for agent_id in responding_agents:
+                prompt = self._build_context_prompt(agent_id, user_input)
+                coro = self._generate_agent_response_priority(agent_id, prompt, priority="NORMAL")
+                response_tasks.append((agent_id, asyncio.create_task(coro)))
+
+            # 4. Attendre les réponses avec timeout global
+            responses: List[Dict[str, Any]] = []
+            for agent_id, task in response_tasks:
+                try:
+                    response = await asyncio.wait_for(task, timeout=4.0)
+                    if response:
+                        agent = self.agents[agent_id]
+                        clean = self._sanitize_generation(agent, response, user_input)
+                        self._record_agent_message(agent_id, clean, speaking_seconds=2.5)
+
+                        responses.append({
+                            'agent_id': agent_id,
+                            'agent_name': agent.name,
+                            'content': clean,
+                            'type': 'normal_response'
+                        })
+                        self.participation_counts[agent_id] = self.participation_counts.get(agent_id, 0) + 1
+                except asyncio.TimeoutError:
+                    logger.warning(f"⏰ Timeout agent {agent_id}")
+
+            processing_time = time.time() - start_time
+            logger.info(f"📊 Traitement complet en {processing_time:.2f}s, {len(responses)} réponses")
+
+            return {
+                'responses': responses,
+                'type': 'normal_response',
+                'processing_time': processing_time,
+                'participation_counts': self.participation_counts
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Erreur traitement input: {e}")
+            return {'responses': [], 'error': str(e)}
+
+    async def process_agent_output(self, agent_output: str, agent_id: str) -> Dict[str, Any]:
+        """Traite la sortie d'un agent (ex: Michel interpelle Sarah/Marcus)"""
+        try:
+            interpelled_agents = self._detect_all_interpellations(agent_output, source_id=agent_id)
+            if interpelled_agents:
+                source_agent = self.agents.get(agent_id)
+                logger.info(
+                    f"🚨 INTERPELLATIONS AGENT DÉTECTÉES: {source_agent.name if source_agent else agent_id} → "
+                    f"{[self.agents[aid].name for aid in interpelled_agents]}"
+                )
+                forced_responses = await self._force_interpellation_response(
+                    interpelled_agents, agent_output, source_id=agent_id
+                )
+                return {
+                    'original_output': {
+                        'agent_id': agent_id,
+                        'content': agent_output,
+                        'type': 'agent_output'
+                    },
+                    'triggered_responses': forced_responses,
+                    'type': 'agent_interpellation_chain',
+                    'interpelled_agents': interpelled_agents,
+                    'source_agent': agent_id
+                }
+
+            return {
+                'original_output': {
+                    'agent_id': agent_id,
+                    'content': agent_output,
+                    'type': 'agent_output'
+                },
+                'triggered_responses': [],
+                'type': 'normal_agent_output'
+            }
+        except Exception as e:
+            logger.error(f"❌ ERREUR TRAITEMENT OUTPUT AGENT {agent_id}: {e}")
+            return {'error': str(e)}
+
     def get_next_in_rotation(self) -> str:
         """Obtient le prochain agent dans la rotation"""
         if not self.turn_queue:
@@ -275,6 +479,27 @@ class MultiAgentManager:
         
         return self.turn_queue[0] if self.turn_queue else list(self.agents.keys())[0]
     
+    def _record_agent_message(self, agent_id: str, message: str, speaking_seconds: float = 3.0):
+        """Enregistre une prise de parole d'agent dans l'historique et les métriques."""
+        try:
+            self.speaking_times[agent_id] = self.speaking_times.get(agent_id, 0.0) + speaking_seconds
+            self.interaction_count[agent_id] = self.interaction_count.get(agent_id, 0) + 1
+
+            agent = self.agents[agent_id]
+            entry = ConversationEntry(
+                speaker_id=agent_id,
+                speaker_name=agent.name,
+                message=message,
+                timestamp=datetime.now(),
+                is_user=False
+            )
+            self.conversation_history.append(entry)
+            self.current_speaker = agent_id
+            self.last_speaker_change = datetime.now()
+            logger.info(f"🗣️ {agent.name}: {message[:50]}...")
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible d'enregistrer le message agent {agent_id}: {e}")
+
     async def generate_agent_response(self, agent_id: str, user_message: str) -> str:
         """Génère la réponse d'un agent spécifique"""
         
@@ -288,7 +513,7 @@ class MultiAgentManager:
         context = self.build_agent_context(agent_id, user_message)
 
         # Simuler le temps de réflexion (réduit pour plus de réactivité)
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0.05)
 
         # Gestion spécifique Michel (modérateur) pour éviter la répétition
         if agent.interaction_style == InteractionStyle.MODERATOR and agent.name.lower().startswith("michel"):
@@ -458,6 +683,27 @@ AUTRES PARTICIPANTS:
 
         reactions: List[Dict] = []
 
+        # 0) Forcer les réponses si le message d'un agent interpelle explicitement d'autres agents
+        try:
+            interpelled = self._detect_all_interpellations(primary_response, source_id=primary_agent_id)
+            if interpelled:
+                logger.info(
+                    f"🚨 INTERPELLATIONS PAR AGENT DÉTECTÉES: "
+                    f"{self.agents[primary_agent_id].name} → {[self.agents[a].name for a in interpelled]}"
+                )
+                forced = await self._force_interpellation_response(interpelled, primary_response, source_id=primary_agent_id)
+                # Convertir au format 'secondary_responses'
+                for i, fr in enumerate(forced):
+                    reactions.append({
+                        'agent_id': fr['agent_id'],
+                        'agent_name': fr['agent_name'],
+                        'reaction': fr['content'],
+                        'delay_ms': 120 + (i * 250),
+                    })
+                return reactions
+        except Exception as e:
+            logger.warning(f"⚠️ Échec gestion interpellations par agent: {e}")
+
         # Vérifier si des réactions sont nécessaires
         should_react = await self.should_trigger_reactions_smart(primary_response)
 
@@ -510,7 +756,7 @@ AUTRES PARTICIPANTS:
         try:
             reactions_results = await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True),
-                timeout=3.0,
+                timeout=2.5,
             )
         except asyncio.TimeoutError:
             logger.warning("⚠️ Timeout sur génération des réactions")
@@ -714,6 +960,34 @@ AUTRES PARTICIPANTS:
                     break
         
         return mentioned_agents
+
+    def _detect_direct_mentions(self, text: str) -> List[str]:
+        """Détecte les mentions directes d'agents par nom (pipeline réactivité)."""
+        if not text:
+            return []
+        mentions: List[str] = []
+        text_lower = text.lower()
+
+        for agent_id, agent in self.agents.items():
+            agent_name = agent.name.lower()
+            first_name = agent_name.split()[0]
+            patterns = [
+                f"{first_name},",
+                f"{first_name} ",
+                f"à {first_name}",
+                f"pour {first_name}",
+                f"{first_name} que",
+                f"{first_name} comment",
+                f"{first_name} pouvez",
+                f"et vous {first_name}",
+                f"qu'en pensez-vous {first_name}",
+                f"{agent_name}",
+            ]
+            if any(p in text_lower for p in patterns):
+                mentions.append(agent_id)
+                logger.info(f"🎯 Mention directe détectée: {first_name} dans '{text[:50]}...'")
+
+        return mentions
     
     def select_reacting_agents(self, primary_agent_id: str, primary_response: str) -> List[str]:
         """Sélectionne les agents qui vont réagir.
@@ -849,13 +1123,21 @@ Exemples selon ton style:
                 'interaction_depth': len(self.conversation_history)
             }
 
-            result = await llm_optimizer.get_optimized_response(
-                messages=messages,
-                task_type=task_type,
-                complexity=complexity,
-                use_cache=True,
-                cache_ttl=300
-            )
+            # Délai plus court pour les réactions afin d'améliorer la réactivité
+            try:
+                result = await asyncio.wait_for(
+                    llm_optimizer.get_optimized_response(
+                        messages=messages,
+                        task_type=task_type,
+                        complexity=complexity,
+                        use_cache=True,
+                        cache_ttl=300
+                    ),
+                    timeout=3.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"⏰ Timeout réaction pour {agent.name}")
+                return f"{agent.name.split()[0]}: C'est un point intéressant..."
             
             logger.debug(f"✅ Réaction optimisée pour {agent.name} (modèle: {result['model']}, cache: {result['cached']})")
             return self._sanitize_generation(agent, result['response'], primary_response)
