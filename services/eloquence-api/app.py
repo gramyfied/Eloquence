@@ -31,7 +31,8 @@ redis_client = redis.Redis.from_url("redis://redis:6379/0", decode_responses=Tru
 SERVICES = {
     "vosk": "http://vosk-stt:8002",
     "mistral": "http://mistral:8001",
-    "livekit": "ws://livekit:7880"
+    "livekit": "ws://livekit:7880",
+    "livekit_token": "http://livekit-token-service:8004"
 }
 
 # === ENDPOINTS SANTÉ ===
@@ -166,8 +167,28 @@ async def create_exercise_session(session_data: Dict[str, Any]):
     session_id = f"session_{uuid.uuid4().hex[:10]}"
     livekit_room = f"exercise_{session_id}"
     
-    # Générer token LiveKit (simplifié pour le moment)
-    livekit_token = f"token_{session_id}"
+    # Générer token LiveKit via le service dédié
+    try:
+        token_payload = {
+            "room_name": livekit_room,
+            "participant_name": user_id,
+            "grants": {
+                "roomJoin": True,
+                "canPublish": True,
+                "canSubscribe": True,
+                "canPublishData": True,
+            },
+            "metadata": {
+                "exercise_type": template_id,
+                "user_id": user_id
+            }
+        }
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            token_resp = await client.post(f"{SERVICES['livekit_token']}/generate-token", json=token_payload)
+            token_resp.raise_for_status()
+            livekit_token = token_resp.json().get("token")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Token LiveKit indisponible: {e}")
     
     session = {
         "session_id": session_id,
