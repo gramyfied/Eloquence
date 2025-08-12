@@ -107,8 +107,13 @@ class LLMOptimizer:
         
         # Vérifier le cache si activé
         if use_cache and self.redis_client:
+            # Utiliser TOUT le contenu des messages (system + user) pour la clé de cache
+            # afin d'éviter de réutiliser une réponse générique sur « Génère ta réaction ... »
+            compound_prompt = "\n".join(
+                [f"{m.get('role','')}::{m.get('content','')}" for m in messages]
+            ) if messages else ''
             cache_key = self._generate_cache_key(
-                messages[-1]['content'] if messages else '',
+                compound_prompt,
                 {'task_type': task_type, 'complexity': complexity}
             )
             
@@ -232,12 +237,12 @@ class LLMOptimizer:
         """Retourne la température optimale selon le type de tâche"""
         temperatures = {
             'simple_conversation': 0.7,
-            'multi_agent_orchestration': 0.8,
+            'multi_agent_orchestration': 0.85,  # + créativité orchestrée
             'personality_simulation': 0.9,
-            'complex_reasoning': 0.5,
+            'complex_reasoning': 0.75,          # Sarah plus créative/affirmée
             'creative_storytelling': 0.9,
-            'debate_moderation': 0.6,
-            'technical_explanation': 0.3
+            'debate_moderation': 0.65,          # Michel un peu plus vivant
+            'technical_explanation': 0.45       # Marcus neutre mais moins froid
         }
         return temperatures.get(task_type, 0.7)
     
