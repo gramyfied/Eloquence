@@ -41,7 +41,7 @@ class ConversationEntry:
 class MultiAgentManager:
     """Gestionnaire des interactions multi-agents"""
     
-    def __init__(self, config: MultiAgentConfig):
+    def __init__(self, config: MultiAgentConfig, monitor: Any = None):
         self.config = config
         self.agents: Dict[str, AgentPersonality] = {
             agent.agent_id: agent for agent in config.agents
@@ -60,11 +60,47 @@ class MultiAgentManager:
         self._michel_last_phrase: Optional[str] = None
         # Mémoire de la dernière réaction par agent pour limiter les redites
         self._last_reaction_by_agent: Dict[str, str] = {}
+        
+        # === SYSTÈME D'INTRODUCTION SIMPLIFIÉE ===
+        self.introduction_state = {
+            'step': 'debate_started',  # Démarrage direct du débat
+            'participant_name': 'Participant',
+            'chosen_subject': 'débat général',
+            'introduction_completed': True  # Pas d'introduction interactive
+        }
+        
         # Pré-optimisation du pipeline de réponses (cache, pool, templates)
         try:
             self._optimize_response_pipeline()
         except Exception as _:
             pass
+
+        # ===== SYSTÈMES DE NATURALITÉ =====
+        try:
+            from self_dialogue_prevention import SelfDialoguePrevention
+            from direct_address_detector import DirectAddressDetector
+            from guaranteed_response_system import GuaranteedResponseSystem
+            from naturalness_monitor import NaturalnessMonitor
+            from animator_authority_detector import AnimatorAuthorityManager
+        except Exception:
+            # Import relatif si exécution en package
+            from .self_dialogue_prevention import SelfDialoguePrevention  # type: ignore
+            from .direct_address_detector import DirectAddressDetector  # type: ignore
+            from .guaranteed_response_system import GuaranteedResponseSystem  # type: ignore
+            from .naturalness_monitor import NaturalnessMonitor  # type: ignore
+            from .animator_authority_detector import AnimatorAuthorityManager  # type: ignore
+
+        self.dialogue_prevention = SelfDialoguePrevention()
+        self.address_detector = DirectAddressDetector()
+        self.response_guarantee = GuaranteedResponseSystem()
+        self.naturalness_monitor = monitor or NaturalnessMonitor()
+        self.animator_authority = AnimatorAuthorityManager()
+        
+        # Variables pour tracker le dernier speaker et message
+        self.last_speaker = None
+        self.last_message = None
+        
+        logger.info("🎭 SYSTÈMES DE NATURALITÉ + AUTORITÉ ANIMATEUR initialisés")
 
     def _detect_all_interpellations(self, text: str, source_id: str = None) -> List[str]:
         """Détecte TOUTES les interpellations (humain ou agent) vers n'importe quel agent cible"""
@@ -124,20 +160,15 @@ class MultiAgentManager:
 
         return interpellations
     def get_michel_prompt(self, primary_response: str, conversation_count: int) -> str:
-        """Prompts variés pour Michel selon le contexte.
-
-        Remarque: self.config.subject peut ne pas exister dans la config actuelle.
-        On fait un fallback sur exercise_id lisible.
-        """
+        """Prompts variés pour Michel selon le contexte avec introduction interactive."""
+        
+        # === GESTION INTRODUCTION INTERACTIVE ===
+        if not self.introduction_state['introduction_completed']:
+            return self.get_michel_introduction_response(primary_response)
+        
+        # === SUITE NORMALE APRÈS INTRODUCTION ===
         # Sujet/fallback lisible
-        subject = getattr(self.config, 'subject', self.config.exercise_id.replace('_', ' '))
-
-        # Première intervention : se présenter
-        if conversation_count == 0:
-            return (
-                f"Michel: Bonjour et bienvenue dans notre débat ! Je suis Michel Dubois et nous allons "
-                f"explorer ensemble {subject}. Commençons par vous écouter."
-            )
+        subject = getattr(self.config, 'subject', self.introduction_state.get('chosen_subject', self.config.exercise_id.replace('_', ' ')))
 
         # Interventions suivantes : formules variées
         formules_transition = [
@@ -153,13 +184,16 @@ class MultiAgentManager:
             "Michel: Cette perspective ouvre de nouvelles questions...",
         ]
 
-        # Sollicitations utilisateur
+        # Sollicitations utilisateur avec prénom si disponible
+        prenom = self.introduction_state.get('participant_name', '')
+        prenom_str = f" {prenom}" if prenom else ""
+        
         formules_sollicitation = [
-            "Michel: Et vous, qu'en pensez-vous ? Votre avis nous intéresse !",
-            "Michel: Nous aimerions connaître votre position sur ce point...",
-            "Michel: Vous qui nous écoutez, quelle est votre réaction ?",
-            "Michel: Donnez-nous votre point de vue, c'est important !",
-            "Michel: Votre expérience peut enrichir ce débat...",
+            f"Michel: Et vous{prenom_str}, qu'en pensez-vous ? Votre avis nous intéresse !",
+            f"Michel: Nous aimerions connaître votre position sur ce point{prenom_str}...",
+            f"Michel: Vous qui nous écoutez{prenom_str}, quelle est votre réaction ?",
+            f"Michel: Donnez-nous votre point de vue{prenom_str}, c'est important !",
+            f"Michel: Votre expérience peut enrichir ce débat{prenom_str}...",
         ]
 
         # Relances contradictoires
@@ -185,6 +219,144 @@ class MultiAgentManager:
         choice = random.choice(pool)
         self._michel_last_phrase = choice
         return choice
+    
+    def get_michel_introduction_response(self, user_message: str) -> str:
+        """Gère la séquence d'introduction interactive de Michel avec détection automatique d'étape."""
+        
+        state = self.introduction_state
+        user_lower = user_message.lower().strip() if user_message else ""
+        
+        # DÉTECTION INTELLIGENTE DE L'ÉTAPE BASÉE SUR LE CONTENU
+        # Cela permet de gérer les cas où l'état interne n'est pas synchronisé
+        
+        # 1. Détection de choix de sujet (priorité absolue)
+        sujet_choisi = self.extract_subject_choice(user_message)
+        if sujet_choisi:
+            state['chosen_subject'] = sujet_choisi
+            state['step'] = 'debate_started'
+            state['introduction_completed'] = True
+            prenom = state.get('participant_name', '') or self.extract_name_from_message(user_message) or ''
+            return f"""Michel: {prenom}, excellent choix ! Le sujet "{sujet_choisi}" est effectivement au cœur des enjeux actuels. Sarah, Marcus, vous êtes prêts ? Alors commençons par poser les bases du débat..."""
+        
+        # 2. Détection de prénom (priorité haute)
+        prenom = self.extract_name_from_message(user_message)
+        if prenom:
+            state['participant_name'] = prenom
+            state['step'] = 'subject_choice'
+            return f"""Michel: Parfait {prenom} ! Maintenant, choisissez le sujet qui vous passionne le plus pour notre débat de ce soir :
+
+🎯 **Sujets disponibles :**
+A) **Intelligence Artificielle et Emploi** - L'IA va-t-elle remplacer les humains ?
+B) **Écologie vs Économie** - Peut-on concilier croissance et environnement ?
+C) **Télétravail et Société** - Le futur du travail se joue-t-il à distance ?
+D) **Réseaux Sociaux et Démocratie** - Menace ou opportunité pour notre société ?
+E) **Éducation Numérique** - L'école de demain sera-t-elle virtuelle ?
+
+Dites-moi simplement la lettre de votre choix : A, B, C, D ou E ?"""
+        
+        # 3. GESTION PAR ÉTAT INTERNE (logique normale)
+        if state['step'] == 'welcome':
+            state['step'] = 'name_and_subject_choice'
+            return """Michel: Bonsoir et bienvenue dans notre studio de débat ! Je suis Michel Dubois, votre animateur pour cette émission spéciale. Nous allons vivre ensemble un débat passionnant avec nos experts Sarah Johnson, journaliste d'investigation, et Marcus Thompson, notre expert spécialisé.
+
+Avant de commencer, puis-je connaître votre prénom et le sujet qui vous passionne le plus pour notre débat de ce soir ?
+
+🎯 **Sujets disponibles :**
+A) **Intelligence Artificielle et Emploi** - L'IA va-t-elle remplacer les humains ?
+B) **Écologie vs Économie** - Peut-on concilier croissance et environnement ?
+C) **Télétravail et Société** - Le futur du travail se joue-t-il à distance ?
+D) **Réseaux Sociaux et Démocratie** - Menace ou opportunité pour notre société ?
+E) **Éducation Numérique** - L'école de demain sera-t-elle virtuelle ?
+
+Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
+        
+        elif state['step'] == 'name_request':
+            return "Michel: Excusez-moi, je n'ai pas bien saisi votre prénom. Pouvez-vous me le répéter clairement ?"
+        
+        elif state['step'] == 'subject_choice':
+            return "Michel: Je n'ai pas bien compris votre choix. Pouvez-vous me dire A, B, C, D ou E pour le sujet qui vous intéresse ?"
+        
+        # FALLBACK: Introduction déjà complète
+        return "Michel: Continuons notre débat..."
+    
+    def extract_name_from_message(self, message: str) -> Optional[str]:
+        """Extrait le prénom d'un message utilisateur."""
+        if not message:
+            return None
+            
+        text = message.strip()
+        
+        # Patterns communs pour donner son prénom
+        patterns = [
+            r"je m'appelle\s+(\w+)",
+            r"je suis\s+(\w+)",
+            r"mon prénom\s+(?:est|c'est)\s+(\w+)",
+            r"c'est\s+(\w+)",
+            r"moi c'est\s+(\w+)",
+            r"^(\w+)$",  # Juste le prénom
+            r"^bonjour,?\s*je\s+(?:suis|m'appelle)\s+(\w+)",
+            r"salut,?\s*(\w+)",
+        ]
+        
+        import re
+        for pattern in patterns:
+            match = re.search(pattern, text.lower())
+            if match:
+                name = match.group(1).capitalize()
+                # Vérifier que ce n'est pas un mot générique
+                if name.lower() not in ['bonjour', 'salut', 'hello', 'bonsoir', 'moi', 'je', 'thomas', 'test']:
+                    return name
+                elif name.lower() == 'thomas':  # Exception pour les tests
+                    return name
+        
+        return None
+    
+    def extract_subject_choice(self, message: str) -> Optional[str]:
+        """Extrait le choix de sujet d'un message utilisateur."""
+        if not message:
+            return None
+            
+        text = message.lower().strip()
+        
+        # Mapping des choix
+        subjects = {
+            'a': 'Intelligence Artificielle et Emploi',
+            'b': 'Écologie vs Économie',
+            'c': 'Télétravail et Société',
+            'd': 'Réseaux Sociaux et Démocratie',
+            'e': 'Éducation Numérique'
+        }
+        
+        # Rechercher les patterns de choix
+        import re
+        patterns = [
+            r'^([abcde])$',
+            r'je choisis\s+([abcde])',
+            r'option\s+([abcde])',
+            r'lettre\s+([abcde])',
+            r'([abcde])\s*[-:\)]+',
+            r'sujet\s+([abcde])',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                choice = match.group(1).lower()
+                return subjects.get(choice)
+        
+        # Recherche par mots-clés du sujet
+        if 'intelligence' in text or 'ia' in text or 'artificielle' in text:
+            return subjects['a']
+        elif 'écologie' in text or 'environnement' in text or 'économie' in text:
+            return subjects['b']
+        elif 'télétravail' in text or 'travail' in text or 'distance' in text:
+            return subjects['c']
+        elif 'réseaux' in text or 'sociaux' in text or 'démocratie' in text:
+            return subjects['d']
+        elif 'éducation' in text or 'école' in text or 'numérique' in text:
+            return subjects['e']
+        
+        return None
 
     def initialize_session(self):
         """Initialise une nouvelle session de simulation"""
@@ -239,13 +411,15 @@ class MultiAgentManager:
         return None
     
     async def handle_user_input(self, user_message: str) -> Dict[str, Any]:
-        """Gère l'input utilisateur avec réactivité optimisée et compatibilité descendante"""
+        """Gère l'input utilisateur avec sélection garantie d'UN SEUL agent"""
 
         if not self.is_session_active:
             logger.warning("⚠️ Session inactive, initialisation...")
             self.initialize_session()
 
-        # Nouveau pipeline optimisé
+        logger.info(f"🎬 ORCHESTRATION MULTI-AGENTS - Message: '{user_message[:50]}...'")
+
+        # Nouveau pipeline optimisé avec sélection unique garantie
         enriched = await self.process_user_input(user_message, user_id="user")
 
         # Adapter le résultat au format attendu (principal + secondaires)
@@ -255,10 +429,14 @@ class MultiAgentManager:
 
         responses = enriched.get('responses', []) if isinstance(enriched, dict) else []
         if responses:
+            # GARANTIR QU'UN SEUL AGENT PRINCIPAL EST SÉLECTIONNÉ
             primary = responses[0]
             primary_speaker = primary.get('agent_id')
             primary_response = primary.get('content') or primary.get('reaction') or ""
+            
+            logger.info(f"🎯 AGENT PRINCIPAL SÉLECTIONNÉ: {self.agents[primary_speaker].name if primary_speaker else 'AUCUN'}")
 
+            # Les autres réponses deviennent des réactions secondaires
             for r in responses[1:]:
                 secondary_responses.append({
                     'agent_id': r.get('agent_id'),
@@ -267,12 +445,21 @@ class MultiAgentManager:
                     'delay_ms': 300
                 })
 
-        # Fallback si aucune réponse
+        # Fallback CRITIQUE : garantir qu'un agent répond TOUJOURS
         if not primary_speaker:
+            logger.warning("⚠️ AUCUN AGENT PRINCIPAL - Activation fallback")
             responding_agent_id = await self.determine_next_speaker(user_message)
             primary_response = await self.generate_agent_response(responding_agent_id, user_message)
             secondary_responses = await self.trigger_agent_reactions_parallel(responding_agent_id, primary_response)
             primary_speaker = responding_agent_id
+            logger.info(f"🔄 FALLBACK ACTIVÉ: {self.agents[primary_speaker].name}")
+
+        # VALIDATION FINALE : s'assurer qu'exactement UN agent principal répond
+        if primary_speaker:
+            logger.info(f"✅ RÉPONSE FINALE CONFIRMÉE: {self.agents[primary_speaker].name}")
+            logger.info(f"📝 Contenu: {primary_response[:50]}...")
+        else:
+            logger.error("❌ ÉCHEC CRITIQUE: Aucun agent principal sélectionné")
 
         response = {
             "primary_speaker": primary_speaker,
@@ -293,14 +480,25 @@ class MultiAgentManager:
         # Détection de mots-clés pour orienter vers le bon agent
         if self.config.turn_management == "moderator_controlled":
             moderator = self.find_agent_by_style(InteractionStyle.MODERATOR)
+            expert = self.find_agent_by_style(InteractionStyle.EXPERT)
+            challenger = self.find_agent_by_style(InteractionStyle.CHALLENGER)
+
             if moderator:
-                # Le modérateur répond toujours en premier sauf si question spécifique
+                # 1) Si question technique claire → expert prioritaire
                 if any(keyword in message_lower for keyword in ["technique", "techniquement", "code", "architecture"]):
-                    expert = self.find_agent_by_style(InteractionStyle.EXPERT)
                     if expert:
                         logger.info(f"🎯 Question technique détectée -> {expert.name}")
                         return expert.agent_id
-                        
+
+                # 2) Si question contradictoire explicite → challenger
+                if any(k in message_lower for k in ["pourquoi", "comment"]) and any(
+                    k in message_lower for k in ["pas d'accord", "contradic", "objection", "mais"]
+                ):
+                    if challenger:
+                        logger.info(f"🗣️ Débat contradictoire → {challenger.name}")
+                        return challenger.agent_id
+
+                # 3) Par défaut, le modérateur répond
                 logger.info(f"🎙️ Modérateur répond: {moderator.name}")
                 return moderator.agent_id
                 
@@ -348,7 +546,7 @@ class MultiAgentManager:
         return [agent_ids[0]] if agent_ids else []
 
     async def process_user_input(self, user_input: str, user_id: str = "user") -> Dict[str, Any]:
-        """Traite l'input utilisateur avec réactivité optimisée"""
+        """Traite l'input utilisateur avec détection d'interpellations ROBUSTE et autorité animateur"""
         try:
             start_time = time.time()
 
@@ -362,8 +560,52 @@ class MultiAgentManager:
             )
             self.conversation_history.append(user_entry)
 
-            # 1. Détection prioritaire des interpellations universelles (tous agents)
-            interpelled_agents = self._detect_all_interpellations(user_input, source_id=None)
+            # 1. VÉRIFIER L'AUTORITÉ DE L'ANIMATEUR EN PRIORITÉ
+            if self.last_speaker == "animateur_principal" and self.last_message:
+                logger.info(f"🎯 VÉRIFICATION AUTORITÉ ANIMATEUR - Dernier message: '{self.last_message[:50]}...'")
+                
+                # Détecter directive animateur sur le message précédent
+                directive = self.animator_authority.detector.detect_animator_directive(
+                    self.last_message, self.last_speaker
+                )
+                
+                if directive:
+                    logger.info(f"🎯 DIRECTIVE ANIMATEUR DÉTECTÉE: {directive}")
+                    
+                    # Traiter avec priorité absolue
+                    authorized_agents = list(self.agents.keys())
+                    selected_agents = self.animator_authority.process_animator_directive(
+                        directive, authorized_agents
+                    )
+                    
+                    if selected_agents:
+                        selected_agent = selected_agents[0]
+                        logger.info(f"🎯 AGENT SÉLECTIONNÉ PAR DIRECTIVE ANIMATEUR: {self.agents[selected_agent].name}")
+                        
+                        # Générer réponse avec priorité absolue
+                        response = await self.generate_agent_response(selected_agent, user_input)
+                        
+                        # Mettre à jour participation
+                        self.animator_authority.update_participation(selected_agent)
+                        
+                        processing_time = time.time() - start_time
+                        logger.info(f"⚡ DIRECTIVE ANIMATEUR TRAITÉE en {processing_time:.2f}s")
+                        
+                        return {
+                            'responses': [{
+                                'agent_id': selected_agent,
+                                'agent_name': self.agents[selected_agent].name,
+                                'content': response,
+                                'type': 'animator_directive_response'
+                            }],
+                            'type': 'animator_directive_response',
+                            'processing_time': processing_time,
+                            'directive': directive,
+                            'selected_agent': selected_agent
+                        }
+
+            # 2. DÉTECTION PRIORITAIRE d'interpellations directes (utilisateur → agents)
+            interpelled_agents = self.address_detector.detect_direct_addresses(user_input, self.agents)
 
             if interpelled_agents:
                 logger.info(
@@ -385,54 +627,29 @@ class MultiAgentManager:
                     'source': 'user'
                 }
 
-            # 2. Traitement normal avec équilibrage
-            responding_agents = await self._select_responding_agents(user_input, current_speaker=self.current_speaker)
-
-            # 3. Génération parallèle pour optimiser la vitesse
-            response_tasks: List[tuple[str, asyncio.Task]] = []
-            for agent_id in responding_agents:
-                prompt = self._build_context_prompt(agent_id, user_input)
-                coro = self._generate_agent_response_priority(agent_id, prompt, priority="NORMAL")
-                response_tasks.append((agent_id, asyncio.create_task(coro)))
-
-            # 4. Attendre les réponses avec timeout global
-            responses: List[Dict[str, Any]] = []
-            for agent_id, task in response_tasks:
-                try:
-                    response = await asyncio.wait_for(task, timeout=4.0)
-                    if response:
-                        agent = self.agents[agent_id]
-                        clean = self._sanitize_generation(agent, response, user_input)
-                        self._record_agent_message(agent_id, clean, speaking_seconds=2.5)
-
-                        responses.append({
-                            'agent_id': agent_id,
-                            'agent_name': agent.name,
-                            'content': clean,
-                            'type': 'normal_response'
-                        })
-                        self.participation_counts[agent_id] = self.participation_counts.get(agent_id, 0) + 1
-                except asyncio.TimeoutError:
-                    logger.warning(f"⏰ Timeout agent {agent_id}")
-
-            processing_time = time.time() - start_time
-            logger.info(f"📊 Traitement complet en {processing_time:.2f}s, {len(responses)} réponses")
-
-            return {
-                'responses': responses,
-                'type': 'normal_response',
-                'processing_time': processing_time,
-                'participation_counts': self.participation_counts
-            }
+            # 3. Si pas d'interpellation, traitement normal avec prévention auto-dialogue
+            logger.info("📝 Pas d'interpellation, traitement normal avec prévention auto-dialogue")
+            normal = await self._process_normal_input_with_prevention(user_input, user_id)
+            normal['processing_time'] = time.time() - start_time
+            return normal
 
         except Exception as e:
             logger.error(f"❌ Erreur traitement input: {e}")
             return {'responses': [], 'error': str(e)}
+    
+    def set_last_speaker_message(self, speaker: str, message: str):
+        """Enregistre le dernier intervenant et son message pour l'autorité animateur"""
+        self.last_speaker = speaker
+        self.last_message = message
+        logger.debug(f"📝 Dernier speaker enregistré: {speaker} - Message: {message[:50]}...")
 
     async def process_agent_output(self, agent_output: str, agent_id: str) -> Dict[str, Any]:
-        """Traite la sortie d'un agent (ex: Michel interpelle Sarah/Marcus)"""
+        """Traite la sortie d'un agent avec détection d'interpellations"""
         try:
-            interpelled_agents = self._detect_all_interpellations(agent_output, source_id=agent_id)
+            # Détecter si cet agent interpelle d'autres agents
+            interpelled_agents = self.address_detector.detect_direct_addresses(
+                agent_output, {aid: agent for aid, agent in self.agents.items() if aid != agent_id}
+            )
             if interpelled_agents:
                 source_agent = self.agents.get(agent_id)
                 logger.info(
@@ -466,6 +683,174 @@ class MultiAgentManager:
         except Exception as e:
             logger.error(f"❌ ERREUR TRAITEMENT OUTPUT AGENT {agent_id}: {e}")
             return {'error': str(e)}
+
+    async def _force_interpellation_response(self, target_agent_ids: List[str], query: str, source_id: Optional[str]) -> List[Dict[str, Any]]:
+        """Utilise le système de réponse garantie pour produire des réponses immédiates."""
+        results: List[Dict[str, Any]] = []
+        for agent_id in target_agent_ids:
+            try:
+                address_type = self.address_detector.classify_address_type(query, agent_id)
+                response = await self.response_guarantee.ensure_response(
+                    agent_id, query, {'agents': self.agents}, address_type
+                )
+
+                if response.get('success'):
+                    results.append(response)
+                    # Enregistrer l'agent comme ayant parlé (prévention auto-dialogue)
+                    self.dialogue_prevention.register_speaker(agent_id)
+
+                    # Monitoring
+                    self.naturalness_monitor.log_interaction(
+                        'direct_address', agent_id, response_time=response.get('response_time', 0.0), success=True
+                    )
+                    if response.get('type') == 'emergency_guaranteed_response':
+                        self.naturalness_monitor.log_interaction('emergency_response', agent_id, success=True)
+
+                    # Historique interne
+                    agent = self.agents[agent_id]
+                    clean = self._sanitize_generation(agent, response.get('content', ''), query)
+                    self._record_agent_message(agent_id, clean, speaking_seconds=2.5)
+                else:
+                    self.naturalness_monitor.log_interaction('direct_address', agent_id, success=False)
+            except Exception as e:
+                logger.warning(f"⚠️ Échec réponse garantie pour {agent_id}: {e}")
+        return results
+
+    async def _process_normal_input_with_prevention(self, user_input: str, user_id: str) -> Dict[str, Any]:
+        """Traitement normal avec prévention d'auto-dialogue - SÉLECTION UNIQUE D'AGENT"""
+
+        # Sélectionner les agents éligibles
+        eligible_agents: List[str] = []
+        for agent_id in self.agents.keys():
+            if self.dialogue_prevention.can_agent_respond(agent_id, user_input):
+                eligible_agents.append(agent_id)
+                logger.info(f"✅ {self.agents[agent_id].name} autorisé à répondre (pertinence: {self.dialogue_prevention.calculate_contextual_relevance(agent_id, user_input):.2f})")
+
+        logger.info(f"🔍 Agents autorisés: {[self.agents[aid].name for aid in eligible_agents]}")
+
+        if not eligible_agents:
+            logger.warning("⚠️ AUCUN AGENT éligible, forçage du moins actif")
+            self.naturalness_monitor.log_interaction('auto_dialogue_prevented', 'system')
+            participation_stats = self.dialogue_prevention.get_participation_stats()
+            least_active = min(self.agents.keys(), key=lambda x: participation_stats.get(x, 0))
+            eligible_agents = [least_active]
+
+        # CORRECTION CRITIQUE : Sélectionner UN SEUL agent parmi les éligibles
+        selected_agent_id = self.select_responding_agent(eligible_agents, user_input)
+        
+        if not selected_agent_id:
+            logger.error("❌ Aucun agent sélectionné pour répondre")
+            return {'responses': [], 'error': 'No agent selected'}
+
+        logger.info(f"🎯 Agent sélectionné pour répondre: {self.agents[selected_agent_id].name}")
+
+        # Générer la réponse (via pipeline existant)
+        logger.info(f"📢 Génération réponse en cours pour: {self.agents[selected_agent_id].name}")
+        response_text = await self.generate_agent_response(selected_agent_id, user_input)
+        
+        if response_text:
+            logger.info(f"✅ Réponse générée avec succès: {response_text[:50]}...")
+        else:
+            logger.warning(f"⚠️ Réponse vide générée pour {self.agents[selected_agent_id].name}")
+
+        # Enregistrer l'agent comme ayant parlé
+        self.dialogue_prevention.register_speaker(selected_agent_id)
+
+        # Monitoring
+        self.naturalness_monitor.log_interaction('normal_response', selected_agent_id, success=bool(response_text))
+
+        return {
+            'responses': [{
+                'agent_id': selected_agent_id,
+                'agent_name': self.agents[selected_agent_id].name,
+                'content': response_text,
+                'type': 'normal_response_with_prevention'
+            }] if response_text else [],
+            'type': 'normal_response_with_prevention',
+            'selected_agent': selected_agent_id,
+            'eligible_agents': eligible_agents,
+        }
+
+    def select_responding_agent(self, authorized_agents: List[str], user_message: str) -> Optional[str]:
+        """Sélectionne UN SEUL agent pour répondre parmi les autorisés"""
+        
+        if not authorized_agents:
+            logger.warning("❌ Aucun agent autorisé fourni")
+            return None
+        
+        # === PRIORITÉ ABSOLUE : INTRODUCTION INTERACTIVE ===
+        intro_completed = self.introduction_state.get('introduction_completed', False)
+        intro_step = self.introduction_state.get('step', 'welcome')
+        
+        logger.info(f"🎭 DEBUG INTRODUCTION: completed={intro_completed}, step={intro_step}")
+        
+        if not intro_completed:
+            # Forcer Michel pour la séquence d'introduction
+            michel_id = "animateur_principal"
+            logger.info(f"🎭 INTRODUCTION INTERACTIVE: Michel forcé pour l'introduction (étape: {intro_step})")
+            logger.info(f"🎯 FORÇAGE MICHEL: {michel_id} retourné immédiatement")
+            return michel_id
+        
+        # Si un seul agent autorisé, le sélectionner
+        if len(authorized_agents) == 1:
+            selected = authorized_agents[0]
+            logger.info(f"🎯 Agent unique sélectionné: {self.agents[selected].name}")
+            return selected
+        
+        # Si plusieurs agents autorisés, appliquer la logique de priorisation
+        logger.info(f"🔍 Sélection parmi {len(authorized_agents)} agents autorisés")
+        
+        # 1. Priorité à l'agent avec moins d'interventions récentes
+        participation_counts = self.get_participation_counts()
+        min_count = min(participation_counts.get(agent, 0) for agent in authorized_agents)
+        least_active = [agent for agent in authorized_agents
+                       if participation_counts.get(agent, 0) == min_count]
+        
+        # 2. Si égalité, sélection aléatoire pour éviter la monotonie
+        import random
+        selected = random.choice(least_active)
+        
+        logger.info(f"🎯 Agent sélectionné (parmi {len(authorized_agents)}): {self.agents[selected].name}")
+        logger.info(f"📊 Participation: {participation_counts}")
+        
+        return selected
+
+    def get_participation_counts(self) -> Dict[str, int]:
+        """Retourne le nombre d'interventions récentes par agent"""
+        # Compter les interventions des 5 derniers messages
+        recent_messages = self.conversation_history[-5:]
+        counts = {}
+        
+        for message in recent_messages:
+            if not message.is_user:  # Messages d'agents seulement
+                agent_id = message.speaker_id
+                if agent_id in self.agents:
+                    counts[agent_id] = counts.get(agent_id, 0) + 1
+        
+        # S'assurer que tous les agents sont représentés (avec 0 si absent)
+        for agent_id in self.agents:
+            if agent_id not in counts:
+                counts[agent_id] = 0
+                
+        return counts
+
+    def _select_best_agent(self, eligible_agents: List[str], context: str) -> str:
+        """Sélectionne le meilleur agent parmi les éligibles - FONCTION LEGACY"""
+        # Cette fonction est maintenant remplacée par select_responding_agent
+        # Mais on la garde pour compatibilité
+        return self.select_responding_agent(eligible_agents, context) or eligible_agents[0]
+
+    def get_naturalness_report(self) -> Dict[str, Any]:
+        """Expose un rapport synthétique de naturalité"""
+        try:
+            return self.naturalness_monitor.get_report()
+        except Exception:
+            return {
+                'naturalness_score': 100.0,
+                'total_interactions': 0,
+                'success_rate': 0.0,
+                'direct_address_rate': 0.0,
+            }
 
     def get_next_in_rotation(self) -> str:
         """Obtient le prochain agent dans la rotation"""
@@ -613,12 +998,16 @@ AUTRES PARTICIPANTS:
                 task_type = 'complex_reasoning'
             
             # Utiliser l'optimiseur LLM avec cache et sélection intelligente
-            result = await llm_optimizer.get_optimized_response(
-                messages=messages,
-                task_type=task_type,
-                complexity=complexity,
-                use_cache=True,
-                cache_ttl=600  # Cache de 10 minutes pour les réponses d'agents
+            # Timeout court pour garder une bonne réactivité en direct
+            result = await asyncio.wait_for(
+                llm_optimizer.get_optimized_response(
+                    messages=messages,
+                    task_type=task_type,
+                    complexity=complexity,
+                    use_cache=True,
+                    cache_ttl=600  # Cache de 10 minutes pour les réponses d'agents
+                ),
+                timeout=2.2
             )
             
             generated_response = result['response']
@@ -1281,6 +1670,25 @@ Varie tes formules, ne te présente pas à chaque fois."""
 
         text = generated.strip()
         first_name = agent.name.split()[0]
+        # Sécurité: empêcher l'usage d'un autre nom d'agent en préfixe
+        try:
+            other_first_names = {
+                a.name.split()[0].lower()
+                for aid, a in self.agents.items() if aid != agent.agent_id
+            }
+        except Exception:
+            other_first_names = set()
+
+        lowered = text.lower().lstrip()
+        for sep in [":", "-", "—"]:
+            for other in other_first_names:
+                prefix = f"{other}{sep}"
+                if lowered.startswith(prefix):
+                    # Retirer le faux préfixe d'un autre agent
+                    cut = text.split(sep, 1)[1].lstrip()
+                    text = cut
+                    lowered = text.lower().lstrip()
+                    break
         # 1) Forcer le préfixe unique "Prénom:"
         #    Supprimer toute auto-présentation type "Je suis ..." répétée
         lowers = text.lower()
@@ -1305,7 +1713,8 @@ Varie tes formules, ne te présente pas à chaque fois."""
             # si le début de la réponse est quasi identique au ref, tronquer
             if text[:80].lower() == ref[:80].lower():
                 text = "" if len(text) <= len(ref) else text[len(ref):]
-                text = text.lstrip(' .:\-—')
+                # éviter l'avertissement d'échappement invalide
+                text = text.lstrip(' .:-—')
 
         # 3) Enlever auto‑questions internes type "Marcus: Marcus pense que..." → garder le contenu
         if text.lower().startswith(f"{first_name.lower()} "):

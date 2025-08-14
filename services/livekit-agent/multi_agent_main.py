@@ -29,6 +29,7 @@ from multi_agent_config import (
     ExerciseTemplates
 )
 from multi_agent_manager import MultiAgentManager
+from naturalness_monitor import NaturalnessMonitor
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -54,17 +55,22 @@ class MultiAgentLiveKitService:
     
     def __init__(self, multi_agent_config: MultiAgentConfig, user_data: dict = None):
         self.config = multi_agent_config
-        self.manager = MultiAgentManager(multi_agent_config)
+        self.naturalness_monitor = NaturalnessMonitor()
+        self.manager = MultiAgentManager(multi_agent_config, monitor=self.naturalness_monitor)
         self.session: Optional[AgentSession] = None
         self.room = None
         self.is_running = False
         self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
+        # Cache de TTS par agent pour fiabiliser la voix et réduire la latence
+        self.agent_tts: Dict[str, Any] = {}
         
         logger.info(f"🎭 MultiAgentLiveKitService initialisé pour: {multi_agent_config.exercise_id}")
         logger.info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
         logger.info(f"   Nombre d'agents: {len(multi_agent_config.agents)}")
         for agent in multi_agent_config.agents:
             logger.info(f"   - {agent.name} ({agent.role}) - Style: {agent.interaction_style.value}")
+
+        logger.info("🎭 SYSTÈME DE NATURALITÉ COMPLET initialisé")
         
     async def initialize_components(self):
         """Initialise les composants LiveKit avec fallbacks robustes"""
@@ -289,6 +295,17 @@ class MultiAgentLiveKitService:
                 agent = self.manager.agents[primary_agent_id]
                 logger.info(f"🗣️ {agent.name} ({agent.role}) répond")
                 
+                # LOGS DE DEBUG POUR AUTORITÉ ANIMATEUR
+                if agent.name == "Michel Dubois":
+                    self.manager.set_last_speaker_message("animateur_principal", primary_response)
+                    logger.info(f"🎭 ANIMATEUR A PARLÉ: {primary_response[:50]}...")
+                elif "Sarah" in agent.name:
+                    self.manager.set_last_speaker_message("journaliste_contradicteur", primary_response)
+                    logger.info(f"📰 JOURNALISTE A PARLÉ: {primary_response[:50]}...")
+                elif "Marcus" in agent.name:
+                    self.manager.set_last_speaker_message("expert_specialise", primary_response)
+                    logger.info(f"🔬 EXPERT A PARLÉ: {primary_response[:50]}...")
+                
                 # Ajouter la réponse principale
                 responses_to_speak.append({
                     'agent': agent,
@@ -302,17 +319,28 @@ class MultiAgentLiveKitService:
                     sec_agent_id = sec_resp.get('agent_id')
                     if sec_agent_id in self.manager.agents:
                         sec_agent = self.manager.agents[sec_agent_id]
+                        
+                        # LOGS DE DEBUG POUR RÉPONSES SECONDAIRES
+                        sec_response_text = sec_resp.get('reaction', '')
+                        if "Sarah" in sec_agent.name:
+                            self.manager.set_last_speaker_message("journaliste_contradicteur", sec_response_text)
+                            logger.info(f"📰 JOURNALISTE RÉACTION: {sec_response_text[:50]}...")
+                        elif "Marcus" in sec_agent.name:
+                            self.manager.set_last_speaker_message("expert_specialise", sec_response_text)
+                            logger.info(f"🔬 EXPERT RÉACTION: {sec_response_text[:50]}...")
+                        
                         responses_to_speak.append({
                             'agent': sec_agent,
-                            'text': sec_resp.get('reaction', ''),
+                            'text': sec_response_text,
                             'delay': sec_resp.get('delay_ms', 1500)
                         })
             
-            # Faire parler chaque agent avec sa propre voix
-            if hasattr(self, 'session') and self.session and responses_to_speak:
+            # VOIX DISTINCTES - CHAQUE AGENT PARLE AVEC SA VRAIE VOIX
+            if responses_to_speak:
+                logger.info(f"🎭 Début séquence vocale: {len(responses_to_speak)} agents")
                 await self.speak_multiple_agents_robust(responses_to_speak)
             
-            # Retourner un texte formaté pour le log/display
+            # Retourner le texte formaté pour les logs
             formatted_text = f"[{responses_to_speak[0]['agent'].name}]: {responses_to_speak[0]['text']}"
             for resp in responses_to_speak[1:]:
                 formatted_text += f"\n[{resp['agent'].name}]: {resp['text']}"
@@ -337,59 +365,66 @@ class MultiAgentLiveKitService:
             # Nettoyer un éventuel préfixe "Nom: " pour éviter doublons au TTS
             sanitized_text = self._strip_name_prefix(agent, text)
 
-            # Retry avec fallbacks progressifs
+            # Retry en conservant TOUJOURS la voix de l'agent (éviter voix du modérateur)
             success = False
             for attempt in range(3):
                 try:
-                    if attempt == 0:
-                        # Tentative 1: TTS avec voix spécifique
-                        voice_dbg = agent.voice_config.get('voice', 'alloy')
-                        logger.info(f"🔊 {agent.name} parle avec voix {voice_dbg} (tentative {attempt+1})")
-                        await self._speak_with_agent_voice_safe(agent, sanitized_text)
-                    elif attempt == 1:
-                        # Tentative 2: TTS par défaut avec nom
-                        await self.session.say(text=f"{agent.name}: {sanitized_text}")
-                    else:
-                        # Tentative 3: Fallback minimal
-                        await self.session.say(text=sanitized_text)
-
+                    voice_dbg = agent.voice_config.get('voice', 'alloy')
+                    logger.info(f"🔊 {agent.name} parle avec voix {voice_dbg} (tentative {attempt+1})")
+                    # 1ère tentative: utiliser le TTS en cache (ou le créer)
+                    # 2e tentative: recréer le TTS et réessayer
+                    await self._speak_with_agent_voice_safe(agent, sanitized_text, force_recreate=(attempt == 1))
                     success = True
                     logger.info(f"✅ {agent.name} a parlé (tentative {attempt+1})")
                     break
-
                 except Exception as e:
                     logger.warning(f"⚠️ Tentative {attempt+1} échouée pour {agent.name}: {e}")
                     if attempt < 2:
-                        await asyncio.sleep(0.2)  # Pause avant retry
+                        await asyncio.sleep(0.2)
 
             if not success:
                 logger.error(f"❌ Impossible de faire parler {agent.name}")
 
-    async def _speak_with_agent_voice_safe(self, agent: AgentPersonality, text: str):
-        """Méthode sécurisée pour parler avec la voix de l'agent via session.say avec TTS temporaire"""
-
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise Exception("Pas de clé OpenAI")
-
-        voice = agent.voice_config.get('voice', 'alloy')
-        speed = agent.voice_config.get('speed', 1.0)
-
-        # Créer temporairement un TTS avec la bonne voix et l'injecter le temps d'un say
-        temp_tts = openai.TTS(
-            voice=voice,
-            api_key=api_key,
-            model="tts-1",
-            speed=speed
-        )
+    async def _speak_with_agent_voice_safe(self, agent: AgentPersonality, text: str, force_recreate: bool = False):
+        """Parle avec la voix propre à l'agent en forçant la bonne sélection TTS."""
 
         original_tts = getattr(self.session, '_tts', None)
         try:
-            self.session._tts = temp_tts
+            agent_tts = await self._get_or_build_agent_tts(agent, force_recreate=force_recreate)
+            self.session._tts = agent_tts
             await self.session.say(text=f"{agent.name}: {text}")
         finally:
             if original_tts is not None:
                 self.session._tts = original_tts
+
+    async def _get_or_build_agent_tts(self, agent: AgentPersonality, force_recreate: bool = False):
+        """Retourne le TTS dédié à l'agent, en le créant si besoin (ou en le recréant si demandé)."""
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            raise Exception("OPENAI_API_KEY manquante pour TTS agent")
+
+        existing = self.agent_tts.get(agent.agent_id)
+        if existing and not force_recreate:
+            return existing
+
+        voice = agent.voice_config.get('voice', 'alloy')
+        speed = agent.voice_config.get('speed', 1.0)
+
+        try:
+            tts = openai.TTS(
+                voice=voice,
+                api_key=api_key,
+                model="tts-1",
+                speed=speed
+            )
+            self.agent_tts[agent.agent_id] = tts
+            return tts
+        except Exception as e:
+            logger.warning(f"⚠️ Création TTS OpenAI échouée pour {agent.name} ({voice}): {e}")
+            # Fallback Silero (voix neutre mais évite confusion de voix du modérateur)
+            tts = silero.TTS()
+            self.agent_tts[agent.agent_id] = tts
+            return tts
 
     def _strip_name_prefix(self, agent: AgentPersonality, text: str) -> str:
         """Supprime un éventuel préfixe "Nom:" pour éviter double annonce au TTS."""
@@ -432,6 +467,10 @@ class MultiAgentLiveKitService:
         except Exception as e:
             logger.warning(f"⚠️ Impossible de changer la voix TTS: {e}")
     
+    def get_naturalness_report(self) -> dict:
+        """Génère un rapport de naturalité en temps réel"""
+        return self.naturalness_monitor.get_report()
+
     async def generate_orchestrated_welcome(self) -> str:
         """Génère un message de bienvenue orchestré avec toutes les personnalités"""
         try:

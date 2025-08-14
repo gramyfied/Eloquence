@@ -165,29 +165,46 @@ class PreparationCoachService {
       }
       
       UnifiedLoggerService.info('Using Mistral Cloud API for intelligent response');
+      UnifiedLoggerService.info('API URL: $_mistralCloudUrl');
+      UnifiedLoggerService.info('API Key length: ${MistralScalewayConfig.scwSecretKey.length}');
+      
+      final requestBody = MistralScalewayConfig.buildChatRequest(
+        message: userMessage,
+        systemPrompt: prompt,
+        temperature: 0.7,
+        maxTokens: 200,
+      );
+      
+      UnifiedLoggerService.info('Request body: ${json.encode(requestBody)}');
       
       final response = await http.post(
         Uri.parse(_mistralCloudUrl),
         headers: MistralScalewayConfig.headers,
-        body: json.encode(
-          MistralScalewayConfig.buildChatRequest(
-            message: userMessage,
-            systemPrompt: prompt,
-            temperature: 0.7,
-            maxTokens: 200,
-          ),
-        ),
+        body: json.encode(requestBody),
       );
+      
+      UnifiedLoggerService.info('Response status: ${response.statusCode}');
+      UnifiedLoggerService.info('Response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['choices'][0]['message']['content'];
+        final content = data['choices'][0]['message']['content'];
+        UnifiedLoggerService.info('Mistral API success: $content');
+        return content;
       } else {
-        UnifiedLoggerService.warning('Mistral Cloud API error: ${response.statusCode}');
+        UnifiedLoggerService.error('Mistral Cloud API error: ${response.statusCode} - ${response.body}');
         return _getFallbackResponse(simulationType);
       }
     } catch (e) {
       UnifiedLoggerService.error('Error calling Mistral Cloud API: $e');
+      UnifiedLoggerService.error('Stack trace: ${StackTrace.current}');
+      
+      // Pour debug: essayer un timeout plus court
+      if (e.toString().contains('timeout') || e.toString().contains('connection')) {
+        UnifiedLoggerService.warning('Network issue detected, switching to local fallback');
+        return _getEnhancedFallbackResponse(simulationType, userMessage);
+      }
+      
       return _getFallbackResponse(simulationType);
     }
   }
@@ -288,6 +305,31 @@ Historique de conversation : ${history.join(' | ')}""";
     return responses[type] ?? "C'est une excellente question ! Continue à réfléchir à tes arguments principaux et à la façon de les présenter clairement.";
   }
   
+  /// Fallback amélioré avec analyse du message utilisateur
+  String _getEnhancedFallbackResponse(SimulationType type, String userMessage) {
+    final lowercaseMessage = userMessage.toLowerCase();
+    
+    // Réponses contextuelles basées sur les mots-clés
+    if (lowercaseMessage.contains('argument') || lowercaseMessage.contains('point')) {
+      return "Excellent ! Pour structurer tes arguments, utilise la règle des 3 : 3 points clés maximum, chacun avec un exemple concret. Quel est ton argument le plus fort ?";
+    }
+    
+    if (lowercaseMessage.contains('stress') || lowercaseMessage.contains('nerveux') || lowercaseMessage.contains('peur')) {
+      return "Je comprends le stress ! Technique rapide : respire profondément 3 fois, visualise ta réussite, et rappelle-toi que tu maîtrises ton sujet. Qu'est-ce qui t'inquiète le plus ?";
+    }
+    
+    if (lowercaseMessage.contains('question') || lowercaseMessage.contains('objection')) {
+      return "Très bonne anticipation ! Pour chaque objection, prépare : 1) Écoute et reformule, 2) Reconnais le point valide, 3) Apporte ta contre-argumentation avec des faits. Quelle objection redoutes-tu ?";
+    }
+    
+    if (lowercaseMessage.contains('introduction') || lowercaseMessage.contains('commencer')) {
+      return "L'introduction est cruciale ! Formule d'impact : Accroche (statistique/question), Contexte (pourquoi maintenant), Annonce du plan (3 parties max). Tu as une idée d'accroche ?";
+    }
+    
+    // Fallback général avec encouragement
+    return "${_getFallbackResponse(type)} Peux-tu me dire ce qui te préoccupe le plus dans ta préparation ?";
+  }
+  
   /// Analyse intelligente d'un document téléchargé avec l'API Mistral Cloud
   Future<String> analyzeDocument(String filePath, SimulationType type, {String? objective}) async {
     try {
@@ -325,19 +367,23 @@ Historique de conversation : ${history.join(' | ')}""";
         return _getIntelligentFallbackAnalysis(filePath, type, objective);
       }
       
+      UnifiedLoggerService.info('Calling Mistral API for document analysis');
+      
+      final requestBody = MistralScalewayConfig.buildChatRequest(
+        message: 'Analyse ce document pour la préparation de ${type.toDisplayString()}',
+        systemPrompt: analysisPrompt,
+        temperature: 0.7,
+        maxTokens: 400,
+      );
+      
       // Appeler l'API Mistral Cloud pour analyse
       final response = await http.post(
         Uri.parse(MistralScalewayConfig.apiUrl),
         headers: MistralScalewayConfig.headers,
-        body: json.encode(
-          MistralScalewayConfig.buildChatRequest(
-            message: 'Analyse ce document pour la préparation de ${type.toDisplayString()}',
-            systemPrompt: analysisPrompt,
-            temperature: 0.7,
-            maxTokens: 400,
-          ),
-        ),
+        body: json.encode(requestBody),
       );
+      
+      UnifiedLoggerService.info('Document analysis response: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -346,12 +392,13 @@ Historique de conversation : ${history.join(' | ')}""";
         UnifiedLoggerService.info('Mistral Cloud analysis completed successfully');
         return analysis;
       } else {
-        UnifiedLoggerService.warning('Mistral Cloud API error: ${response.statusCode}');
+        UnifiedLoggerService.error('Mistral Cloud API error: ${response.statusCode} - ${response.body}');
         return _getIntelligentFallbackAnalysis(filePath, type, objective);
       }
       
     } catch (e) {
       UnifiedLoggerService.error('Error analyzing document: $e');
+      UnifiedLoggerService.error('Document analysis stack trace: ${StackTrace.current}');
       return _getIntelligentFallbackAnalysis(filePath, type, objective);
     }
   }

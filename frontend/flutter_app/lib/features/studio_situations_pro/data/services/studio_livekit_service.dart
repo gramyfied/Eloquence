@@ -146,7 +146,7 @@ class StudioLiveKitService {
       }
     });
     
-    // Écouter les participants
+    // Écouter les participants et leurs pistes audio
     _room?.addListener(() {
       final participants = _room?.remoteParticipants.values.toList() ?? [];
       for (final participant in participants) {
@@ -158,6 +158,18 @@ class StudioLiveKitService {
               'speaker_id': participant.identity,
               'speaker_type': 'agent',
             });
+          }
+        });
+        
+        // CRITIQUE : Écouter les pistes audio distantes
+        participant.trackPublications.forEach((trackSid, publication) {
+          if (publication.track is RemoteAudioTrack) {
+            final audioTrack = publication.track as RemoteAudioTrack;
+            UnifiedLoggerService.info('Audio track detected from ${participant.identity}: ${audioTrack.sid}');
+            
+            // Assurer que la piste audio est activée pour la lecture
+            audioTrack.start();
+            UnifiedLoggerService.info('Remote audio track started for ${participant.identity}');
           }
         });
       }
@@ -174,6 +186,12 @@ class StudioLiveKitService {
       } else if (event is ParticipantDisconnectedEvent) {
         UnifiedLoggerService.info('Participant disconnected: ${event.participant.identity}');
         _handleParticipantLeft(event.participant);
+      } else if (event is TrackSubscribedEvent) {
+        UnifiedLoggerService.info('Track subscribed: ${event.track.sid} from ${event.participant?.identity}');
+        _handleTrackSubscribed(event);
+      } else if (event is TrackPublishedEvent) {
+        UnifiedLoggerService.info('Track published: ${event.publication.sid} from ${event.participant?.identity}');
+        _handleTrackPublished(event);
       }
     });
   }
@@ -245,6 +263,67 @@ class StudioLiveKitService {
       'participant_id': participant.identity,
       'timestamp': DateTime.now().toIso8601String(),
     });
+  }
+  
+  /// Gère l'événement de souscription à une piste (quand on reçoit de l'audio/vidéo)
+  void _handleTrackSubscribed(TrackSubscribedEvent event) {
+    final track = event.track;
+    final participant = event.participant;
+    
+    UnifiedLoggerService.info('Track subscribed: ${track.sid} from ${participant?.identity}');
+    
+    if (track is RemoteAudioTrack) {
+      UnifiedLoggerService.info('AUDIO TRACK SUBSCRIBED from ${participant?.identity}');
+      
+      // CRITIQUE : Connecter l'audio distant aux haut-parleurs
+      _connectRemoteAudioToSpeakers(track, participant?.identity ?? 'unknown');
+      
+      _dataStreamController.add({
+        'type': 'audio_track_subscribed',
+        'participant_id': participant?.identity,
+        'track_sid': track.sid,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+  
+  /// Connecte une piste audio distante aux haut-parleurs pour l'entendre
+  void _connectRemoteAudioToSpeakers(RemoteAudioTrack audioTrack, String participantId) {
+    try {
+      UnifiedLoggerService.info('🔊 CONNEXION AUDIO HAUT-PARLEURS pour $participantId');
+      
+      // Activer explicitement la lecture audio
+      audioTrack.start();
+      
+      // Marquer comme activé pour lecture
+      audioTrack.enable();
+      
+      UnifiedLoggerService.info('✅ Audio $participantId - start() et enable() appelés');
+      UnifiedLoggerService.info('   Track SID: ${audioTrack.sid}');
+      UnifiedLoggerService.info('   Track Source: ${audioTrack.source}');
+      
+    } catch (e) {
+      UnifiedLoggerService.error('❌ Erreur connexion audio $participantId: $e');
+    }
+  }
+  
+  /// Gère l'événement de publication de piste (quand un agent commence à parler)
+  void _handleTrackPublished(TrackPublishedEvent event) {
+    final publication = event.publication;
+    final participant = event.participant;
+    
+    UnifiedLoggerService.info('Track published: ${publication.sid} from ${participant?.identity}');
+    
+    if (publication.kind == TrackType.AUDIO) {
+      UnifiedLoggerService.info('AUDIO TRACK PUBLISHED by ${participant?.identity}');
+      
+      _dataStreamController.add({
+        'type': 'audio_track_published',
+        'participant_id': participant?.identity,
+        'track_sid': publication.sid,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    }
   }
   
   /// Traite les données reçues des agents

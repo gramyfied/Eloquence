@@ -22,14 +22,13 @@ class PreparationScreen extends ConsumerStatefulWidget {
 class _PreparationScreenState extends ConsumerState<PreparationScreen> with TickerProviderStateMixin {
   final List<Message> _messages = [];
   final TextEditingController _textController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _subjectController = TextEditingController();
+  // Contrôleurs supprimés : plus besoin de prénom/sujet
   late PreparationCoachService _coachService;
   bool _isLoadingResponse = false;
   CoachMode _currentMode = CoachMode.text;
   bool _isListening = false;
-  bool _hasFilledInfo = false;
-  bool _canContinue = false;
+  bool _hasFilledInfo = true; // Aller directement au chat utile
+  // Plus besoin de _canContinue
   
   // Animation controllers
   late AnimationController _micAnimationController;
@@ -53,22 +52,13 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
       curve: Curves.easeInOut,
     ));
     
-    // Ajouter des listeners pour mettre à jour le bouton en temps réel
-    _nameController.addListener(_checkCanContinue);
-    _subjectController.addListener(_checkCanContinue);
-    
-    // Message d'accueil contextuel
+    // Message d'accueil contextuel direct
     _messages.add(
       Message(sender: Sender.ai, text: _getWelcomeMessage()),
     );
   }
 
-  void _checkCanContinue() {
-    setState(() {
-      _canContinue = _nameController.text.trim().isNotEmpty &&
-                     _subjectController.text.trim().isNotEmpty;
-    });
-  }
+  // Méthode supprimée : plus besoin de vérification
 
   String _getWelcomeMessage() {
     switch (widget.simulationType) {
@@ -100,10 +90,6 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
   @override
   void dispose() {
     _textController.dispose();
-    _nameController.removeListener(_checkCanContinue);
-    _subjectController.removeListener(_checkCanContinue);
-    _nameController.dispose();
-    _subjectController.dispose();
     _micAnimationController.dispose();
     super.dispose();
   }
@@ -213,7 +199,7 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
       backgroundColor: EloquenceTheme.navy,
       appBar: _buildAppBar(context),
       body: SafeArea(
-        child: _hasFilledInfo ? _buildChatInterface() : _buildInfoForm(),
+        child: _buildChatInterface(), // Toujours afficher le chat
       ),
     );
   }
@@ -345,130 +331,12 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
       ),
     );
   }
-  Widget _buildInfoForm() {
-    return Container(
-      padding: const EdgeInsets.all(EloquenceTheme.spacingXl),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Titre
-          Text(
-            'Préparation de la Simulation',
-            style: EloquenceTheme.headline2.copyWith(color: Colors.white),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: EloquenceTheme.spacingXl),
-          
-          // Description du type de simulation
-          Container(
-            padding: const EdgeInsets.all(EloquenceTheme.spacingMd),
-            decoration: BoxDecoration(
-              color: EloquenceTheme.glassBackground,
-              borderRadius: EloquenceTheme.borderRadiusLarge,
-              border: Border.all(color: EloquenceTheme.glassBorder),
-            ),
-            child: Text(
-              _getSimulationDescription(),
-              style: EloquenceTheme.bodyMedium.copyWith(color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: EloquenceTheme.spacingXl),
-          
-          // Champ Prénom
-          TextField(
-            controller: _nameController,
-            style: EloquenceTheme.bodyLarge.copyWith(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Votre prénom',
-              labelStyle: EloquenceTheme.bodyMedium.copyWith(color: Colors.white70),
-              hintText: 'Entrez votre prénom',
-              hintStyle: EloquenceTheme.bodyMedium.copyWith(color: Colors.white30),
-              filled: true,
-              fillColor: EloquenceTheme.glassBackground,
-              border: OutlineInputBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                borderSide: BorderSide(color: EloquenceTheme.glassBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                borderSide: BorderSide(color: EloquenceTheme.glassBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                borderSide: BorderSide(color: EloquenceTheme.cyan, width: 2),
-              ),
-              prefixIcon: const Icon(Icons.person, color: Colors.white70),
-            ),
-          ),
-          const SizedBox(height: EloquenceTheme.spacingLg),
-          
-          // Champ Sujet
-          TextField(
-            controller: _subjectController,
-            style: EloquenceTheme.bodyLarge.copyWith(color: Colors.white),
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Sujet de votre présentation',
-              labelStyle: EloquenceTheme.bodyMedium.copyWith(color: Colors.white70),
-              hintText: 'Décrivez brièvement le sujet que vous allez présenter',
-              hintStyle: EloquenceTheme.bodyMedium.copyWith(color: Colors.white30),
-              filled: true,
-              fillColor: EloquenceTheme.glassBackground,
-              border: OutlineInputBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                borderSide: BorderSide(color: EloquenceTheme.glassBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                borderSide: BorderSide(color: EloquenceTheme.glassBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-                borderSide: BorderSide(color: EloquenceTheme.cyan, width: 2),
-              ),
-              prefixIcon: const Icon(Icons.subject, color: Colors.white70),
-            ),
-          ),
-          const SizedBox(height: EloquenceTheme.spacingXl),
-          
-          // Bouton Continuer
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: EloquenceTheme.cyan,
-              shape: RoundedRectangleBorder(
-                borderRadius: EloquenceTheme.borderRadiusLarge,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-            ),
-            onPressed: _canContinue
-                ? () {
-                    setState(() {
-                      _hasFilledInfo = true;
-                      // Ajouter un message personnalisé avec le prénom
-                      _messages.add(
-                        Message(
-                          sender: Sender.ai,
-                          text: "Bonjour ${_nameController.text} ! ${_getWelcomeMessage()}\n\nVotre sujet : ${_subjectController.text}",
-                        ),
-                      );
-                    });
-                  }
-                : null,
-            child: const Text(
-              'Continuer vers la préparation',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Méthode _buildInfoForm() supprimée - plus besoin de formulaire prénom/sujet
   
   Widget _buildChatInterface() {
     return Column(
       children: [
-        // Info bar avec prénom et sujet
+        // Info bar simplifiée avec type de simulation
         Container(
           padding: const EdgeInsets.all(EloquenceTheme.spacingSm),
           decoration: BoxDecoration(
@@ -479,21 +347,11 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
           ),
           child: Row(
             children: [
-              Icon(Icons.person, color: Colors.white70, size: 16),
+              Icon(Icons.psychology, color: Colors.white70, size: 16),
               const SizedBox(width: EloquenceTheme.spacingXs),
               Text(
-                _nameController.text,
+                'Coach ${widget.simulationType.toDisplayString()}',
                 style: EloquenceTheme.bodySmall.copyWith(color: Colors.white),
-              ),
-              const SizedBox(width: EloquenceTheme.spacingMd),
-              Icon(Icons.subject, color: Colors.white70, size: 16),
-              const SizedBox(width: EloquenceTheme.spacingXs),
-              Expanded(
-                child: Text(
-                  _subjectController.text,
-                  style: EloquenceTheme.bodySmall.copyWith(color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
             ],
           ),
@@ -525,12 +383,12 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
             padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
           ),
           onPressed: () {
-            // Passer le nom et le sujet à la simulation
+            // Aller directement à la simulation
             context.push(
               '/simulation/${widget.simulationType.toRouteString()}',
               extra: {
-                'userName': _nameController.text,
-                'userSubject': _subjectController.text,
+                'userName': 'Utilisateur',
+                'userSubject': 'Sujet préparé avec le coach',
               },
             );
           },
