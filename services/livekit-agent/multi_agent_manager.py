@@ -458,6 +458,21 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         if primary_speaker:
             logger.info(f"✅ RÉPONSE FINALE CONFIRMÉE: {self.agents[primary_speaker].name}")
             logger.info(f"📝 Contenu: {primary_response[:50]}...")
+            # NOUVEAU: Déclencher des réactions intelligentes même hors fallback
+            try:
+                extra_reactions = await self.trigger_agent_reactions_parallel(primary_speaker, primary_response)
+                # Fusionner en évitant None
+                if extra_reactions:
+                    # Convertir au format 'secondary_responses'
+                    for i, fr in enumerate(extra_reactions):
+                        secondary_responses.append({
+                            'agent_id': fr.get('agent_id'),
+                            'agent_name': fr.get('agent_name'),
+                            'reaction': fr.get('reaction') or fr.get('content') or "",
+                            'delay_ms': fr.get('delay_ms', 150)
+                        })
+            except Exception as e:
+                logger.warning(f"⚠️ Impossible de générer des réactions secondaires: {e}")
         else:
             logger.error("❌ ÉCHEC CRITIQUE: Aucun agent principal sélectionné")
 
@@ -646,9 +661,49 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
     async def process_agent_output(self, agent_output: str, agent_id: str) -> Dict[str, Any]:
         """Traite la sortie d'un agent avec détection d'interpellations"""
         try:
-            # Détecter si cet agent interpelle d'autres agents
+            # NOUVEAU: Détection spéciale pour l'autorité de l'animateur
+            if agent_id == "animateur_principal":
+                logger.info(f"🎭 ANIMATEUR DÉTECTÉ: {agent_output[:50]}...")
+                
+                # Utiliser l'autorité de l'animateur pour détecter les directives
+                directive = self.animator_authority.detector.detect_animator_directive(agent_output, agent_id)
+                
+                if directive and directive.get('type') in ['direct_assignment', 'general_question']:
+                    target_agent = directive.get('target_agent')
+                    
+                    if target_agent == 'any_available':
+                        # Question générale - sélectionner l'agent le moins actif
+                        available_agents = [aid for aid in self.agents.keys() if aid != agent_id]
+                        selected_agents = self.animator_authority.process_animator_directive(directive, available_agents)
+                    else:
+                        # Directive directe à un agent spécifique
+                        selected_agents = [target_agent] if target_agent in self.agents else []
+                    
+                    if selected_agents:
+                        source_agent = self.agents.get(agent_id)
+                        logger.info(
+                            f"🎯 DIRECTIVE ANIMATEUR DÉTECTÉE: {source_agent.name if source_agent else agent_id} → "
+                            f"{[self.agents[aid].name for aid in selected_agents]} (type: {directive.get('type')})"
+                        )
+                        forced_responses = await self._force_interpellation_response(
+                            selected_agents, agent_output, source_id=agent_id
+                        )
+                        return {
+                            'original_output': {
+                                'agent_id': agent_id,
+                                'content': agent_output,
+                                'type': 'agent_output'
+                            },
+                            'triggered_responses': forced_responses,
+                            'type': 'animator_directive_chain',
+                            'interpelled_agents': selected_agents,
+                            'source_agent': agent_id,
+                            'directive': directive
+                        }
+            
+            # Détection normale pour tous les agents
             interpelled_agents = self.address_detector.detect_direct_addresses(
-                agent_output, {aid: agent for aid, agent in self.agents.items() if aid != agent_id}
+                agent_output, {aid: agent for aid, agent in self.agents.items() if agent_id != aid}
             )
             if interpelled_agents:
                 source_agent = self.agents.get(agent_id)
@@ -1141,11 +1196,11 @@ AUTRES PARTICIPANTS:
             task = _one(agent)
             tasks.append(task)
 
-        # Attendre toutes les réactions (max 3 secondes)
+        # Attendre toutes les réactions (max 2 secondes pour plus de réactivité)
         try:
             reactions_results = await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True),
-                timeout=2.5,
+                timeout=1.8,  # Réduit de 2.5 à 1.8s
             )
         except asyncio.TimeoutError:
             logger.warning("⚠️ Timeout sur génération des réactions")
@@ -1176,8 +1231,8 @@ AUTRES PARTICIPANTS:
                 "agent_id": agent_id,
                 "agent_name": agent.name,
                 "reaction": reaction,
-                # Délais plus courts pour plus de réactivité et permettre des coupes de parole
-                "delay_ms": 120 + (i * 300),
+                # Délais ULTRA-RAPIDES pour réactivité maximale
+                "delay_ms": 80 + (i * 200),  # Réduit de 120+300 à 80+200
             })
 
             # Ajouter à l'historique

@@ -3,6 +3,7 @@ Système de réponse garantie pour interpellations directes
 """
 import asyncio
 import logging
+import os
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -12,13 +13,13 @@ class GuaranteedResponseSystem:
     """Garantit qu'un agent répond TOUJOURS quand interpellé directement"""
 
     def __init__(self):
-        # Réduction des timeouts pour réactivité (notamment Marcus)
+        # Timeouts ULTRA-RAPIDES pour réactivité maximale
         self.response_timeouts: Dict[str, float] = {
-            'direct_address': 2.0,
-            'opinion_request': 2.5,
-            'action_request': 3.0,
-            'explanation_request': 3.5,
-            'general_address': 2.0
+            'direct_address': 1.2,      # Réduit de 2.0 à 1.2s
+            'opinion_request': 1.5,     # Réduit de 2.5 à 1.5s
+            'action_request': 1.8,      # Réduit de 3.0 à 1.8s
+            'explanation_request': 2.0, # Réduit de 3.5 à 2.0s
+            'general_address': 1.2      # Réduit de 2.0 à 1.2s
         }
 
         self.emergency_responses: Dict[str, list[str]] = {
@@ -116,12 +117,12 @@ CONTEXTE : Débat TV en direct, tu ne peux pas ignorer une interpellation direct
 
 Réponds MAINTENANT :"""
 
-        # Configuration optimisée pour vitesse
+        # Configuration ULTRA-RAPIDE pour réactivité maximale
         response_config = {
-            'max_tokens': 70,         # Plus court → plus rapide
-            'temperature': 0.55,
-            'top_p': 0.85,
-            'presence_penalty': 0.3
+            'max_tokens': 50,         # Encore plus court → ultra-rapide
+            'temperature': 0.7,       # Plus créatif pour réponses naturelles
+            'top_p': 0.9,
+            'presence_penalty': 0.2
         }
 
         # Appel LLM optimisé (à adapter selon votre système)
@@ -149,16 +150,20 @@ Réponds MAINTENANT :"""
             return agent_responses[-1] if len(agent_responses) > 2 else agent_responses[0]
 
     async def _call_llm_optimized(self, prompt: str, config: Dict[str, Any]) -> str:
-        """Appel LLM optimisé - À ADAPTER selon votre système
-
-        Ici on simule pour l'exemple.
-        """
-        # PLACEHOLDER - Remplacer par votre système LLM interne (llm_optimizer, etc.)
+        """Appel LLM optimisé avec fallbacks robustes"""
+        
+        # ESSAI 1: LLM Optimizer (si disponible)
         try:
-            # Si un optimiseur existe dans le projet, tenter un import léger
-            from .llm_optimizer import llm_optimizer  # type: ignore
+            # Import absolu pour éviter les erreurs de module
+            import sys
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            if current_dir not in sys.path:
+                sys.path.insert(0, current_dir)
+            
+            from llm_optimizer import llm_optimizer
 
-            # Utiliser un timeout plus court pour garantir la réactivité
+            # Timeout ULTRA-RAPIDE pour réactivité maximale
             result = await asyncio.wait_for(
                 llm_optimizer.get_optimized_response(
                     messages=[{"role": "system", "content": prompt}],
@@ -167,12 +172,62 @@ Réponds MAINTENANT :"""
                     use_cache=True,
                     cache_ttl=120,
                 ),
-                timeout=1.6,
+                timeout=1.0,  # Réduit de 1.6 à 1.0s
             )
             return str(result.get('response') or "Merci de me donner la parole.")
-        except Exception:
-            # Simulation si indisponible
-            await asyncio.sleep(0.25)
-            return "Merci de me donner la parole, c'est une excellente question."
+        except Exception as e:
+            logger.debug(f"⚠️ LLM Optimizer non disponible: {e}")
+
+        # ESSAI 2: OpenAI direct (si disponible)
+        try:
+            openai_key = os.getenv('OPENAI_API_KEY')
+            if openai_key:
+                import openai as openai_client
+                client = openai_client.OpenAI(api_key=openai_key)
+                
+                response = await asyncio.wait_for(
+                    client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "system", "content": prompt}],
+                        temperature=0.8,
+                        max_tokens=50,  # Réduit pour plus de rapidité
+                    ),
+                    timeout=1.2,  # Réduit de 2.0 à 1.2s
+                )
+                return response.choices[0].message.content
+        except Exception as e:
+            logger.debug(f"⚠️ OpenAI direct non disponible: {e}")
+
+        # ESSAI 3: Mistral (si disponible)
+        try:
+            mistral_url = os.getenv('MISTRAL_BASE_URL')
+            mistral_key = os.getenv('MISTRAL_API_KEY')
+            if mistral_url and mistral_key:
+                import aiohttp
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        mistral_url,
+                        headers={
+                            "Authorization": f"Bearer {mistral_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": "mistral-small-latest",
+                            "messages": [{"role": "system", "content": prompt}],
+                            "max_tokens": 70,
+                            "temperature": 0.7
+                        },
+                        timeout=aiohttp.ClientTimeout(total=2.0)
+                    ) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return data['choices'][0]['message']['content']
+        except Exception as e:
+            logger.debug(f"⚠️ Mistral non disponible: {e}")
+
+        # FALLBACK FINAL: Réponse d'urgence
+        logger.warning("🆘 Utilisation du fallback d'urgence pour LLM")
+        await asyncio.sleep(0.1)  # Petit délai pour simuler le traitement
+        return "Merci de me donner la parole, c'est une excellente question."
 
 

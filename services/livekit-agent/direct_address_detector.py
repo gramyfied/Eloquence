@@ -112,7 +112,58 @@ class DirectAddressDetector:
                 logger.info(f"🎯 Regex détecté: '{pattern}' → {getattr(agent, 'name', 'agent')} ")
                 return True
 
+        # NOUVEAU: Détection d'interpellations indirectes (questions sans nom)
+        # MAIS seulement si c'est une question générale ET qu'on a un contexte d'animateur
+        if self._is_general_question(text_lower):
+            # Pour les questions générales, on ne détecte PAS automatiquement tous les agents
+            # Il faut un contexte spécifique (comme une directive d'animateur)
+            return False
+
         return False
+
+    def _is_general_question(self, text_lower: str) -> bool:
+        """Détecte si c'est une question générale (pas une interpellation spécifique)"""
+        
+        # Patterns de questions générales
+        general_question_patterns = [
+            r"que\s+pensez-vous",
+            r"comment\s+réagissez-vous",
+            r"qu'en\s+dites-vous",
+            r"votre\s+avis",
+            r"votre\s+opinion",
+            r"pouvez-vous\s+expliquer",
+            r"pourriez-vous\s+préciser",
+            r"avez-vous\s+une\s+réponse",
+            r"que\s+répondez-vous",
+            r"comment\s+expliquez-vous",
+            r"qu'est-ce\s+que\s+vous\s+en\s+pensez",
+            r"que\s+diriez-vous",
+            r"comment\s+analysez-vous",
+            r"votre\s+réaction",
+            r"votre\s+position",
+        ]
+
+        # Vérifier si le texte contient une question générale
+        for pattern in general_question_patterns:
+            if re.search(pattern, text_lower):
+                return True
+
+        return False
+
+    def classify_address_type(self, text: str, agent_id: str) -> str:
+        """Classifie le type d'interpellation pour optimiser la réponse"""
+        text_lower = text.lower()
+        
+        if any(word in text_lower for word in ["pensez", "opinion", "avis", "crois"]):
+            return "opinion_request"
+        elif any(word in text_lower for word in ["pouvez", "pourriez", "pouvez-vous"]):
+            return "action_request"
+        elif any(word in text_lower for word in ["expliquez", "précisez", "comment", "pourquoi"]):
+            return "explanation_request"
+        elif any(word in text_lower for word in ["que", "qu'en", "dites"]):
+            return "general_address"
+        else:
+            return "direct_address"
 
     def detect_with_animator_authority(self, message: str, speaker: str) -> dict:
         """
@@ -139,28 +190,20 @@ class DirectAddressDetector:
                 if directive:
                     return {
                         'detected': True,
-                        'agent': directive['target_agent'],
-                        'confidence': 0.95,  # Haute confiance pour directives animateur
+                        'agent': directive.get('target_agent'),
+                        'confidence': 0.75,
                         'type': 'animator_directive',
-                        'directive_type': directive['type'],
-                        'priority': directive['priority']
+                        'priority': 'MEDIUM',
+                        'directive': directive
                     }
-            except ImportError as e:
-                logger.warning(f"⚠️ Impossible d'importer AnimatorAuthorityDetector: {e}")
+            except ImportError:
+                logger.debug("AnimatorAuthorityDetector non disponible")
         
-        return {'detected': False}
-
-    def classify_address_type(self, text: str, agent_name: str) -> str:
-        """Classifie le type d'interpellation"""
-        text_lower = (text or "").lower()
-
-        if any(word in text_lower for word in ['que pensez', "qu'en pensez", 'votre avis']):
-            return 'opinion_request'
-        elif any(word in text_lower for word in ['pouvez-vous', 'pourriez-vous']):
-            return 'action_request'
-        elif any(word in text_lower for word in ['comment', 'pourquoi']):
-            return 'explanation_request'
-        else:
-            return 'general_address'
+        return {
+            'detected': False,
+            'confidence': 0.0,
+            'type': 'none',
+            'priority': 'LOW'
+        }
 
 

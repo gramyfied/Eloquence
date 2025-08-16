@@ -6,7 +6,7 @@ services:
       dockerfile: ../../docker/dockerfiles/livekit-agent.multiagent.Dockerfile
     container_name: eloquence-multiagent
     environment:
-      - LIVEKIT_URL=ws://${HOST_LAN_IP}:7880
+      - LIVEKIT_URL=ws://livekit-server:7880
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -22,9 +22,7 @@ services:
     networks:
       - eloquence-network
     restart: unless-stopped
-    volumes:
-      - ../../logs:/app/logs
-      - ../../services/livekit-agent:/app
+    # Pas de bind-mount en dev pour éviter d'écraser le code embarqué dans l'image
 
 networks:
   eloquence-network:

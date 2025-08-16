@@ -22,10 +22,10 @@ class NetworkConfig {
   }
   
   // URLs des services
-  static String get livekitUrl => 'ws://$baseUrl:7880';
-  static String get livekitHttpUrl => 'http://$baseUrl:7880';
+  static String get livekitUrl => 'ws://$baseUrl:8780';
+  static String get livekitHttpUrl => 'http://$baseUrl:8780';
   static String get haproxyUrl => 'http://$baseUrl:8080';
-  static String get tokenServiceUrl => 'http://$baseUrl:8004';
+  static String get tokenServiceUrl => 'http://$baseUrl:8804';
   static String get exercisesApiUrl => 'http://$baseUrl:8005';
   static String get mistralUrl => 'http://$baseUrl:8001';
   static String get voskUrl => 'http://$baseUrl:8002';

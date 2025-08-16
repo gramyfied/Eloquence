@@ -312,6 +312,33 @@ class MultiAgentLiveKitService:
                     'text': primary_response,
                     'delay': 0
                 })
+
+                # NOUVEAU: Détecter immédiatement les interpellations dans la sortie de l'agent
+                try:
+                    outcome = await self.manager.process_agent_output(primary_response, primary_agent_id)
+                    if outcome and isinstance(outcome, dict):
+                        triggered = outcome.get('triggered_responses') or []
+                        if triggered:
+                            logger.info(f"🎯 Chaîne d'interpellations déclenchée: {len(triggered)} réactions")
+                            for idx, tr in enumerate(triggered):
+                                sec_id = tr.get('agent_id')
+                                if sec_id and sec_id in self.manager.agents:
+                                    sec_agent = self.manager.agents[sec_id]
+                                    sec_text = tr.get('content') or tr.get('reaction') or ''
+
+                                    # Mémoriser le dernier speaker pour l'autorité
+                                    if "Sarah" in sec_agent.name:
+                                        self.manager.set_last_speaker_message("journaliste_contradicteur", sec_text)
+                                    elif "Marcus" in sec_agent.name:
+                                        self.manager.set_last_speaker_message("expert_specialise", sec_text)
+
+                                    responses_to_speak.append({
+                                        'agent': sec_agent,
+                                        'text': sec_text,
+                                        'delay': 150 + (idx * 200)
+                                    })
+                except Exception as e:
+                    logger.warning(f"⚠️ Échec détection interpellations sur sortie agent: {e}")
                 
                 # Ajouter les réponses secondaires si présentes
                 secondary_responses = response_data.get('secondary_responses', [])
@@ -401,7 +428,10 @@ class MultiAgentLiveKitService:
         """Retourne le TTS dédié à l'agent, en le créant si besoin (ou en le recréant si demandé)."""
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
-            raise Exception("OPENAI_API_KEY manquante pour TTS agent")
+            logger.warning("⚠️ OPENAI_API_KEY manquante pour TTS agent — fallback Silero utilisé")
+            fallback = silero.TTS()
+            self.agent_tts[agent.agent_id] = fallback
+            return fallback
 
         existing = self.agent_tts.get(agent.agent_id)
         if existing and not force_recreate:

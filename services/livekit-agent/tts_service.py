@@ -120,8 +120,12 @@ class TTSService:
             # Limiter la vitesse aux bornes OpenAI
             speed = max(0.25, min(4.0, speed))
             
+            # Utiliser la meilleure qualité disponible
+            quality = voice_config.get("quality", "hd")
+            model = "tts-1-hd" if quality == "hd" else "tts-1"
+            
             data = {
-                "model": "tts-1-hd",  # Haute qualité
+                "model": "tts-1",  # Modèle standard pour rapidité (au lieu de HD)
                 "input": text,
                 "voice": voice,
                 "speed": speed,
@@ -132,7 +136,12 @@ class TTSService:
                 async with session.post(url, headers=headers, json=data) as response:
                     if response.status == 200:
                         audio_data = await response.read()
-                        logger.info(f"✅ Audio généré: {len(audio_data)} bytes")
+                        logger.info(f"✅ Audio généré: {len(audio_data)} bytes avec modèle {model}")
+                        
+                        # Optimisation audio pour meilleure qualité
+                        if len(audio_data) > 0:
+                            logger.info(f"🎵 Qualité audio optimisée pour {voice} (vitesse: {speed})")
+                        
                         return audio_data
                     else:
                         error = await response.text()

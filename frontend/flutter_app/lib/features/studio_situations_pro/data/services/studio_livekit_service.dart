@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:eloquence_2_0/core/utils/unified_logger_service.dart';
 import 'package:eloquence_2_0/core/config/network_config.dart';
+import 'package:flutter/services.dart'; // Added for MethodChannel
 
 /// Service amélioré pour gérer la connexion LiveKit avec support multi-agents
 class StudioLiveKitService {
@@ -118,13 +119,37 @@ class StudioLiveKitService {
         const AudioCaptureOptions(
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
+          autoGainControl: false, // Désactivé pour éviter l'amplification automatique
         ),
       );
+      
+      // Configuration supplémentaire pour réduire la sensibilité
+      await _configureAudioSensitivity(audioTrack);
+      
       await localParticipant?.publishAudioTrack(audioTrack);
-      UnifiedLoggerService.info('Local audio track published.');
+      UnifiedLoggerService.info('Local audio track published with reduced sensitivity.');
     } catch (e) {
       UnifiedLoggerService.error('Could not publish audio track: $e');
+    }
+  }
+  
+  /// Configure la sensibilité audio pour réduire les captures de bruit
+  Future<void> _configureAudioSensitivity(LocalAudioTrack audioTrack) async {
+    try {
+      // Configuration via MethodChannel pour ajuster la sensibilité hardware
+      const platform = MethodChannel('eloquence/audio');
+      
+      await platform.invokeMethod('configureMicrophoneSensitivity', {
+        'reducedSensitivity': true,
+        'noiseGateThreshold': 0.3, // Seuil de bruit élevé (0.0-1.0)
+        'gainReduction': 0.5, // Réduction du gain de 50%
+        'voiceActivityThreshold': 0.4, // Seuil d'activité vocale plus strict
+      });
+      
+      UnifiedLoggerService.info('Microphone sensitivity configured for reduced noise capture.');
+    } catch (e) {
+      UnifiedLoggerService.warning('Could not configure microphone sensitivity via platform: $e');
+      // Fallback: configuration via LiveKit uniquement
     }
   }
   

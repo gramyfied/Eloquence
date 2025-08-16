@@ -19,6 +19,12 @@ class AppConfig {
 
   // URLs des services
   static String get livekitUrl {
+    // For debug on device, forcer le port exposé 8780
+    if (kDebugMode) {
+      const debugUrl = 'ws://192.168.1.44:8780';
+      debugPrint('🔧 DEBUG: Force livekitUrl = $debugUrl');
+      return debugUrl;
+    }
     final url = dotenv.env['LIVEKIT_URL'] ?? 'ws://localhost:7880';
     return isProduction ? "wss://your-prod-server.com" : _replaceLocalhostWithDevIp(url);
   }
@@ -34,6 +40,12 @@ class AppConfig {
 
   // URL du serveur de tokens LiveKit
   static String get livekitTokenUrl {
+    // For debug on device, forcer le port exposé 8804
+    if (kDebugMode) {
+      const debugUrl = 'http://192.168.1.44:8804';
+      debugPrint('🔧 DEBUG: Force livekitTokenUrl = $debugUrl');
+      return debugUrl;
+    }
     final url = dotenv.env['LIVEKIT_TOKEN_URL'] ?? 'http://localhost:8004';
     return isProduction ? "https://your-prod-server.com/livekit-tokens" : _replaceLocalhostWithDevIp(url);
   }

@@ -94,6 +94,11 @@ class MainActivity: FlutterActivity() {
                         setMediaVolumeMax()
                         result.success(null)
                     }
+                    "configureMicrophoneSensitivity" -> {
+                        val args = call.arguments as? Map<String, Any?>
+                        configureMicrophoneSensitivity(args)
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -527,6 +532,82 @@ class MainActivity: FlutterActivity() {
             Log.d("MainActivity", "Audio routé vers le haut-parleur - isSpeakerphoneOn: ${audioManager.isSpeakerphoneOn}")
         } catch (e: Exception) {
             Log.e("MainActivity", "Erreur routage audio vers haut-parleur", e)
+        }
+    }
+    
+    /**
+     * Configure la sensibilité du microphone pour réduire les captures de bruit
+     */
+    private fun configureMicrophoneSensitivity(args: Map<String, Any?>?) {
+        try {
+            val reducedSensitivity = args?.get("reducedSensitivity") as? Boolean ?: true
+            val noiseGateThreshold = args?.get("noiseGateThreshold") as? Double ?: 0.3
+            val gainReduction = args?.get("gainReduction") as? Double ?: 0.5
+            val voiceActivityThreshold = args?.get("voiceActivityThreshold") as? Double ?: 0.4
+            
+            Log.d("MainActivity", "🎤 Configuration sensibilité microphone:")
+            Log.d("MainActivity", "   - Sensibilité réduite: $reducedSensitivity")
+            Log.d("MainActivity", "   - Seuil bruit: $noiseGateThreshold")
+            Log.d("MainActivity", "   - Réduction gain: $gainReduction")
+            Log.d("MainActivity", "   - Seuil activité vocale: $voiceActivityThreshold")
+            
+            if (reducedSensitivity) {
+                // Configuration pour réduire la sensibilité
+                configureAudioForReducedSensitivity(noiseGateThreshold, gainReduction, voiceActivityThreshold)
+            }
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Erreur configuration sensibilité microphone", e)
+        }
+    }
+    
+    /**
+     * Configure l'audio pour une sensibilité réduite
+     */
+    private fun configureAudioForReducedSensitivity(
+        noiseGateThreshold: Double,
+        gainReduction: Double,
+        voiceActivityThreshold: Double
+    ) {
+        try {
+            // Mode audio optimisé pour réduire la sensibilité
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            
+            // Configuration du volume d'entrée (microphone)
+            val maxInputVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
+            val reducedInputVolume = (maxInputVolume * (1.0 - gainReduction)).toInt()
+            audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, reducedInputVolume, 0)
+            
+            // Configuration du volume de sortie (haut-parleur)
+            val maxOutputVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val optimalOutputVolume = (maxOutputVolume * 0.7).toInt() // Volume modéré
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, optimalOutputVolume, 0)
+            
+            // Activer le haut-parleur pour une meilleure audition
+            audioManager.isSpeakerphoneOn = true
+            
+            // Demander le focus audio avec configuration spéciale
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    .setWillPauseWhenDucked(false)
+                    .build()
+                audioManager.requestAudioFocus(focusRequest)
+            }
+            
+            Log.d("MainActivity", "✅ Audio configuré pour sensibilité réduite:")
+            Log.d("MainActivity", "   - Volume entrée: $reducedInputVolume/$maxInputVolume")
+            Log.d("MainActivity", "   - Volume sortie: $optimalOutputVolume/$maxOutputVolume")
+            Log.d("MainActivity", "   - Mode: ${audioManager.mode}")
+            Log.d("MainActivity", "   - Speaker: ${audioManager.isSpeakerphoneOn}")
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Erreur configuration audio sensibilité réduite", e)
         }
     }
     //endregion

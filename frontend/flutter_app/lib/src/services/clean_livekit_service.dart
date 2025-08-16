@@ -50,12 +50,14 @@ class CleanLiveKitService extends ChangeNotifier {
           _logger.i('[DIAGNOSTIC] Microphone permission granted');
         }
 
-        // Configuration pour mobile (TEST: désactiver adaptiveStream et dynacast pour diagnostiquer les underruns)
+        // Configuration pour mobile avec sensibilité réduite
         const roomOptions = RoomOptions(
           adaptiveStream: true, // Réactivé pour la performance
           dynacast: true, // Réactivé pour la performance
-          // Configuration optimisée pour mobile
-          defaultAudioPublishOptions: AudioPublishOptions(),
+          // Configuration optimisée pour mobile avec sensibilité réduite
+          defaultAudioPublishOptions: AudioPublishOptions(
+            dtx: true, // Discontinuous Transmission pour réduire le bruit
+          ),
           defaultVideoPublishOptions: VideoPublishOptions(),
         );
         _logger.i('[DIAGNOSTIC] RoomOptions: adaptiveStream et dynacast activés.');
@@ -168,6 +170,7 @@ class CleanLiveKitService extends ChangeNotifier {
       if (_room?.localParticipant != null) {
         _logger.i('[DIAGNOSTIC] Local participant found after ${i * 200}ms');
         _logger.i('[DIAGNOSTIC] Local participant identity: ${_room!.localParticipant!.identity}');
+        await _configureMicrophoneSensitivity(); // Configuration de la sensibilité
         return;
       }
       await Future.delayed(const Duration(milliseconds: 200));
@@ -597,5 +600,25 @@ class CleanLiveKitService extends ChangeNotifier {
       energyScore: 0.9,
       feedback: 'Excellente performance ! Votre confiance transparaît naturellement.',
     );
+  }
+  
+  /// Configure la sensibilité du microphone pour réduire les captures de bruit
+  Future<void> _configureMicrophoneSensitivity() async {
+    try {
+      _logger.i('🎤 Configuration de la sensibilité du microphone...');
+      
+      // Configuration via MethodChannel pour ajuster la sensibilité hardware
+      await _audioDiagnosticChannel.invokeMethod('configureMicrophoneSensitivity', {
+        'reducedSensitivity': true,
+        'noiseGateThreshold': 0.3, // Seuil de bruit élevé (0.0-1.0)
+        'gainReduction': 0.5, // Réduction du gain de 50%
+        'voiceActivityThreshold': 0.4, // Seuil d'activité vocale plus strict
+      });
+      
+      _logger.i('✅ Microphone sensitivity configured for reduced noise capture.');
+    } catch (e) {
+      _logger.w('⚠️ Could not configure microphone sensitivity via platform: $e');
+      // Fallback: configuration via LiveKit uniquement
+    }
   }
 }

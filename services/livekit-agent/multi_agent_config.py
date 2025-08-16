@@ -50,7 +50,7 @@ class StudioPersonalities:
                 name="Michel Dubois",
                 role="Animateur TV",
                 personality_traits=["autoritaire", "modérateur", "professionnel", "équitable"],
-                voice_config={"voice": "alloy", "speed": 1.0},
+                voice_config={"voice": "alloy", "speed": 1.0, "pitch": "normal", "quality": "hd"},
                 system_prompt="""Tu es Michel Dubois, animateur TV expérimenté et charismatique.
 
 SÉQUENCE D'INTRODUCTION OBLIGATOIRE:
@@ -125,7 +125,7 @@ RÈGLES D'INTERACTION:
                 name="Sarah Johnson",
                 role="Journaliste",
                 personality_traits=["curieuse", "challengeante", "analytique", "incisive"],
-                voice_config={"voice": "nova", "speed": 1.1},
+                voice_config={"voice": "nova", "speed": 1.0, "pitch": "slightly_higher", "quality": "hd"},
                 system_prompt="""Tu es Sarah Johnson, journaliste d'investigation expérimentée.
 
 PERSONNALITÉ:
@@ -167,7 +167,7 @@ RÈGLES D'INTERACTION:
                 name="Marcus Thompson",
                 role="Expert",
                 personality_traits=["sage", "factuel", "nuancé", "pédagogue"],
-                voice_config={"voice": "onyx", "speed": 0.9},
+                voice_config={"voice": "onyx", "speed": 0.95, "pitch": "measured", "quality": "hd"},
                 system_prompt="""Tu es Marcus Thompson, expert reconnu dans ton domaine.
 
 PERSONNALITÉ:
