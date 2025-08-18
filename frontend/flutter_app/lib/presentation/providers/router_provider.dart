@@ -14,7 +14,6 @@ import '../../features/confidence_boost/presentation/screens/confidence_boost_en
 import '../../features/confidence_boost/domain/entities/confidence_scenario.dart';
 import '../../features/confidence_boost/domain/entities/confidence_models.dart';
 import '../../features/studio_situations_pro/data/models/simulation_models.dart';
-import '../../core/utils/navigator_service.dart';
 import '../../features/confidence_boost/presentation/screens/virelangue_roulette_screen.dart';
 import '../../features/confidence_boost/presentation/screens/dragon_breath_screen.dart';
 import '../../features/confidence_boost/presentation/screens/cosmic_voice_screen.dart';
@@ -234,7 +233,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             parentNavigatorKey: rootNavigatorKey,
             builder: (BuildContext context, GoRouterState state) {
               final simulationType = state.pathParameters['simulationType']!;
-              return PreparationScreen(simulationType: SimulationTypeExtension.fromRouteString(simulationType as String));
+              return PreparationScreen(
+                simulationType: SimulationTypeExtension.fromRouteString(simulationType),
+              );
             },
           ),
           GoRoute(
@@ -242,8 +243,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             parentNavigatorKey: rootNavigatorKey,
             builder: (BuildContext context, GoRouterState state) {
               final simulationType = state.pathParameters['simulationType']!;
-              // Vous pouvez passer preparationData ici si nécessaire
-              return SimulationScreen(simulationType: SimulationTypeExtension.fromRouteString(simulationType));
+              // Transmettre les extras (userName, userSubject) si fournis
+              final extra = state.extra;
+              String? userName;
+              String? userSubject;
+              if (extra is Map) {
+                final map = Map<String, dynamic>.from(extra);
+                userName = map['userName'] as String?;
+                userSubject = map['userSubject'] as String?;
+              }
+              return SimulationScreen(
+                simulationType: SimulationTypeExtension.fromRouteString(simulationType),
+                userName: userName,
+                userSubject: userSubject,
+              );
             },
           ),
         ],
