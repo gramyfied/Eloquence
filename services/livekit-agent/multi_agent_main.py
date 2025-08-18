@@ -19,6 +19,10 @@ from livekit.agents import (
     llm,
 )
 from livekit.plugins import openai, silero
+try:
+    from elevenlabs_flash_tts_service import elevenlabs_flash_service
+except Exception:  # pragma: no cover - tests peuvent manquer le module
+    elevenlabs_flash_service = None  # type: ignore
 from vosk_stt_interface import VoskSTTFixed as VoskSTT
 
 # Imports du système multi-agents
@@ -436,6 +440,30 @@ class MultiAgentLiveKitService:
         existing = self.agent_tts.get(agent.agent_id)
         if existing and not force_recreate:
             return existing
+
+        # ElevenLabs Flash v2.5 pour modérateur en simulations temps réel
+        try:
+            if (
+                elevenlabs_flash_service is not None
+                and agent.interaction_style == InteractionStyle.MODERATOR
+                and str(self.config.exercise_id).startswith("studio_")
+            ):
+                class _ElevenLabsOnDemandTTS:
+                    async def synthesize(self_inner, text_inner: str):
+                        from livekit.agents import tts as _tts
+                        audio = await elevenlabs_flash_service.synthesize_speech_flash_v25(
+                            text=text_inner, agent_id="michel_dubois_animateur"
+                        )
+                        if not audio:
+                            yield _tts.SynthesizedAudio(data=b"", sample_rate=16000)
+                        else:
+                            yield _tts.SynthesizedAudio(data=audio, sample_rate=16000)
+
+                tts = _ElevenLabsOnDemandTTS()
+                self.agent_tts[agent.agent_id] = tts
+                return tts
+        except Exception as e:  # pragma: no cover
+            logger.warning(f"⚠️ ElevenLabs indisponible, fallback: {e}")
 
         voice = agent.voice_config.get('voice', 'alloy')
         speed = agent.voice_config.get('speed', 1.0)
