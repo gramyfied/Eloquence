@@ -72,15 +72,66 @@ class ExerciseSystemIntegration:
             existing_context.agents, scenario, personality_content
         )
 
+        # Génération du plan adaptatif (événements, triggers, scores)
+        try:
+            import importlib.util as _il
+            from pathlib import Path as _Path
+            import os as _os
+            import logging as _logging
+            _ad_path = _Path(__file__).resolve().parent / "adaptive_generator.py"
+            _ad_spec = _il.spec_from_file_location("_ad_mod", str(_ad_path))
+            _ad_mod = _il.module_from_spec(_ad_spec)  # type: ignore[arg-type]
+            assert _ad_spec and _ad_spec.loader
+            _ad_spec.loader.exec_module(_ad_mod)
+            AdaptiveScenarioGenerator = _ad_mod.AdaptiveScenarioGenerator
+            # Client Redis réel si disponible
+            _redis_client = None
+            try:
+                import redis as _redis
+                _url = _os.getenv("REDIS_URL", "redis://redis:6379/0")
+                _redis_client = _redis.Redis.from_url(_url, decode_responses=True)
+            except Exception:
+                _redis_client = None
+            gen = AdaptiveScenarioGenerator(redis_client=_redis_client)
+            adaptive_plan = await gen.generate_plan(scenario, existing_context.user_profile)
+            try:
+                _logging.getLogger(__name__).info(
+                    "🔗 INTEGRATION | session=%s | adaptive_plan=%s | diff=%.2f | events=%d | triggers=%d",
+                    session_id,
+                    adaptive_plan.scenario_id if adaptive_plan else "None",
+                    getattr(adaptive_plan, 'estimated_difficulty', -1.0) if adaptive_plan else -1.0,
+                    len(getattr(adaptive_plan, 'dynamic_events', []) or []),
+                    len(getattr(adaptive_plan, 'adaptation_triggers', []) or []),
+                )
+            except Exception:
+                pass
+        except Exception:
+            adaptive_plan = None
+
         # Propager les adaptations au gestionnaire multi-agents lorsque possible
         try:
-            # Appliquer le contexte du scénario
+            # Appliquer le contexte du scénario + plan adaptatif
             if hasattr(self.multi_agent_manager, 'mam') and hasattr(self.multi_agent_manager.mam, 'apply_exercise_context'):
-                self.multi_agent_manager.mam.apply_exercise_context(getattr(scenario, "context", {}))
+                ctx_payload = getattr(scenario, "context", {}).copy()
+                if adaptive_plan:
+                    ctx_payload.update({
+                        "dynamic_events": adaptive_plan.dynamic_events,
+                        "adaptation_triggers": adaptive_plan.adaptation_triggers,
+                        "estimated_difficulty": adaptive_plan.estimated_difficulty,
+                    })
+                self.multi_agent_manager.mam.apply_exercise_context(ctx_payload)
             elif hasattr(self.multi_agent_manager, 'apply_exercise_context'):
-                self.multi_agent_manager.apply_exercise_context(getattr(scenario, "context", {}))
-        except Exception:
-            pass
+                ctx_payload = getattr(scenario, "context", {}).copy()
+                if adaptive_plan:
+                    ctx_payload.update({
+                        "dynamic_events": adaptive_plan.dynamic_events,
+                        "adaptation_triggers": adaptive_plan.adaptation_triggers,
+                        "estimated_difficulty": adaptive_plan.estimated_difficulty,
+                    })
+                self.multi_agent_manager.apply_exercise_context(ctx_payload)
+        except Exception as _e:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(f"⚠️ INTEGRATION | apply_exercise_context échoué: {_e}")
 
         try:
             # Appliquer les variations de personnalité

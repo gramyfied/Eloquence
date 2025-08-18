@@ -382,8 +382,19 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
             ctx = dict(scenario_context or {})
             if not ctx:
                 return
-            # Note: on pourrait ajuster des paramètres d'orchestation ici
+            # Note: on adapte immédiatement les signaux adaptatifs dans les prompts
             logger.info(f"🧩 Contexte scénario appliqué: clés={list(ctx.keys())}")
+            try:
+                ev_preview = ",".join(e.get('type', 'evt') for e in (ctx.get('dynamic_events') or [])[:5]) or "-"
+                trig_preview = ",".join(t.get('trigger', 't') for t in (ctx.get('adaptation_triggers') or [])[:5]) or "-"
+                logger.info(f"🔎 ADAPTIVE_CONTEXT | diff={ctx.get('estimated_difficulty')} | events={ev_preview} | triggers={trig_preview}")
+            except Exception:
+                pass
+            self._adaptive_context = {
+                'dynamic_events': ctx.get('dynamic_events', []),
+                'adaptation_triggers': ctx.get('adaptation_triggers', []),
+                'estimated_difficulty': ctx.get('estimated_difficulty'),
+            }
         except Exception as e:
             logger.warning(f"⚠️ Impossible d'appliquer le contexte scénario: {e}")
 
@@ -1029,6 +1040,19 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
             
             # Construire le prompt avec la personnalité complète de l'agent
             first_name = agent.name.split()[0]
+            # Injecter signaux adaptatifs
+            adaptive_suffix = ""
+            try:
+                if hasattr(self, '_adaptive_context') and self._adaptive_context:
+                    dif = self._adaptive_context.get('estimated_difficulty')
+                    evs = self._adaptive_context.get('dynamic_events') or []
+                    triggers = self._adaptive_context.get('adaptation_triggers') or []
+                    ev_labels = ", ".join(e.get('type', 'evt') for e in evs[:3])
+                    trig_labels = ", ".join(t.get('trigger', 't') for t in triggers[:3])
+                    adaptive_suffix = f"\n\nSIGNAL ADAPTATIF:\n- Difficulté estimée: {dif}\n- Événements dynamiques: {ev_labels or 'aucun'}\n- Triggers: {trig_labels or 'aucun'}\n"
+            except Exception:
+                adaptive_suffix = ""
+
             system_prompt = f"""Tu es {agent.name}, {agent.role}.
 
 PERSONNALITÉ:
@@ -1042,6 +1066,7 @@ STYLE DE COMMUNICATION ({agent.interaction_style.value}):
 
 CONTEXTE DE LA CONVERSATION:
 {context}
+{adaptive_suffix}
 
 AUTRES PARTICIPANTS:
 {', '.join([a.name + ' (' + a.role + ')' for a in self.agents.values() if a.agent_id != agent.agent_id])}

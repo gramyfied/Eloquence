@@ -56,6 +56,7 @@ class DirectAddressDetector:
             f"{agent_first_name}?",
             f"{agent_first_name}:",
             f"{agent_first_name}.",
+            f"{agent_first_name}!",
 
             # Patterns avec questions
             f"{agent_first_name} que",
@@ -102,8 +103,11 @@ class DirectAddressDetector:
 
         # Patterns regex pour plus de flexibilité
         regex_patterns = [
-            rf"\b{re.escape(agent_first_name)}\b[,\s]",
+            # prénom suivi d'une ponctuation ou espace
+            rf"\b{re.escape(agent_first_name)}\b[\s,;:!\?…]",
+            # prénom en mot entier dans la phrase
             rf"(^|\s){re.escape(agent_first_name)}(\s|$)",
+            # prénom suivi d'un mot déclencheur
             rf"{re.escape(agent_first_name)}\s+(que|comment|pouvez|qu'en|votre)",
         ]
 

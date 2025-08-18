@@ -339,7 +339,12 @@ class StudioSituationsProService extends ChangeNotifier {
       final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
       
       // Se connecter à LiveKit
-      await _livekitService.connect(_currentRoomId!, userId: userId);
+      await _livekitService.connect(
+        _currentRoomId!,
+        userId: userId,
+        userName: userName,
+        userSubject: userSubject,
+      );
       
       // Connecter au backend multi-agents avec les données utilisateur
       await _connectToMultiAgentBackend(type, userName: userName, userSubject: userSubject);
@@ -392,6 +397,8 @@ class StudioSituationsProService extends ChangeNotifier {
           'max_agents': agentsConfig.length,
           'user_name': userName ?? 'Participant',
           'user_subject': userSubject ?? 'Sujet non défini',
+          // Ajout explicite du champ topic pour éviter toute ambiguïté côté backend
+          'topic': userSubject ?? 'Sujet non défini',
         }),
       ).timeout(
         const Duration(seconds: 10),
@@ -549,6 +556,8 @@ class StudioSituationsProService extends ChangeNotifier {
       'user_id': 'user_${DateTime.now().millisecondsSinceEpoch}',
       'user_name': userName ?? 'Participant',
       'user_subject': userSubject ?? 'Sujet non défini',
+      // Champ topic pour harmoniser la consommation côté agents
+      'topic': userSubject ?? 'Sujet non défini',
       'timestamp': DateTime.now().toIso8601String(),
     };
     
@@ -730,7 +739,6 @@ class StudioSituationsProService extends ChangeNotifier {
   /// Met à jour le speaker actif
   void _updateActiveSpeaker(Map<String, dynamic> data) {
     final speakerId = data['speaker_id'] ?? '';
-    final speakerType = data['speaker_type'] ?? '';
     
     _currentSpeaker = speakerId;
     
