@@ -22,35 +22,27 @@ class PreparationScreen extends ConsumerStatefulWidget {
 class _PreparationScreenState extends ConsumerState<PreparationScreen> with TickerProviderStateMixin {
   final List<Message> _messages = [];
   final TextEditingController _textController = TextEditingController();
+  final TextEditingController _subjectController = TextEditingController();
   // Contrôleurs supprimés : plus besoin de prénom/sujet
   late PreparationCoachService _coachService;
-  bool _isLoadingResponse = false;
-  CoachMode _currentMode = CoachMode.text;
-  bool _isListening = false;
-  bool _hasFilledInfo = true; // Aller directement au chat utile
+  // (supprimé) _isLoadingResponse non utilisé
   // Plus besoin de _canContinue
   
   // Animation controllers
   late AnimationController _micAnimationController;
-  late Animation<double> _micPulseAnimation;
+  // (supprimé) _micPulseAnimation non utilisé
 
   @override
   void initState() {
     super.initState();
-    _coachService = PreparationCoachService();
+    _coachService = ref.read(preparationCoachServiceProvider);
     
     // Initialiser l'animation du micro
     _micAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _micPulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _micAnimationController,
-      curve: Curves.easeInOut,
-    ));
+    // (supprimé) _micPulseAnimation non utilisé
     
     // Message d'accueil contextuel direct
     _messages.add(
@@ -82,14 +74,13 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
         return "💬 Une conversation difficile à préparer ? Tu peux écrire ou parler. Explique-moi le contexte, je t'aide à trouver les bons mots.";
       case SimulationType.negotiation:
         return "🤝 Préparons ta négociation ! Chat ou vocal, c'est toi qui choisis. Quels sont tes objectifs et tes marges de manœuvre ?";
-      default:
-        return "🎯 Préparons ta simulation ! Tu peux me parler ou m'écrire. Dis-moi ce qui t'inquiète le plus.";
     }
   }
 
   @override
   void dispose() {
     _textController.dispose();
+    _subjectController.dispose();
     _micAnimationController.dispose();
     super.dispose();
   }
@@ -99,7 +90,6 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
     
     setState(() {
       _messages.add(Message(sender: Sender.user, text: text));
-      _isLoadingResponse = true;
     });
     _textController.clear();
     
@@ -110,15 +100,14 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
           .toList();
       
       // Obtenir la réponse du coach IA
-      final response = await _coachService.getCoachResponse(
+      final response = await _coachService.sendMessage(
         text,
         widget.simulationType,
-        conversationHistory,
+        conversationHistory: conversationHistory,
       );
       
       setState(() {
         _messages.add(Message(sender: Sender.ai, text: response));
-        _isLoadingResponse = false;
       });
     } catch (e) {
       setState(() {
@@ -128,7 +117,6 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
             text: "Désolé, je n'ai pas pu traiter votre message. Réessayez ou continuez la préparation.",
           ),
         );
-        _isLoadingResponse = false;
       });
     }
   }
@@ -159,7 +147,6 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
               text: "🔍 Analyse du document en cours...",
             ),
           );
-          _isLoadingResponse = true;
         });
 
         // Analyser le document avec le service coach
@@ -177,7 +164,6 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
               text: "✅ Document analysé avec succès !\n\n$analysis",
             ),
           );
-          _isLoadingResponse = false;
         });
       }
     } catch (e) {
@@ -188,7 +174,6 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
             text: "❌ Erreur lors du téléchargement : ${e.toString()}",
           ),
         );
-        _isLoadingResponse = false;
       });
     }
   }
@@ -356,6 +341,8 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
             ],
           ),
         ),
+        // Sélection du sujet (débat/exercice)
+        _buildSubjectPicker(),
         
         // Chat messages
         Expanded(
@@ -388,7 +375,9 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
               '/simulation/${widget.simulationType.toRouteString()}',
               extra: {
                 'userName': 'Utilisateur',
-                'userSubject': 'Sujet préparé avec le coach',
+                'userSubject': _subjectController.text.isNotEmpty
+                    ? _subjectController.text
+                    : 'Sujet préparé avec le coach',
               },
             );
           },
@@ -401,23 +390,114 @@ class _PreparationScreenState extends ConsumerState<PreparationScreen> with Tick
       ],
     );
   }
-  
-  String _getSimulationDescription() {
-    switch (widget.simulationType) {
+
+  Widget _buildSubjectPicker() {
+    final suggestions = _getTopicSuggestions(widget.simulationType);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: EloquenceTheme.spacingMd,
+        vertical: EloquenceTheme.spacingSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sujet (optionnel)',
+            style: EloquenceTheme.bodySmall.copyWith(color: Colors.white70),
+          ),
+          const SizedBox(height: EloquenceTheme.spacingXs),
+          TextField(
+            controller: _subjectController,
+            style: EloquenceTheme.bodyMedium,
+            decoration: InputDecoration(
+              hintText: _subjectHintFor(widget.simulationType),
+              hintStyle: EloquenceTheme.bodyMedium.copyWith(color: Colors.white54),
+              filled: true,
+              fillColor: EloquenceTheme.glassBackground,
+              border: OutlineInputBorder(
+                borderRadius: EloquenceTheme.borderRadiusLarge,
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          if (suggestions.isNotEmpty) ...[
+            const SizedBox(height: EloquenceTheme.spacingSm),
+            Wrap(
+              spacing: EloquenceTheme.spacingSm,
+              runSpacing: EloquenceTheme.spacingSm,
+              children: suggestions.map((s) {
+                return ActionChip(
+                  label: Text(s, overflow: TextOverflow.ellipsis),
+                  onPressed: () {
+                    _subjectController.text = s;
+                  },
+                  backgroundColor: EloquenceTheme.violet.withOpacity(0.3),
+                  labelStyle: EloquenceTheme.bodySmall.copyWith(color: Colors.white),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<String> _getTopicSuggestions(SimulationType type) {
+    switch (type) {
       case SimulationType.debatPlateau:
-        return "Vous allez participer à un débat télévisé avec plusieurs intervenants. Préparez-vous à défendre vos idées !";
-      case SimulationType.entretienEmbauche:
-        return "Simulation d'entretien d'embauche avec recruteur et manager. Soyez prêt à présenter vos compétences.";
+        return const [
+          'Intelligence artificielle et emploi',
+          'Écologie vs croissance économique',
+          'Réseaux sociaux et vie privée',
+          'Télétravail: productivité et bien‑être',
+          'Éducation publique vs privée',
+        ];
       case SimulationType.reunionDirection:
-        return "Présentez votre projet devant la direction. Plusieurs décideurs seront présents.";
+        return const [
+          'Feuille de route produit T3',
+          'Budget et ROI projet data',
+          'Plan de réduction des risques',
+        ];
       case SimulationType.conferenceVente:
-        return "Pitch de vente devant plusieurs clients potentiels. Préparez votre argumentaire commercial.";
+        return const [
+          'Proposition de valeur – Offre Premium',
+          'Étude de cas client – Gains mesurés',
+          'Roadmap fonctionnalités clés',
+        ];
       case SimulationType.conferencePublique:
-        return "Conférence publique avec questions du public. Maîtrisez votre sujet et captivez l'audience.";
+        return const [
+          'Message clé: inclusion numérique',
+          'Prévention: cybersécurité au quotidien',
+        ];
+      case SimulationType.entretienEmbauche:
+      case SimulationType.jobInterview:
+        return const [
+          'Parcours et réalisations majeures',
+          'Forces et axes de progrès',
+          'Motivations pour le poste',
+        ];
       default:
-        return "Préparez-vous pour une simulation professionnelle avec plusieurs interlocuteurs.";
+        return const [];
     }
   }
+
+  String _subjectHintFor(SimulationType type) {
+    switch (type) {
+      case SimulationType.debatPlateau:
+        return 'Sujet du débat (ex: IA et emploi)';
+      case SimulationType.reunionDirection:
+        return 'Sujet de la présentation (ex: KPI T2, risques)';
+      case SimulationType.conferenceVente:
+        return 'Sujet du pitch (ex: nouvelle offre)';
+      case SimulationType.entretienEmbauche:
+      case SimulationType.jobInterview:
+        return 'Thème clé (ex: projet marquant, compétences)';
+      default:
+        return 'Sujet principal (optionnel)';
+    }
+  }
+  
+  // _getSimulationDescription supprimé (non utilisé)
 }
 
 enum Sender { user, ai }

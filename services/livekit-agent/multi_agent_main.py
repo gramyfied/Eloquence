@@ -579,6 +579,83 @@ class MultiAgentLiveKitService:
             
             # Initialisation du manager multi-agents
             self.manager.initialize_session()
+
+            # INTÉGRATION OPTIONNELLE DU SYSTÈME D'EXERCICES (feature flag)
+            try:
+                import os
+                flag = str(os.getenv("ELOQUENCE_EXERCISES_ENABLED", "")).lower() in ("1", "true", "yes", "on")
+                if flag:
+                    import importlib.util
+                    from pathlib import Path
+                    from types import SimpleNamespace
+                    base_dir = Path(__file__).resolve().parent / "exercise_system"
+
+                    def _load_mod(name: str):
+                        spec = importlib.util.spec_from_file_location(f"_ex_{name}", str(base_dir / f"{name}.py"))
+                        mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+                        assert spec and spec.loader
+                        spec.loader.exec_module(mod)
+                        return mod
+
+                    scen_mod = _load_mod("scenario_manager")
+                    var_mod = _load_mod("variation_engine")
+                    cache_mod = _load_mod("cache_system")
+                    orch_mod = _load_mod("orchestrator")
+                    int_mod = _load_mod("integration")
+
+                    # Initialiser les composants exercices
+                    scenario_manager = scen_mod.ScenarioManager()
+                    await scenario_manager.initialize()
+                    variation_engine = var_mod.AIVariationEngine()
+                    cache_system = cache_mod.ExerciseCacheSystem()
+                    orchestrator = orch_mod.ExerciseOrchestrator()
+
+                    # Adaptateur minimal pour le MultiAgentManager existant
+                    class _MAMAdapter:
+                        def __init__(self, mam):
+                            self.mam = mam
+
+                        async def get_session_context(self, session_id: str):
+                            UserProfile = scen_mod.UserProfile
+                            SkillLevel = scen_mod.SkillLevel
+                            user_profile = UserProfile(
+                                user_id=self.mam.config.exercise_id,
+                                skill_level=SkillLevel.INTERMEDIATE,
+                                professional_sector="technology",
+                                interests=["debate"],
+                                recent_exercises=[],
+                                performance_history={},
+                            )
+                            agents = [SimpleNamespace(id=aid) for aid in self.mam.agents.keys()]
+                            return SimpleNamespace(user_profile=user_profile, agents=agents, history=[])
+
+                        async def update_session_configuration(self, session_id: str, new_agents, scenario_context):
+                            # Intégration progressive — pas de reconfiguration live pour l’instant
+                            return None
+
+                    integration = int_mod.ExerciseSystemIntegration(
+                        _MAMAdapter(self.manager),
+                        scenario_manager=scenario_manager,
+                        variation_engine=variation_engine,
+                        cache_system=cache_system,
+                        orchestrator=orchestrator,
+                    )
+
+                    # Cibler automatiquement le scénario TV débat si la config l'indique
+                    prefs = {}
+                    try:
+                        if "debate" in str(self.config.exercise_id).lower():
+                            prefs = {"preferred_scenario_id": "studio_debate_tv"}
+                    except Exception:
+                        prefs = {}
+
+                    await integration.enhance_existing_session(
+                        "live-session",
+                        int_mod.ExerciseRequest(preferences=prefs)
+                    )
+                    logger.info("✅ Exercices: intégration minimale activée (feature flag)")
+            except Exception as e:
+                logger.warning(f"⚠️ Exercices: intégration désactivée (erreur: {e})")
             
             # Démarrage de la session
             await self.session.start(agent=agent, room=ctx.room)

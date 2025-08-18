@@ -374,6 +374,37 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         self.setup_turn_management()
         
         logger.info(f"✅ Session initialisée avec {len(self.agents)} agents")
+
+    # === Intégration système d'exercices: application de contexte ===
+    def apply_exercise_context(self, scenario_context: Dict[str, Any]):
+        """Applique un contexte de scénario (non destructif)."""
+        try:
+            ctx = dict(scenario_context or {})
+            if not ctx:
+                return
+            # Note: on pourrait ajuster des paramètres d'orchestation ici
+            logger.info(f"🧩 Contexte scénario appliqué: clés={list(ctx.keys())}")
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible d'appliquer le contexte scénario: {e}")
+
+    def override_agent_personalities(self, adapted_personalities: Dict[str, Dict[str, Any]]):
+        """Adapte légèrement les personnalités/ton sans casser la config.
+        adapted_personalities: mapping agent_id -> {persona/style/...}
+        """
+        try:
+            if not adapted_personalities:
+                return
+            for agent_id, overrides in adapted_personalities.items():
+                agent = self.agents.get(agent_id)
+                if not agent:
+                    continue
+                # Appliquer des attributs non destructifs si présents
+                if hasattr(agent, 'personality_traits') and 'persona' in overrides:
+                    # Préfixer une nuance simple
+                    agent.personality_traits = f"{agent.personality_traits}\nNuance scénario: {overrides['persona']}"
+            logger.info("🎨 Personnalités agents adaptées (scénario)")
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible d'adapter les personnalités: {e}")
         
     def setup_turn_management(self):
         """Configure la gestion des tours de parole"""

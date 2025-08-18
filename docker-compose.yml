@@ -2,5 +2,28 @@
 include:
   - docker/compose/docker-compose.base.yml
 
-# Pour activer le système multi-agents, utiliser :
-# docker compose -f docker-compose.yml -f docker/compose/docker-compose.multiagent.yml up -d
+services:
+  # Agent Multi-Agents Principal (système amélioré)
+  livekit-agent-multiagent:
+    build:
+      context: .
+      dockerfile: docker/dockerfiles/livekit-agent.multiagent.Dockerfile
+    container_name: eloquence-multiagent
+    environment:
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - AGENT_TYPE=multi_agent_enhanced
+      - MAX_CONCURRENT_SESSIONS=5
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - livekit-server
+      - redis
+      - mistral-conversation
+    networks:
+      - eloquence-network
+    restart: unless-stopped
+    # Pas de bind-mount en dev pour éviter d'écraser le code embarqué dans l'image

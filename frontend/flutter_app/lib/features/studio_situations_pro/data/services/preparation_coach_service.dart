@@ -6,19 +6,19 @@ import 'package:livekit_client/livekit_client.dart';
 import '../models/simulation_models.dart';
 import '../../../../core/utils/unified_logger_service.dart';
 import '../../../../core/config/api_config.dart';
-import '../../../../core/config/mistral_scaleway_config.dart';
 import 'studio_livekit_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import for Ref
 
 enum CoachMode { text, voice, livekit }
 enum ApiProvider { local, mistralCloud, livekit }
 
 class PreparationCoachService {
+  final Ref _ref; // Add Ref
+  
+  PreparationCoachService(this._ref); // Constructor to initialize Ref
+
   // Configuration de l'API à utiliser
   ApiProvider _apiProvider = ApiProvider.mistralCloud; // Par défaut, utiliser Mistral Cloud
-  
-  // URLs des APIs
-  static String get _localMistralUrl => ApiConfig.getMistralApiUrl();
-  static String get _mistralCloudUrl => MistralScalewayConfig.apiUrl;
   
   // LiveKit pour le mode vocal naturel
   StudioLiveKitService? _livekitService;
@@ -61,13 +61,11 @@ class PreparationCoachService {
         // Mode LiveKit pour conversation naturelle
         UnifiedLoggerService.info('Initializing LiveKit for natural conversation');
         
-        // TODO: Implémenter une vraie connexion LiveKit
-        // Pour une conversation naturelle, LiveKit gérerait :
-        // - La reconnaissance vocale en temps réel
-        // - La synthèse vocale pour les réponses
-        // - Le streaming bidirectionnel audio
-        
-        await Future.delayed(const Duration(milliseconds: 500));
+        _livekitService = _ref.read(studioLiveKitServiceProvider);
+        await _livekitService?.connect(
+          'eloquence-coach-room', // Room name
+          userId: 'coach-user', // User ID for the coach
+        );
         
         // Écouter les réponses vocales de LiveKit
         _livekitService?.messageStream.listen((message) {
@@ -100,176 +98,122 @@ class PreparationCoachService {
   
   /// Démarre l'écoute vocale
   Future<void> startVoiceListening() async {
-    if (_currentMode != CoachMode.voice || _livekitService == null) {
-      throw Exception('Le mode vocal n\'est pas actif');
+    if (_currentMode == CoachMode.livekit) {
+      _isListeningController.add(true);
+      UnifiedLoggerService.info('Started LiveKit voice listening');
+    } else {
+      // Mode vocal simple
+      _isListeningController.add(true);
+      UnifiedLoggerService.info('Started simple voice listening');
     }
-    
-    await _livekitService?.muteAudio(false);
-    _isListeningController.add(true);
-    UnifiedLoggerService.info('Started voice listening');
   }
   
   /// Arrête l'écoute vocale
   Future<void> stopVoiceListening() async {
-    if (_livekitService != null) {
-      await _livekitService?.muteAudio(true);
-      _isListeningController.add(false);
-      UnifiedLoggerService.info('Stopped voice listening');
-    }
+    _isListeningController.add(false);
+    UnifiedLoggerService.info('Stopped voice listening');
   }
   
-  /// Obtient une réponse du coach selon le mode et le provider configuré
-  Future<String> getCoachResponse(
-    String userMessage,
-    SimulationType simulationType,
-    List<String> conversationHistory,
-  ) async {
-    // Si mode LiveKit, utiliser uniquement LiveKit pour la conversation naturelle
-    if (_currentMode == CoachMode.livekit && _livekitService != null) {
-      await _livekitService?.sendMessage(userMessage);
-      // LiveKit gérera la réponse vocale directement
-      return "Conversation en cours via LiveKit...";
-    }
-    
-    // Si mode vocal simple, envoyer le texte transcrit
-    if (_currentMode == CoachMode.voice && _livekitService != null) {
-      await _livekitService?.sendMessage(userMessage);
-    }
-    
-    // Choisir l'API selon le provider configuré
-    switch (_apiProvider) {
-      case ApiProvider.mistralCloud:
-        return await _getMistralCloudResponse(userMessage, simulationType, conversationHistory);
-      case ApiProvider.local:
-        return await _getLocalMistralResponse(userMessage, simulationType, conversationHistory);
-      case ApiProvider.livekit:
-        // LiveKit comme API conversationnelle
-        return await _getLiveKitTextResponse(userMessage, simulationType, conversationHistory);
-    }
-  }
-  
-  /// Obtient une réponse de l'API Mistral Cloud (production)
-  Future<String> _getMistralCloudResponse(
-    String userMessage,
-    SimulationType simulationType,
-    List<String> conversationHistory,
-  ) async {
-    final prompt = _buildContextualPrompt(simulationType, userMessage, conversationHistory);
-    
+  /// Envoie un message vocal à l'API
+  Future<String> sendVoiceMessage(String audioData) async {
     try {
-      // Vérifier si la clé API est configurée
-      if (MistralScalewayConfig.scwSecretKey.isEmpty ||
-          MistralScalewayConfig.scwSecretKey.length < 10) {
-        UnifiedLoggerService.warning('Mistral API key not configured properly, using fallback');
-        return _getFallbackResponse(simulationType);
-      }
+      // Pour l'instant, on simule une réponse vocale
+      // Dans une implémentation complète, on enverrait l'audio à l'API
+      await Future.delayed(const Duration(seconds: 2));
       
-      UnifiedLoggerService.info('Using Mistral Cloud API for intelligent response');
-      UnifiedLoggerService.info('API URL: $_mistralCloudUrl');
-      UnifiedLoggerService.info('API Key length: ${MistralScalewayConfig.scwSecretKey.length}');
+      final response = "J'ai bien reçu votre message vocal. Comment puis-je vous aider dans votre préparation ?";
+      _voiceResponseController.add(response);
       
-      final requestBody = MistralScalewayConfig.buildChatRequest(
-        message: userMessage,
-        systemPrompt: prompt,
-        temperature: 0.7,
-        maxTokens: 200,
-      );
-      
-      UnifiedLoggerService.info('Request body: ${json.encode(requestBody)}');
-      
-      final response = await http.post(
-        Uri.parse(_mistralCloudUrl),
-        headers: MistralScalewayConfig.headers,
-        body: json.encode(requestBody),
-      );
-      
-      UnifiedLoggerService.info('Response status: ${response.statusCode}');
-      UnifiedLoggerService.info('Response body: ${response.body}');
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final content = data['choices'][0]['message']['content'];
-        UnifiedLoggerService.info('Mistral API success: $content');
-        return content;
-      } else {
-        UnifiedLoggerService.error('Mistral Cloud API error: ${response.statusCode} - ${response.body}');
-        return _getFallbackResponse(simulationType);
-      }
+      return response;
     } catch (e) {
-      UnifiedLoggerService.error('Error calling Mistral Cloud API: $e');
-      UnifiedLoggerService.error('Stack trace: ${StackTrace.current}');
+      UnifiedLoggerService.error('Error sending voice message: $e');
+      throw Exception('Erreur lors de l\'envoi du message vocal');
+    }
+  }
+  
+  /// Envoie un message texte au coach IA
+  Future<String> sendMessage(String message, SimulationType simulationType, {List<String>? conversationHistory}) async {
+    try {
+      UnifiedLoggerService.info('Sending message to coach: $message');
       
-      // Pour debug: essayer un timeout plus court
-      if (e.toString().contains('timeout') || e.toString().contains('connection')) {
-        UnifiedLoggerService.warning('Network issue detected, switching to local fallback');
-        return _getEnhancedFallbackResponse(simulationType, userMessage);
+      // Construire le prompt contextuel
+      final history = conversationHistory ?? [];
+      final prompt = _buildContextualPrompt(simulationType, message, history);
+      
+      // Appeler l'API appropriée selon le provider configuré
+      String response;
+      switch (_apiProvider) {
+        case ApiProvider.mistralCloud:
+          response = await _callMistralCloudAPI(prompt, message);
+          break;
+        case ApiProvider.local:
+          response = await _callLocalAPI(prompt, message);
+          break;
+        case ApiProvider.livekit:
+          response = await _callLiveKitAPI(prompt, message);
+          break;
       }
       
+      UnifiedLoggerService.info('Coach response received: $response');
+      return response;
+      
+    } catch (e) {
+      UnifiedLoggerService.error('Error sending message to coach: $e');
       return _getFallbackResponse(simulationType);
     }
   }
   
-  /// Obtient une réponse de l'API Mistral locale (développement)
-  Future<String> _getLocalMistralResponse(
-    String userMessage,
-    SimulationType simulationType,
-    List<String> conversationHistory,
-  ) async {
-    final prompt = _buildContextualPrompt(simulationType, userMessage, conversationHistory);
-    
+  /// Appelle l'API Mistral Cloud
+  Future<String> _callMistralCloudAPI(String prompt, String message) async {
     try {
+      final requestBody = {
+        'model': 'mistral-nemo-instruct-2407',
+        'messages': [
+          {'role': 'system', 'content': prompt},
+          {'role': 'user', 'content': message},
+        ],
+        'max_tokens': 300,
+        'temperature': 0.7,
+      };
+      
       final response = await http.post(
-        Uri.parse(_localMistralUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'model': 'mistral-7b-instruct',
-          'messages': [
-            {'role': 'system', 'content': prompt},
-            {'role': 'user', 'content': userMessage},
-          ],
-          'max_tokens': 200,
-          'temperature': 0.7,
-        }),
+        Uri.parse(ApiConfig.getMistralApiUrl()),
+        headers: ApiConfig.defaultHeaders,
+        body: json.encode(requestBody),
       );
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['choices'][0]['message']['content'];
       } else {
-        UnifiedLoggerService.warning('Local Mistral API error: ${response.statusCode}');
-        return _getFallbackResponse(simulationType);
+        throw Exception('API error: ${response.statusCode}');
       }
     } catch (e) {
-      UnifiedLoggerService.error('Error calling local Mistral API: $e');
-      return _getFallbackResponse(simulationType);
+      UnifiedLoggerService.error('Mistral Cloud API error: $e');
+      throw e;
     }
   }
   
-  /// Obtient une réponse textuelle via LiveKit (pour mode hybride)
-  Future<String> _getLiveKitTextResponse(
-    String userMessage,
-    SimulationType simulationType,
-    List<String> conversationHistory,
-  ) async {
-    // LiveKit peut gérer la conversation de manière plus naturelle
-    // avec reconnaissance vocale et synthèse vocale intégrées
-    
-    try {
-      if (_livekitService != null) {
-        await _livekitService?.sendMessage(userMessage);
-        // Attendre la réponse de LiveKit
-        // Dans une vraie implémentation, on écouterait le stream de messages
-        await Future.delayed(const Duration(seconds: 1));
-        return "Réponse LiveKit : Je comprends votre question. Travaillons ensemble sur ${simulationType.toDisplayString()}.";
-      }
-      
-      return _getFallbackResponse(simulationType);
-    } catch (e) {
-      UnifiedLoggerService.error('Error with LiveKit response: $e');
-      return _getFallbackResponse(simulationType);
+  /// Appelle l'API locale (pour développement)
+  Future<String> _callLocalAPI(String prompt, String message) async {
+    // Simulation d'une réponse locale
+    await Future.delayed(const Duration(milliseconds: 500));
+    return "Réponse locale simulée pour le développement.";
+  }
+  
+  /// Appelle l'API LiveKit
+  Future<String> _callLiveKitAPI(String prompt, String message) async {
+    if (_livekitService != null) {
+      await _livekitService!.sendMessage(message);
+      // Pour l'instant, on retourne une réponse simulée
+      // Dans une implémentation complète, on écouterait le stream de réponses
+      return "Message envoyé via LiveKit. Réponse en cours...";
+    } else {
+      throw Exception('LiveKit service not initialized');
     }
   }
   
+  /// Construit un prompt contextuel pour l'IA
   String _buildContextualPrompt(SimulationType type, String message, List<String> history) {
     final basePrompt = """Tu es un coach expert en communication pour l'exercice "${type.toDisplayString()}".
     
@@ -287,7 +231,25 @@ Historique de conversation : ${history.join(' | ')}""";
     return basePrompt;
   }
   
+  /// Obtient le contexte de simulation
+  String _getSimulationContext(SimulationType type) {
+    final contexts = {
+      SimulationType.debatPlateau: "Débat télévisé en direct avec des experts et un public",
+      SimulationType.entretienEmbauche: "Entretien d'embauche avec un recruteur senior",
+      SimulationType.reunionDirection: "Réunion de direction avec des décideurs",
+      SimulationType.conferenceVente: "Présentation commerciale devant des prospects",
+      SimulationType.conferencePublique: "Conférence publique devant un large auditoire",
+      SimulationType.jobInterview: "Entretien d'embauche avec questions techniques",
+      SimulationType.salesPitch: "Pitch de vente en 2 minutes",
+      SimulationType.publicSpeaking: "Prise de parole en public",
+      SimulationType.difficultConversation: "Conversation difficile avec un collègue",
+      SimulationType.negotiation: "Négociation commerciale",
+    };
+    
+    return contexts[type] ?? "Communication professionnelle";
+  }
   
+  /// Réponse de fallback générique
   String _getFallbackResponse(SimulationType type) {
     final responses = {
       SimulationType.debatPlateau: "Excellente question ! Pour un débat TV, structure tes arguments en 3 points clés et prépare des exemples concrets.",
@@ -360,26 +322,22 @@ Historique de conversation : ${history.join(' | ')}""";
       // Construire le prompt d'analyse intelligent
       final analysisPrompt = _buildDocumentAnalysisPrompt(type, documentContent, objective);
       
-      // Vérifier la configuration de l'API
-      if (MistralScalewayConfig.scwSecretKey.isEmpty ||
-          MistralScalewayConfig.scwSecretKey.length < 10) {
-        UnifiedLoggerService.warning('Mistral API not configured, using intelligent fallback');
-        return _getIntelligentFallbackAnalysis(filePath, type, objective);
-      }
-      
       UnifiedLoggerService.info('Calling Mistral API for document analysis');
       
-      final requestBody = MistralScalewayConfig.buildChatRequest(
-        message: 'Analyse ce document pour la préparation de ${type.toDisplayString()}',
-        systemPrompt: analysisPrompt,
-        temperature: 0.7,
-        maxTokens: 400,
-      );
+      final requestBody = {
+        'model': 'mistral-nemo-instruct-2407',
+        'messages': [
+          {'role': 'system', 'content': analysisPrompt},
+          {'role': 'user', 'content': 'Analyse ce document pour la préparation de ${type.toDisplayString()}'},
+        ],
+        'max_tokens': 400,
+        'temperature': 0.7,
+      };
       
       // Appeler l'API Mistral Cloud pour analyse
       final response = await http.post(
-        Uri.parse(MistralScalewayConfig.apiUrl),
-        headers: MistralScalewayConfig.headers,
+        Uri.parse(ApiConfig.getMistralApiUrl()),
+        headers: ApiConfig.defaultHeaders,
         body: json.encode(requestBody),
       );
       
@@ -405,96 +363,60 @@ Historique de conversation : ${history.join(' | ')}""";
   
   /// Construit un prompt intelligent pour l'analyse de document
   String _buildDocumentAnalysisPrompt(SimulationType type, String documentContent, String? objective) {
-    final fileName = documentContent.split('/').last;
-    
-    final prompt = """Tu es un coach expert en communication et préparation d'entretiens professionnels.
+    final basePrompt = """Tu es un coach expert en communication qui analyse des documents pour aider à la préparation de l'exercice "${type.toDisplayString()}".
 
-MISSION: Analyser ce document pour aider l'utilisateur à se préparer à "${type.toDisplayString()}".
+Ton rôle :
+- Analyser le contenu du document fourni
+- Identifier les points clés pertinents pour l'exercice
+- Suggérer des améliorations ou des éléments à développer
+- Donner des conseils pratiques basés sur le contenu
+- Répondre en français, de manière structurée et constructive
 
-DOCUMENT À ANALYSER:
+Contexte de la simulation : ${_getSimulationContext(type)}
+
+Objectif spécifique : ${objective ?? 'Améliorer la préparation générale'}
+
+Document à analyser :
 $documentContent
 
-OBJECTIF UTILISATEUR: ${objective ?? 'Non spécifié'}
-
-CONTEXTE DE LA SIMULATION: ${_getSimulationContext(type)}
-
-INSTRUCTIONS:
-1. Analyse le contenu réel du document (si lisible)
-2. Identifie les points forts et axes d'amélioration
-3. Donne 3 conseils pratiques et personnalisés
-4. Propose des questions/objections probables
-5. Suggère une structure optimale
-6. Sois encourageant mais constructif
-7. Réponds en français, de manière concise (max 3 paragraphes)
-
-RÉPONSE:""";
+Analyse ce document et donne des conseils spécifiques pour améliorer la préparation.""";
     
-    return prompt;
+    return basePrompt;
   }
   
-  /// Contexte spécifique à chaque type de simulation
-  String _getSimulationContext(SimulationType type) {
-    switch (type) {
-      case SimulationType.debatPlateau:
-        return "Débat télévisé avec modérateur et invités. Format court, arguments percutants, gestion des interruptions.";
-      case SimulationType.entretienEmbauche:
-        return "Entretien d'embauche face à un recruteur. Questions comportementales, présentation du parcours, motivation.";
-      case SimulationType.reunionDirection:
-        return "Présentation à la direction générale. Focus business, ROI, prise de décision stratégique.";
-      case SimulationType.conferenceVente:
-        return "Conférence commerciale face à prospects. Identification besoins, argumentation valeur, closing.";
-      case SimulationType.conferencePublique:
-        return "Conférence publique devant large audience. Captiver l'attention, message clair, interaction.";
-      case SimulationType.jobInterview:
-        return "Entretien professionnel international. Questions techniques, soft skills, adaptation culturelle.";
-      case SimulationType.salesPitch:
-        return "Pitch de vente one-to-one. Découverte client, démonstration valeur, objections.";
-      case SimulationType.publicSpeaking:
-        return "Prise de parole publique. Gestion du stress, structure narrative, engagement audience.";
-      case SimulationType.difficultConversation:
-        return "Conversation délicate professionnelle. Gestion émotions, communication non-violente, solutions.";
-      case SimulationType.negotiation:
-        return "Négociation commerciale ou contractuelle. Zones de compromis, rapport de force, win-win.";
-    }
-  }
-
-  /// Analyse de fallback intelligente si l'API n'est pas disponible
+  /// Analyse de fallback intelligente basée sur le nom du fichier
   String _getIntelligentFallbackAnalysis(String filePath, SimulationType type, String? objective) {
     final fileName = filePath.split('/').last.toLowerCase();
-    final hasObjective = objective != null && objective.isNotEmpty;
     
-    // Analyse basée sur le nom du fichier et l'objectif
-    String analysis = "📄 **Document analysé**: $fileName\n\n";
-    
-    if (hasObjective) {
-      analysis += "🎯 **Votre objectif**: $objective\n\n";
+    if (fileName.contains('cv') || fileName.contains('resume')) {
+      return "Analyse de CV détectée ! Pour ${type.toDisplayString()}, concentre-toi sur les expériences les plus pertinentes et prépare des exemples concrets de tes réalisations.";
     }
     
-    // Conseils spécifiques selon le type de simulation
-    switch (type) {
-      case SimulationType.debatPlateau:
-        analysis += hasObjective
-          ? "Pour votre débat TV sur ce sujet, structurez vos arguments en 3 points clés avec des exemples concrets. Préparez-vous aux contre-arguments et ayez des chiffres percutants."
-          : "Pour le débat TV, identifiez 3 arguments principaux dans votre document. Préparez des exemples concrets et anticipez les objections.";
-        break;
-      case SimulationType.entretienEmbauche:
-        analysis += hasObjective
-          ? "Pour votre entretien, mettez en avant comment vos expériences du CV répondent exactement à votre objectif. Préparez des exemples STAR (Situation-Tâche-Action-Résultat)."
-          : "Votre CV contient des éléments intéressants. Préparez 3 exemples concrets de réalisations avec la méthode STAR.";
-        break;
-      case SimulationType.reunionDirection:
-        analysis += hasObjective
-          ? "Pour convaincre la direction, quantifiez l'impact business de votre proposition. Préparez ROI, budget et timeline clairs."
-          : "En réunion direction, commencez par l'impact business et terminez par un plan d'action avec timeline.";
-        break;
-      default:
-        analysis += hasObjective
-          ? "Pour atteindre votre objectif, structurez votre présentation en 3 parties: contexte, solution, bénéfices. Préparez des réponses aux objections probables."
-          : "Organisez votre contenu en 3 parties claires. Préparez des exemples concrets et anticipez les questions.";
+    if (fileName.contains('presentation') || fileName.contains('slide')) {
+      return "Document de présentation identifié ! Vérifie que chaque slide a un message clair et que ta structure suit une logique narrative cohérente.";
     }
     
-    analysis += "\n\n💡 **Prochaine étape**: Voulez-vous qu'on travaille ensemble sur l'un de ces points spécifiques ?";
+    if (fileName.contains('script') || fileName.contains('texte')) {
+      return "Script détecté ! Pratique ta diction, varie ton rythme, et prévois des pauses stratégiques pour maintenir l'attention.";
+    }
     
-    return analysis;
+    return "Document analysé ! Pour ${type.toDisplayString()}, assure-toi que ton contenu est bien structuré et que tes arguments sont clairs et convaincants.";
+  }
+  
+  /// Construit un prompt pour l'analyse documentaire
+  String _buildDocumentualPrompt(SimulationType type, String documentContent, String? objective) {
+    return _buildDocumentAnalysisPrompt(type, documentContent, objective);
+  }
+  
+  /// Dispose des ressources
+  void dispose() {
+    _voiceResponseController.close();
+    _isListeningController.close();
+    _cleanupVoiceMode();
   }
 }
+
+// Provider pour le service
+final preparationCoachServiceProvider = Provider<PreparationCoachService>((ref) {
+  return PreparationCoachService(ref);
+});

@@ -4,26 +4,9 @@ import 'dart:io' show Platform;
 class ApiConfig {
   /// Obtient l'URL de base pour l'API Mistral selon l'environnement
   static String getMistralApiUrl() {
-    // En mode debug sur web, utiliser localhost
-    if (kIsWeb && kDebugMode) {
+    // En mode debug, utiliser localhost pour tous les environnements locaux
+    if (kDebugMode) {
       return 'http://localhost:8001/v1/chat/completions';
-    }
-    
-    // Sur mobile (Android/iOS), utiliser l'IP de la machine hôte
-    if (!kIsWeb) {
-      // Pour Android émulateur
-      if (kDebugMode && _isAndroidEmulator()) {
-        return 'http://10.0.2.2:8001/v1/chat/completions';
-      }
-      
-      // Pour appareil physique ou iOS, utiliser l'IP locale
-      // IMPORTANT: Cette IP est celle de votre machine sur le réseau local
-      // Pour trouver votre IP:
-      // - Windows: ipconfig
-      // - Mac/Linux: ifconfig ou ip addr
-      const String localNetworkIP = '192.168.1.44'; // IP de votre machine
-      
-      return 'http://$localNetworkIP:8001/v1/chat/completions';
     }
     
     // Production ou défaut
@@ -32,17 +15,8 @@ class ApiConfig {
   
   /// Obtient l'URL pour LiveKit
   static String getLiveKitUrl() {
-    if (kIsWeb && kDebugMode) {
+    if (kDebugMode) {
       return 'ws://localhost:7880';
-    }
-    
-    if (!kIsWeb) {
-      if (kDebugMode && _isAndroidEmulator()) {
-        return 'ws://10.0.2.2:7880';
-      }
-      
-      const String localNetworkIP = '192.168.1.44'; // IP de votre machine
-      return 'ws://$localNetworkIP:7880';
     }
     
     return 'wss://livekit.eloquence.app'; // URL de production
@@ -50,17 +24,8 @@ class ApiConfig {
   
   /// Obtient l'URL pour le WebSocket de streaming
   static String getStreamingWebSocketUrl() {
-    if (kIsWeb && kDebugMode) {
+    if (kDebugMode) {
       return 'ws://localhost:8002/ws/conversation';
-    }
-    
-    if (!kIsWeb) {
-      if (kDebugMode && _isAndroidEmulator()) {
-        return 'ws://10.0.2.2:8002/ws/conversation';
-      }
-      
-      const String localNetworkIP = '192.168.1.44'; // IP de votre machine
-      return 'ws://$localNetworkIP:8002/ws/conversation';
     }
     
     return 'wss://streaming.eloquence.app/ws/conversation'; // URL de production
