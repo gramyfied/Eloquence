@@ -97,20 +97,34 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'confidence_boost',
             parentNavigatorKey: rootNavigatorKey, // Ouvre sur le navigateur racine
             builder: (BuildContext context, GoRouterState state) {
-              // Utilise le nouveau écran LiveKit (remplace WebSocket)
-              final defaultScenario = ConfidenceScenario(
-                id: 'default',
+              // Construire un scénario en lisant éventuellement le contexte passé via extra
+              String? topic;
+              String? difficulty;
+              int? durationMinutes;
+              final extra = state.extra;
+              if (extra is Map) {
+                final map = Map<String, dynamic>.from(extra);
+                topic = map['topic'] as String?;
+                difficulty = map['difficulty'] as String?;
+                final dur = map['duration'];
+                if (dur is int) durationMinutes = dur;
+              }
+
+              final scenario = ConfidenceScenario(
+                id: 'confidence_boost',
                 title: 'Conversation Confiance',
                 description: 'Exercice de conversation pour améliorer votre confiance en public',
-                prompt: 'Exprimez-vous naturellement et avec confiance sur un sujet qui vous intéresse',
+                prompt: topic != null && topic.isNotEmpty
+                    ? 'Parlez avec assurance sur "$topic"; développez vos idées clairement.'
+                    : 'Exprimez-vous naturellement et avec confiance sur un sujet qui vous intéresse',
                 type: ConfidenceScenarioType.presentation,
-                durationSeconds: 600,
-                difficulty: 'beginner',
+                durationSeconds: (durationMinutes ?? 10) * 60,
+                difficulty: difficulty ?? 'beginner',
                 icon: '🎤',
                 keywords: ['confiance', 'expression', 'communication'],
                 tips: ['Parlez clairement', 'Restez naturel', 'Prenez votre temps'],
               );
-              return ConfidenceBoostEntry.livekitScreen(defaultScenario);
+              return ConfidenceBoostEntry.livekitScreen(scenario);
             },
           ),
           
@@ -176,19 +190,33 @@ final routerProvider = Provider<GoRouter>((ref) {
               
               // CORRECTION CRITIQUE : Rediriger confidence_boost vers LiveKit
               if (exerciseId == 'confidence_boost') {
-                final defaultScenario = ConfidenceScenario(
+                String? topic;
+                String? difficulty;
+                int? durationMinutes;
+                final extra = state.extra;
+                if (extra is Map) {
+                  final map = Map<String, dynamic>.from(extra);
+                  topic = map['topic'] as String?;
+                  difficulty = map['difficulty'] as String?;
+                  final dur = map['duration'];
+                  if (dur is int) durationMinutes = dur;
+                }
+
+                final scenario = ConfidenceScenario(
                   id: 'confidence_boost',
                   title: 'Confidence Boost',
                   description: 'Exercice pour améliorer votre confiance en expression orale',
-                  prompt: 'Parlez avec assurance et confiance sur un sujet de votre choix',
+                  prompt: topic != null && topic.isNotEmpty
+                      ? 'Parlez avec assurance sur "$topic"; structurez vos idées avec clarté.'
+                      : 'Parlez avec assurance et confiance sur un sujet de votre choix',
                   type: ConfidenceScenarioType.presentation,
-                  durationSeconds: 600,
-                  difficulty: 'beginner',
+                  durationSeconds: (durationMinutes ?? 10) * 60,
+                  difficulty: difficulty ?? 'beginner',
                   icon: '💪',
                   keywords: ['confiance', 'assurance', 'expression'],
                   tips: ['Parlez avec assurance', 'Gardez le contact visuel', 'Structurez vos idées'],
                 );
-                return ConfidenceBoostEntry.livekitScreen(defaultScenario);
+                return ConfidenceBoostEntry.livekitScreen(scenario);
               }
               
               // NOUVEAU : Rediriger virelangue_roulette vers l'écran virelangue
