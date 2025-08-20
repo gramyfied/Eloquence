@@ -14,11 +14,17 @@ services:
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1/chat/completions
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1
+      - MISTRAL_USE_PROXY=1
+      - MISTRAL_PROXY_URL=http://mistral-conversation:8001/v1
+      - MISTRAL_MODEL=mistral-nemo-instruct-2407
+      - ELOQUENCE_EXERCISES_ENABLED=1
       - AGENT_TYPE=multi_agent_enhanced
       - MAX_CONCURRENT_SESSIONS=5
       - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=DEBUG
     depends_on:
       - livekit-server
       - redis

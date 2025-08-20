@@ -18,7 +18,7 @@ import time
 import io
 from dataclasses import dataclass
 import sys as _sys  # Fix dataclass processing in dynamic import contexts
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional, Set
 
 try:
     import aiohttp
@@ -44,69 +44,83 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-# Mapping voix neutres / professionnelles
-VOICE_MAPPING_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = {
+# Mapping voix françaises neutres / professionnelles (Flash v2.5)
+VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = {
+    # Animateur TV - Voix masculine française neutre autorité
     "michel_dubois_animateur": {
-        "voice_id": "pNInz6obpgDQGcFmaJgB",  # Adam
+        "voice_id": "Daniel",  # Voix française masculine neutre
         "model": "eleven_flash_v2_5",
         "settings": {
-            "stability": 0.7,
-            "similarity_boost": 0.8,
+            "stability": 0.75,
+            "similarity_boost": 0.85,
             "style": 0.4,
             "use_speaker_boost": True,
         },
     },
+
+    # Journaliste - Voix féminine française neutre professionnelle
     "sarah_johnson_journaliste": {
-        "voice_id": "21m00Tcm4TlvDq8ikWAM",  # Rachel
-        "model": "eleven_flash_v2_5",
-        "settings": {
-            "stability": 0.5,
-            "similarity_boost": 0.85,
-            "style": 0.6,
-            "use_speaker_boost": True,
-        },
-    },
-    "marcus_thompson_expert": {
-        "voice_id": "29vD33N1CtxCmqQRPOHJ",  # Drew
-        "model": "eleven_flash_v2_5",
-        "settings": {
-            "stability": 0.8,
-            "similarity_boost": 0.75,
-            "style": 0.2,
-            "use_speaker_boost": True,
-        },
-    },
-    "emma_wilson_coach": {
-        "voice_id": "MF3mGyEYCl7XYWbV9V6O",  # Elli
+        "voice_id": "Charlotte",  # Voix française féminine neutre
         "model": "eleven_flash_v2_5",
         "settings": {
             "stability": 0.6,
+            "similarity_boost": 0.8,
+            "style": 0.5,
+            "use_speaker_boost": True,
+        },
+    },
+
+    # Expert - Voix masculine française mesurée académique
+    "marcus_thompson_expert": {
+        "voice_id": "Clyde",  # Voix française masculine mesurée
+        "model": "eleven_flash_v2_5",
+        "settings": {
+            "stability": 0.8,
             "similarity_boost": 0.75,
             "style": 0.3,
             "use_speaker_boost": True,
         },
     },
-    "david_chen_challenger": {
-        "voice_id": "TxGEqnHWrfWFTfGW9XjX",  # Josh
+
+    # Coach - Voix féminine française chaleureuse supportive
+    "emma_wilson_coach": {
+        "voice_id": "Louise",  # Voix française féminine chaleureuse
         "model": "eleven_flash_v2_5",
         "settings": {
-            "stability": 0.4,
-            "similarity_boost": 0.9,
-            "style": 0.7,
+            "stability": 0.65,
+            "similarity_boost": 0.8,
+            "style": 0.35,
             "use_speaker_boost": True,
         },
     },
-    "sophie_martin_diplomate": {
-        "voice_id": "AZnzlk1XvdvUeBnXmlld",  # Domi
+
+    # Challenger - Voix masculine française dynamique provocante
+    "david_chen_challenger": {
+        "voice_id": "Liam",  # Voix française masculine dynamique
         "model": "eleven_flash_v2_5",
         "settings": {
-            "stability": 0.7,
-            "similarity_boost": 0.7,
-            "style": 0.2,
+            "stability": 0.45,
+            "similarity_boost": 0.9,
+            "style": 0.65,
+            "use_speaker_boost": True,
+        },
+    },
+
+    # Diplomate - Voix féminine française sophistiquée mesurée
+    "sophie_martin_diplomate": {
+        "voice_id": "Grace",  # Voix française féminine sophistiquée
+        "model": "eleven_flash_v2_5",
+        "settings": {
+            "stability": 0.75,
+            "similarity_boost": 0.75,
+            "style": 0.25,
             "use_speaker_boost": True,
         },
     },
 }
+
+# Compatibilité ascendante pour les tests et intégrations existants
+VOICE_MAPPING_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL
 
 
 class ElevenLabsFlashConfig:  # pragma: no cover - utilitaire, non utilisé par les tests
@@ -172,6 +186,14 @@ class ElevenLabsFlashTTSService:
         self.base_url = "https://api.elevenlabs.io/v1"
         self.ws_base = "wss://api.elevenlabs.io/v1"
         self.cache = _Cache()
+        # Cache de résolution nom → voice_id
+        self._voice_name_to_id: Dict[str, str] = {}
+        self._known_voice_ids: Set[str] = set()
+        self._voices_last_load: float = 0.0
+        try:
+            self._voices_ttl: float = float(os.getenv("ELEVENLABS_VOICES_TTL", "1800"))  # 30 min
+        except Exception:
+            self._voices_ttl = 1800.0
 
     async def synthesize_speech_flash_v25(
         self,
@@ -199,19 +221,29 @@ class ElevenLabsFlashTTSService:
             logger.error("aiohttp indisponible")
             return None
 
-        url = f"{self.base_url}/text-to-speech/{voice_cfg['voice_id']}"
-        payload = {
-            "text": text,
-            "model_id": voice_cfg["model_id"],
-            "voice_settings": voice_cfg["settings"],
-            "output_format": voice_cfg["output_format"],
-        }
-        headers = {"xi-api-key": self.api_key, "Content-Type": "application/json", "Accept": "application/octet-stream"}
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # Résoudre un éventuel nom de voix en voice_id réel
+            resolved_voice_id = await self._resolve_voice_id(session, voice_cfg["voice_id"])  # type: ignore
+            if not resolved_voice_id:
+                # Fallback ultime vers une voix connue pour éviter les erreurs fatales
+                fallback_id = "pNInz6obpgDQGcFmaJgB"
+                logger.error(
+                    f"❌ Voice '{voice_cfg['voice_id']}' introuvable dans ElevenLabs. Fallback -> {fallback_id}"
+                )
+                resolved_voice_id = fallback_id
 
-        t0 = time.time()
-        try:
-            timeout = aiohttp.ClientTimeout(total=5)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            url = f"{self.base_url}/text-to-speech/{resolved_voice_id}"
+            payload = {
+                "text": text,
+                "model_id": voice_cfg["model_id"],
+                "voice_settings": voice_cfg["settings"],
+                "output_format": voice_cfg["output_format"],
+            }
+            headers = {"xi-api-key": self.api_key, "Content-Type": "application/json", "Accept": "application/octet-stream"}
+
+            t0 = time.time()
+            try:
                 # Point d'extension test: permet de monkeypatcher cette logique réseau
                 _network_coro = self._perform_post(session, url, headers, payload)
                 async with await _network_coro as resp:
@@ -253,9 +285,9 @@ class ElevenLabsFlashTTSService:
                         err = await resp.text()
                         logger.error(f"❌ ElevenLabs Flash v2.5 {resp.status}: {err}")
                         return None
-        except Exception as e:  # pragma: no cover - réseau
-            logger.error(f"❌ Exception ElevenLabs: {e}")
-            return None
+            except Exception as e:  # pragma: no cover - réseau
+                logger.error(f"❌ Exception ElevenLabs: {e}")
+                return None
 
     async def _perform_post(self, session, url: str, headers: Dict[str, Any], payload: Dict[str, Any]):
         """Séparé pour faciliter les tests via monkeypatch."""
@@ -277,8 +309,19 @@ class ElevenLabsFlashTTSService:
             return
 
         voice_cfg = self._get_voice_config(agent_id, emotional_context)
+        # Résoudre le voice_id si un nom a été fourni
+        resolved_id = voice_cfg.get('voice_id')
+        if aiohttp is not None:
+            try:
+                timeout = aiohttp.ClientTimeout(total=5)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    rid = await self._resolve_voice_id(session, str(resolved_id))
+                    if rid:
+                        resolved_id = rid
+            except Exception:
+                pass
         ws_url = (
-            f"{self.ws_base}/text-to-speech/{voice_cfg['voice_id']}/stream-input"
+            f"{self.ws_base}/text-to-speech/{resolved_id}/stream-input"
         )
         headers = {"xi-api-key": self.api_key}
         qs = {
@@ -373,6 +416,66 @@ class ElevenLabsFlashTTSService:
         }
         raw = json.dumps(payload, sort_keys=True).encode()
         return hashlib.md5(raw).hexdigest()
+
+    async def _resolve_voice_id(self, session, label: str) -> Optional[str]:
+        """Résout un label de voix (nom ou id) vers un voice_id valide.
+
+        - Si `label` est déjà un voice_id connu, le retourne tel quel
+        - Sinon, charge (avec TTL) l'annuaire des voix et tente une résolution par nom exact (sensible à la casse)
+        """
+        if not label:
+            return None
+        # Déjà connu comme id
+        if label in self._known_voice_ids:
+            return label
+        # Déjà résolu comme nom
+        if label in self._voice_name_to_id:
+            return self._voice_name_to_id[label]
+
+        now = time.time()
+        need_reload = (now - self._voices_last_load) > self._voices_ttl
+        if need_reload or not self._voice_name_to_id:
+            try:
+                headers = {"xi-api-key": self.api_key, "Accept": "application/json"}
+                url = f"{self.base_url}/voices"
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        voices = data.get("voices", [])
+                        self._voice_name_to_id.clear()
+                        self._known_voice_ids.clear()
+                        for v in voices:
+                            vid = v.get("voice_id") or v.get("voiceId")
+                            vname = v.get("name") or v.get("voice_name")
+                            if vid:
+                                self._known_voice_ids.add(vid)
+                            if vname and vid:
+                                self._voice_name_to_id[vname] = vid
+                        self._voices_last_load = now
+                        logger.info(
+                            f"📚 Annuaire ElevenLabs chargé: {len(self._voice_name_to_id)} voix"
+                        )
+                    else:
+                        txt = await resp.text()
+                        logger.warning(
+                            f"⚠️ Impossible de charger /voices ({resp.status}): {txt}"
+                        )
+            except Exception as e:  # pragma: no cover
+                logger.warning(f"⚠️ Erreur chargement annuaire ElevenLabs: {e}")
+
+        # Après (ré)chargement, re-tenter
+        if label in self._known_voice_ids:
+            return label
+        if label in self._voice_name_to_id:
+            resolved = self._voice_name_to_id[label]
+            logger.info(f"🔗 Résolution nom→id ElevenLabs: '{label}' → '{resolved}'")
+            return resolved
+        # Essai insensible à la casse
+        for name, vid in self._voice_name_to_id.items():
+            if name.lower() == label.lower():
+                logger.info(f"🔗 Résolution nom (case-insensitive)→id: '{label}' → '{vid}'")
+                return vid
+        return None
 
 
 # Instance globale optionnelle (sans clé si non configurée)

@@ -236,12 +236,12 @@ class MultiAgentManager:
             state['chosen_subject'] = sujet_choisi
             state['step'] = 'debate_started'
             state['introduction_completed'] = True
-            prenom = state.get('participant_name', '') or self.extract_name_from_message(user_message) or ''
+            prenom = state.get('participant_name', '') or self.extract_name_from_message(user_message) or 'Participant'
             return f"""Michel: {prenom}, excellent choix ! Le sujet "{sujet_choisi}" est effectivement au cœur des enjeux actuels. Sarah, Marcus, vous êtes prêts ? Alors commençons par poser les bases du débat..."""
         
         # 2. Détection de prénom (priorité haute)
         prenom = self.extract_name_from_message(user_message)
-        if prenom:
+        if prenom and not state.get('participant_name'):
             state['participant_name'] = prenom
             state['step'] = 'subject_choice'
             return f"""Michel: Parfait {prenom} ! Maintenant, choisissez le sujet qui vous passionne le plus pour notre débat de ce soir :
@@ -255,7 +255,44 @@ E) **Éducation Numérique** - L'école de demain sera-t-elle virtuelle ?
 
 Dites-moi simplement la lettre de votre choix : A, B, C, D ou E ?"""
         
-        # 3. GESTION PAR ÉTAT INTERNE (logique normale)
+        # 3. Détection de réponses courtes ou incomplètes
+        if len(user_lower) < 10 and not any(word in user_lower for word in ['bonjour', 'salut', 'hello', 'oui', 'non']):
+            # L'utilisateur a probablement donné son nom ou fait un choix
+            if not state.get('participant_name'):
+                # Traiter comme un nom
+                potential_name = user_message.strip().capitalize()
+                if len(potential_name) > 1 and potential_name.isalpha():
+                    state['participant_name'] = potential_name
+                    state['step'] = 'subject_choice'
+                    return f"""Michel: Merci {potential_name} ! Maintenant, choisissez le sujet qui vous passionne le plus pour notre débat de ce soir :
+
+🎯 **Sujets disponibles :**
+A) **Intelligence Artificielle et Emploi** - L'IA va-t-elle remplacer les humains ?
+B) **Écologie vs Économie** - Peut-on concilier croissance et environnement ?
+C) **Télétravail et Société** - Le futur du travail se joue-t-il à distance ?
+D) **Réseaux Sociaux et Démocratie** - Menace ou opportunité pour notre société ?
+E) **Éducation Numérique** - L'école de demain sera-t-elle virtuelle ?
+
+Dites-moi simplement la lettre de votre choix : A, B, C, D ou E ?"""
+            else:
+                # Traiter comme un choix de sujet
+                if user_lower in ['a', 'b', 'c', 'd', 'e']:
+                    subjects = {
+                        'a': 'Intelligence Artificielle et Emploi',
+                        'b': 'Écologie vs Économie', 
+                        'c': 'Télétravail et Société',
+                        'd': 'Réseaux Sociaux et Démocratie',
+                        'e': 'Éducation Numérique'
+                    }
+                    sujet_choisi = subjects.get(user_lower)
+                    if sujet_choisi:
+                        state['chosen_subject'] = sujet_choisi
+                        state['step'] = 'debate_started'
+                        state['introduction_completed'] = True
+                        prenom = state.get('participant_name', 'Participant')
+                        return f"""Michel: {prenom}, excellent choix ! Le sujet "{sujet_choisi}" est effectivement au cœur des enjeux actuels. Sarah, Marcus, vous êtes prêts ? Alors commençons par poser les bases du débat..."""
+        
+        # 4. GESTION PAR ÉTAT INTERNE (logique normale)
         if state['step'] == 'welcome':
             state['step'] = 'name_and_subject_choice'
             return """Michel: Bonsoir et bienvenue dans notre studio de débat ! Je suis Michel Dubois, votre animateur pour cette émission spéciale. Nous allons vivre ensemble un débat passionnant avec nos experts Sarah Johnson, journaliste d'investigation, et Marcus Thompson, notre expert spécialisé.
@@ -277,8 +314,15 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         elif state['step'] == 'subject_choice':
             return "Michel: Je n'ai pas bien compris votre choix. Pouvez-vous me dire A, B, C, D ou E pour le sujet qui vous intéresse ?"
         
-        # FALLBACK: Introduction déjà complète
-        return "Michel: Continuons notre débat..."
+        # 5. FALLBACK: Si l'introduction est déjà complète, passer au débat
+        if state.get('introduction_completed'):
+            return "Michel: Continuons notre débat..."
+        
+        # 6. FALLBACK FINAL: Réinitialiser et recommencer
+        state['step'] = 'welcome'
+        return """Michel: Bonsoir et bienvenue dans notre studio de débat ! Je suis Michel Dubois, votre animateur pour cette émission spéciale. 
+
+Avant de commencer, puis-je connaître votre prénom ?"""
     
     def extract_name_from_message(self, message: str) -> Optional[str]:
         """Extrait le prénom d'un message utilisateur."""
@@ -687,6 +731,22 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
 
             # 3. Si pas d'interpellation, traitement normal avec prévention auto-dialogue
             logger.info("📝 Pas d'interpellation, traitement normal avec prévention auto-dialogue")
+            user_lower = user_input.lower()
+            if any(k in user_lower for k in ["je vous entends plus", "je n'entends plus", "plus de son", "pas de son", "vous entends plus", "vous n'entends plus"]):
+                # Accusé de réception audio pour éviter boucles d'intro
+                fallback = self.find_agent_by_style(InteractionStyle.CHALLENGER) or self.find_agent_by_style(InteractionStyle.EXPERT)
+                if fallback:
+                    ack_text = f"{fallback.name.split()[0]}: Je vous entends. Allons droit au but: quel point voulez-vous clarifier ?"
+                    self._record_agent_message(fallback.agent_id, ack_text)
+                    return {
+                        'responses': [{
+                            'agent_id': fallback.agent_id,
+                            'agent_name': fallback.name,
+                            'content': ack_text,
+                            'type': 'audio_ack'
+                        }],
+                        'type': 'audio_ack'
+                    }
             normal = await self._process_normal_input_with_prevention(user_input, user_id)
             normal['processing_time'] = time.time() - start_time
             return normal
@@ -1205,42 +1265,73 @@ AUTRES PARTICIPANTS:
         except Exception as e:
             logger.warning(f"⚠️ Échec gestion interpellations par agent: {e}")
 
-        # Vérifier si des réactions sont nécessaires
+        # 1) Vérifier si des réactions sont nécessaires
         should_react = await self.should_trigger_reactions_smart(primary_response)
 
-        # Dynamiser: si le modérateur parle, forcer au moins une réaction
+        # 2) Dynamiser: forcer la participation multi-agents
         primary_agent = self.agents.get(primary_agent_id)
-        if not should_react and primary_agent and primary_agent.interaction_style == InteractionStyle.MODERATOR:
-            logger.info("🎯 Forçage: au moins une réaction après l'intervention du modérateur")
-            should_react = True
+        force_reaction = False
+        
+        # Forcer une réaction si :
+        # - Le modérateur parle (pour lancer le débat)
+        # - Un seul agent a parlé plusieurs fois de suite
+        # - Le message est long ou contient des questions
+        if primary_agent and primary_agent.interaction_style == InteractionStyle.MODERATOR:
+            logger.info("🎯 Forçage: réaction après l'intervention du modérateur")
+            force_reaction = True
+        elif len(primary_response) > 100:  # Message long
+            logger.info("🎯 Forçage: réaction après un message long")
+            force_reaction = True
+        elif any(word in primary_response.lower() for word in ['?', 'pensez', 'avis', 'opinion']):
+            logger.info("🎯 Forçage: réaction après une question ou demande d'avis")
+            force_reaction = True
+        
+        # Vérifier si un seul agent monopolise la conversation
+        recent_speakers = self.dialogue_prevention.get_recent_speakers(3)
+        if len(recent_speakers) == 1 and primary_agent_id in recent_speakers:
+            logger.info("🎯 Forçage: un seul agent parle, forcer la participation des autres")
+            force_reaction = True
 
-        if not should_react:
+        if not should_react and not force_reaction:
             logger.info("🤷 Aucune réaction déclenchée")
             return reactions
 
-        # Sélectionner les agents réactifs
+        # 3) Sélectionner les agents réactifs avec priorité
         reacting_agents = self.select_reacting_agents(primary_agent_id, primary_response)
         if not reacting_agents:
-            # Fallback: privilégier challenger puis expert
+            # Fallback: privilégier challenger puis expert, puis journaliste
             fallback_list = []
+            
+            # Chercher un challenger (Sarah Johnson)
             challenger = self.find_agent_by_style(InteractionStyle.CHALLENGER)
-            expert = self.find_agent_by_style(InteractionStyle.EXPERT)
             if challenger and challenger.agent_id != primary_agent_id:
                 fallback_list.append(challenger.agent_id)
+                logger.info(f"🎯 Ajout challenger: {challenger.name}")
+            
+            # Chercher un expert (Marcus Thompson)
+            expert = self.find_agent_by_style(InteractionStyle.EXPERT)
             if expert and expert.agent_id != primary_agent_id:
                 fallback_list.append(expert.agent_id)
-            if not fallback_list:
-                fallback_list = [aid for aid in self.agents if aid != primary_agent_id][:1]
+                logger.info(f"🎯 Ajout expert: {expert.name}")
+            
+            # Si pas assez d'agents, ajouter d'autres
+            if len(fallback_list) < 2:
+                other_agents = [aid for aid in self.agents.keys() if aid != primary_agent_id and aid not in fallback_list]
+                fallback_list.extend(other_agents[:2-len(fallback_list)])
+            
             reacting_agents = fallback_list
-            if not reacting_agents:
-                return reactions
+            logger.info(f"🎯 Agents sélectionnés (fallback): {[self.agents[aid].name for aid in reacting_agents]}")
+
+        if not reacting_agents:
+            logger.warning("⚠️ Aucun agent disponible pour réagir")
+            return reactions
 
         logger.info(
             f"🎭 {len(reacting_agents)} agents vont réagir: "
             f"{[self.agents[aid].name for aid in reacting_agents]}"
         )
 
-        # Générer toutes les réactions EN PARALLÈLE (avec micro-jitter + priorité mention)
+        # 4) Générer toutes les réactions EN PARALLÈLE
         start_parallel = datetime.now()
         tasks = []
         for idx, agent_id in enumerate(reacting_agents):
@@ -1263,7 +1354,7 @@ AUTRES PARTICIPANTS:
             logger.warning("⚠️ Timeout sur génération des réactions")
             reactions_results = ["Timeout"] * len(tasks)
 
-        # Traiter les résultats
+        # 5) Traiter les résultats
         for i, reaction in enumerate(reactions_results):
             agent_id = reacting_agents[i]
             agent = self.agents[agent_id]
@@ -1744,8 +1835,8 @@ Varie tes formules, ne te présente pas à chaque fois."""
     def build_agent_context(self, agent_id: str, user_message: str) -> str:
         """Construit le contexte pour un agent spécifique"""
         
-        # Historique récent (5 derniers messages)
-        recent_history = self.conversation_history[-5:] if self.conversation_history else []
+        # Historique récent (12 derniers messages) pour une meilleure mémoire
+        recent_history = self.conversation_history[-12:] if self.conversation_history else []
         
         context_parts = []
         
@@ -1769,9 +1860,10 @@ Varie tes formules, ne te présente pas à chaque fois."""
         # Historique récent
         if recent_history:
             context_parts.append("\nHISTORIQUE RÉCENT:")
+            # Inclure davantage de contexte, tronqué proprement
             for entry in recent_history:
-                if entry.speaker_id != agent_id:  # Ne pas inclure ses propres messages
-                    context_parts.append(f"- {entry.speaker_name}: {entry.message[:100]}...")
+                label = "Utilisateur" if entry.is_user else entry.speaker_name
+                context_parts.append(f"- {label}: {entry.message[:160]}...")
         
         return "\n".join(context_parts)
 

@@ -35,6 +35,18 @@ from multi_agent_config import (
 from multi_agent_manager import MultiAgentManager
 from naturalness_monitor import NaturalnessMonitor
 
+# Import du service TTS optimisé
+try:
+    from elevenlabs_optimized_service import elevenlabs_optimized_service
+except ImportError:
+    elevenlabs_optimized_service = None
+
+# Import du système d'interpellation (nom corrigé)
+try:
+    from interpellation_system_complete import InterpellationSystemComplete as InterpellationSystem
+except ImportError:
+    InterpellationSystem = None
+
 # Charger les variables d'environnement
 load_dotenv()
 
@@ -44,6 +56,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Log warning tardifs si modules optionnels manquants
+if 'elevenlabs_optimized_service' not in globals() or elevenlabs_optimized_service is None:
+    logger.warning("⚠️ Service TTS optimisé non disponible")
+if 'InterpellationSystem' not in globals() or InterpellationSystem is None:
+    logger.warning("⚠️ Système d'interpellation non disponible")
 
 # Log des variables d'environnement critiques (sans exposer les secrets)
 logger.info("🔍 DIAGNOSTIC MULTI-AGENTS: Variables d'environnement")
@@ -170,7 +188,7 @@ class MultiAgentLiveKitService:
         de `MISTRAL_USE_PROXY` et `MISTRAL_PROXY_URL`.
         """
         mistral_api_key = os.getenv('MISTRAL_API_KEY', '')
-        model = os.getenv('MISTRAL_MODEL', 'mistral-small-latest')
+        model = os.getenv('MISTRAL_MODEL', 'mistral-nemo-instruct-2407')
         # Choix de la base_url: proxy local activable via MISTRAL_USE_PROXY=1, sinon direct (MISTRAL_BASE_URL)
         use_proxy = os.getenv('MISTRAL_USE_PROXY', '0') == '1'
         proxy_url = os.getenv('MISTRAL_PROXY_URL', 'http://mistral-conversation:8001/v1')
@@ -305,41 +323,25 @@ class MultiAgentLiveKitService:
             if not moderator:
                 moderator = primary_agent
             
-            # Instructions système intégrées (forcer l'usage de l'outil d'orchestration)
-            system_instructions = f"""Tu es {moderator.name}, {moderator.role} dans une simulation multi-agents Studio Situations Pro.
+            # Instructions système minimales et STRICTEMENT orientées outil (évite toute intro répétée)
+            system_instructions = f"""Tu es {moderator.name}, {moderator.role} dans une simulation multi-agents.
 
-            🎯 AGENTS PRÉSENTS DANS LA SIMULATION:
-            {chr(10).join([f"• {agent.name}: {agent.role} ({agent.interaction_style.value})" for agent in self.config.agents])}
+RÈGLES CRITIQUES (STRICT):
+- N'écris AUCUNE réponse directe.
+- À CHAQUE message utilisateur, APPELLE UNIQUEMENT l'outil generate_multiagent_response avec le message exact.
+- N'inclus AUCUNE formule d'introduction (ex: "Bonsoir et bienvenue...").
+- Ne te présentes pas et ne paraphrase pas la sortie de l'outil.
 
-            🎯 TON RÔLE EN TANT QUE {moderator.name}:
-            {moderator.system_prompt}
+CONTEXTE:
+- Exercice: {self.config.exercise_id}
+- Gestion des tours: {self.config.turn_management}
+- Durée max: {self.config.max_duration_minutes} min
+- Agents: {', '.join([a.name + ' (' + a.role + ')' for a in self.config.agents])}
 
-            📋 CONTEXTE SIMULATION: {self.config.exercise_id}
-            - Gestion des tours: {self.config.turn_management}
-            - Durée maximale: {self.config.max_duration_minutes} minutes
-            - Règles d'interaction: {self.config.interaction_rules}
+OUTIL DISPONIBLE:
+- generate_multiagent_response(user_message: str): orchestre la réponse multi-agents (Michel + Sarah + Marcus) et génère les réactions.
 
-            🔧 INSTRUCTIONS SPÉCIALES MULTI-AGENTS:
-            - Présente-toi TOUJOURS avec ton vrai nom: {moderator.name}
-            - Tu représentes l'agent principal mais coordonnes avec les autres
-            - Adapte ton style: {moderator.interaction_style.value}
-            - Mentionne les autres participants selon le contexte
-            - Utilise un style professionnel adapté à la situation
-            - Garde tes réponses courtes et engageantes (2-3 phrases max)
-            - Identifie-toi clairement dans chaque message
-
-            🛠️ OUTILS DISPONIBLES:
-            - generate_multiagent_response(user_message: str): orchestre la réponse multi-agents (Michel + Sarah + Marcus) et génère les réactions secondaires.
-
-            🚨 RÈGLE CRITIQUE D'ORCHESTRATION:
-            - À CHAQUE message utilisateur, APPELLE TOUJOURS l'outil generate_multiagent_response avec le message exact de l'utilisateur.
-            - Ne réponds JAMAIS directement sans utiliser cet outil.
-            - Utilise la sortie de l'outil comme contenu final, sans la paraphraser.
-
-            🎪 EXEMPLE DE RÉPONSE:
-            "Bonjour ! Je suis {moderator.name}, votre {moderator.role}. [Ta réponse professionnelle ici]"
-
-            IMPORTANT: Dans chaque message, commence par ton nom réel pour une identification claire."""
+Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 
             agent = Agent(
                 instructions=system_instructions,
@@ -443,6 +445,22 @@ class MultiAgentLiveKitService:
             if responses_to_speak:
                 logger.info(f"🎭 Début séquence vocale: {len(responses_to_speak)} agents")
                 await self.speak_multiple_agents_robust(responses_to_speak)
+            else:
+                # Sécurité: si aucune réponse vocale générée, provoquer une réaction minimale
+                try:
+                    fallback_agent = None
+                    # Prioriser un non-modérateur si possible
+                    for a in self.manager.agents.values():
+                        if a.interaction_style != InteractionStyle.MODERATOR:
+                            fallback_agent = a
+                            break
+                    if not fallback_agent:
+                        fallback_agent = list(self.manager.agents.values())[0]
+                    await self.speak_multiple_agents_robust([
+                        {'agent': fallback_agent, 'text': "Je prends la parole pour lancer la discussion.", 'delay': 0}
+                    ])
+                except Exception:
+                    pass
             
             # Retourner le texte formaté pour les logs
             formatted_text = f"[{responses_to_speak[0]['agent'].name}]: {responses_to_speak[0]['text']}"
@@ -507,6 +525,92 @@ class MultiAgentLiveKitService:
         if existing and not force_recreate:
             return existing
 
+        # Utiliser le service TTS optimisé si disponible
+        if elevenlabs_optimized_service and os.getenv('ELEVENLABS_API_KEY'):
+            logger.info(f"🎯 Utilisation du service TTS optimisé pour {agent.name}")
+            
+            class _ElevenLabsOptimizedTTS:
+                _sample_rate = 16000
+                _num_channels = 1
+                def __init__(self_inner):
+                    from livekit.agents import tts as _tts
+                    self_inner.capabilities = _tts.TTSCapabilities(streaming=True)
+                    self_inner._current_sample_rate = 16000
+                    self_inner._frame_duration_sec = 0.02
+                @property
+                def sample_rate(self_inner):
+                    return getattr(self_inner, "_current_sample_rate", 16000)
+                @property
+                def num_channels(self_inner):
+                    return 1
+                def on(self_inner, _event_name: str):
+                    def _decorator(fn):
+                        return fn
+                    return _decorator
+                def synthesize(self_inner, text_inner: str, **_kwargs):
+                    from livekit.agents import tts as _tts
+
+                    class _AsyncStream:
+                        def __init__(self, text_value: str):
+                            self._text = text_value
+                            self._audio: bytes = b""
+                            self._done = False
+                            self._sample_rate = 16000
+                            self._pos = 0
+                            self._frame_bytes = 0
+
+                        def __aiter__(self):
+                            return self
+
+                        async def __anext__(self):
+                            if self._pos >= len(self._audio):
+                                raise StopAsyncIteration
+                            from livekit.agents import tts as _tts
+                            end = min(self._pos + self._frame_bytes, len(self._audio))
+                            chunk = self._audio[self._pos:end]
+                            self._pos = end
+                            try:
+                                return _tts.SynthesizedAudio(chunk, self._sample_rate)
+                            except TypeError:
+                                return _tts.SynthesizedAudio(data=chunk, sample_rate=self._sample_rate)
+
+                        async def __aenter__(self):
+                            # Utiliser le service optimisé avec l'agent_id correct
+                            agent_id = self._map_agent_to_elevenlabs_id(agent)
+                            audio = await elevenlabs_optimized_service.synthesize_with_zero_latency(
+                                text=self._text, agent_id=agent_id
+                            )
+                            self._audio = audio or b""
+                            self._sample_rate = 16000
+                            self_inner._current_sample_rate = 16000
+                            
+                            # Préparation audio pour streaming
+                            try:
+                                frame_samples = int(0.02 * self._sample_rate)
+                                frame_bytes = frame_samples * 1 * 2
+                                if frame_bytes > 0:
+                                    remainder = len(self._audio) % frame_bytes
+                                    if remainder != 0:
+                                        pad = frame_bytes - remainder
+                                        self._audio = self._audio + (b"\x00" * pad)
+                                self._frame_bytes = frame_bytes
+                                self._audio = (b"\x00" * frame_bytes) + self._audio
+                                logger.debug(f"🎚️ [TTS-optimized] {agent.name}: {len(self._audio)} bytes @16kHz")
+                            except Exception as prep_err:
+                                logger.warning(f"⚠️ [TTS] Erreur préparation audio: {prep_err}")
+                            return self
+
+                        async def __aexit__(self, exc_type, exc, tb):
+                            return False
+
+                    return _AsyncStream(text_inner)
+
+            tts = _ElevenLabsOptimizedTTS()
+            self.agent_tts[agent.agent_id] = tts
+            logger.info(f"✅ TTS optimisé créé pour {agent.name} avec voix française")
+            return tts
+
+        # Fallback vers le service flash si l'optimisé n'est pas disponible
         if elevenlabs_flash_service is None or not os.getenv('ELEVENLABS_API_KEY'):
             raise RuntimeError("ELEVENLABS_API_KEY manquante ou service ElevenLabs indisponible pour TTS agent")
 
@@ -542,25 +646,35 @@ class MultiAgentLiveKitService:
                         self._text = text_value
                         self._audio: bytes = b""
                         self._done = False
-                        self._sample_rate = 16000
-                        self._pos = 0
-                        self._frame_bytes = 0
+                        self._sample_rate: int = 16000
+                        self._pos: int = 0
+                        self._chunk_bytes: int = int(0.02 * self._sample_rate) * 1 * 2
+                        self._sample_rate: int = 16000
 
                     def __aiter__(self):
                         return self
 
                     async def __anext__(self):
-                        if self._pos >= len(self._audio):
+                        if self._done:
                             raise StopAsyncIteration
-                        # Émettre par trames de 20ms en SynthesizedAudio natif
-                        from livekit.agents import tts as _tts
-                        end = min(self._pos + self._frame_bytes, len(self._audio))
+                        if not self._audio or self._pos >= len(self._audio):
+                            self._done = True
+                            raise StopAsyncIteration
+                        end = min(self._pos + self._chunk_bytes, len(self._audio))
                         chunk = self._audio[self._pos:end]
                         self._pos = end
-                        try:
-                            return _tts.SynthesizedAudio(chunk, self._sample_rate)
-                        except TypeError:
-                            return _tts.SynthesizedAudio(data=chunk, sample_rate=self._sample_rate)
+                        if self._pos >= len(self._audio):
+                            self._done = True
+                        class _CompatFrame:
+                            def __init__(self, buf: bytes, rate: int, channels: int = 1):
+                                self.data = memoryview(buf)
+                                self.duration = len(buf) / (2 * rate * channels)
+                        class _CompatAudio:
+                            def __init__(self, buf: bytes, rate: int, channels: int = 1):
+                                self.frame = _CompatFrame(buf, rate, channels)
+                                self.sample_rate = rate
+                                self.num_channels = channels
+                        return _CompatAudio(chunk, self._sample_rate, 1)
 
                     async def __aenter__(self):
                         audio = await elevenlabs_flash_service.synthesize_speech_flash_v25(

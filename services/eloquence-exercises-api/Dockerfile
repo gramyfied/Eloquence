@@ -28,11 +28,12 @@ EXPOSE 8005
 
 # Configuration d'environnement
 ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    LOG_LEVEL=DEBUG
 
 # Vérification de santé
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD curl -f http://localhost:8005/health || exit 1
 
 # Commande de démarrage
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8005", "--workers", "1"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8005", "--workers", "1", "--log-level", "debug"]

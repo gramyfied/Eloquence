@@ -16,7 +16,12 @@ import redis
 import uuid
 
 # Configuration logging
-logging.basicConfig(level=logging.INFO)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.DEBUG),
+    format='%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(filename)s:%(lineno)d - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger(__name__)
 
 # Configuration Flask
@@ -74,6 +79,14 @@ def health_check():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
+@app.route('/diagnostics/logs', methods=['GET'])
+def diagnostics_logs():
+    return jsonify({
+        'log_level': LOG_LEVEL,
+        'time': datetime.now().isoformat(),
+        'service': 'eloquence-streaming-api'
+    }), 200
 
 # Création de session d'exercice
 @app.route('/api/sessions/create', methods=['POST'])

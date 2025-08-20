@@ -8,8 +8,16 @@ from typing import Dict, List, Optional, Any
 import logging
 import asyncio
 import httpx
+import os
 
 # Configuration
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.DEBUG),
+    format='%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(filename)s:%(lineno)d - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 app = FastAPI(
     title="Eloquence API",
     description="API unifiée pour tous les exercices vocaux Eloquence",
@@ -45,6 +53,14 @@ async def health_check():
         "service": "eloquence-api",
         "version": "2.0.0",
         "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/diagnostics/logs")
+async def diagnostics_logs():
+    return {
+        "log_level": LOG_LEVEL,
+        "time": datetime.now().isoformat(),
+        "service": "eloquence-api"
     }
 
 @app.get("/health/services")

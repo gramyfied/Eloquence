@@ -3,7 +3,8 @@ FROM python:3.11-slim
 # Optimisations pour système multi-agents amélioré
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    AGENT_TYPE=multi_agent_enhanced
+    AGENT_TYPE=multi_agent_enhanced \
+    LOG_LEVEL=DEBUG
 
 # Installer dépendances système
 RUN apt-get update && apt-get install -y \

@@ -14,10 +14,12 @@ from livekit.agents import AutoSubscribe, JobContext, JobRequest, WorkerOptions,
 # Ajouter le répertoire courant au path pour les imports
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# Configuration du logging
+# Configuration du logging (niveau ajustable via LOG_LEVEL)
+_log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=getattr(logging, _log_level, logging.DEBUG),
+    format='%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(filename)s:%(lineno)d - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger('unified_entrypoint')
 

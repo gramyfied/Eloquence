@@ -6,6 +6,7 @@ import os
 from typing import Dict, List, Any, Optional
 import httpx
 import logging
+import os
 import uuid
 from datetime import datetime
 import asyncio
@@ -21,7 +22,12 @@ from models.exercise_models import (
 )
 
 # Configuration des logs
-logging.basicConfig(level=logging.INFO)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.DEBUG),
+    format='%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(filename)s:%(lineno)d - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger(__name__)
 
 def safe_get(obj, key, default=None, context="unknown"):
@@ -200,6 +206,14 @@ async def health_check():
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
+
+@app.get("/diagnostics/logs")
+async def diagnostics_logs():
+    return {
+        "log_level": LOG_LEVEL,
+        "time": datetime.now().isoformat(),
+        "service": "eloquence-exercises-api"
+    }
 
 @app.post("/api/exercises", response_model=ExerciseResponse)
 async def create_exercise(exercise: Dict[str, Any]):

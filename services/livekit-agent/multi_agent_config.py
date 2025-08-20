@@ -50,7 +50,7 @@ class StudioPersonalities:
                 name="Michel Dubois",
                 role="Animateur TV",
                 personality_traits=["autoritaire", "modérateur", "professionnel", "équitable"],
-                voice_config={"voice": "alloy", "speed": 1.0, "pitch": "normal", "quality": "hd"},
+                voice_config={"voice": "Daniel", "speed": 1.0, "pitch": "normal", "quality": "hd"},
                 system_prompt="""Tu es Michel Dubois, animateur TV expérimenté et charismatique.
 
 SÉQUENCE D'INTRODUCTION OBLIGATOIRE:
@@ -125,7 +125,7 @@ RÈGLES D'INTERACTION:
                 name="Sarah Johnson",
                 role="Journaliste",
                 personality_traits=["curieuse", "challengeante", "analytique", "incisive"],
-                voice_config={"voice": "nova", "speed": 1.0, "pitch": "slightly_higher", "quality": "hd"},
+                voice_config={"voice": "Charlotte", "speed": 1.0, "pitch": "slightly_higher", "quality": "hd"},
                 system_prompt="""Tu es Sarah Johnson, journaliste d'investigation expérimentée.
 
 PERSONNALITÉ:
@@ -167,7 +167,7 @@ RÈGLES D'INTERACTION:
                 name="Marcus Thompson",
                 role="Expert",
                 personality_traits=["sage", "factuel", "nuancé", "pédagogue"],
-                voice_config={"voice": "onyx", "speed": 0.95, "pitch": "measured", "quality": "hd"},
+                voice_config={"voice": "Clyde", "speed": 0.95, "pitch": "measured", "quality": "hd"},
                 system_prompt="""Tu es Marcus Thompson, expert reconnu dans ton domaine.
 
 PERSONNALITÉ:
@@ -213,7 +213,7 @@ RÈGLES D'INTERACTION:
                 name="Hiroshi Tanaka",
                 role="Manager RH",
                 personality_traits=["bienveillant", "méthodique", "évaluateur", "empathique"],
-                voice_config={"voice": "echo", "speed": 0.95},
+                voice_config={"voice": "Clyde", "speed": 0.95},
                 system_prompt="""Tu es Hiroshi Tanaka, Manager RH expérimenté.
 
 PERSONNALITÉ:
@@ -254,7 +254,7 @@ RÈGLES D'INTERACTION:
                 name="Carmen Rodriguez",
                 role="Expert Technique",
                 personality_traits=["précise", "exigeante", "technique", "directe"],
-                voice_config={"voice": "shimmer", "speed": 1.05},
+                voice_config={"voice": "Louise", "speed": 1.05},
                 system_prompt="""Tu es Carmen Rodriguez, Expert Technique senior.
 
 PERSONNALITÉ:
@@ -299,7 +299,7 @@ RÈGLES D'INTERACTION:
                 name="Catherine Williams",
                 role="PDG",
                 personality_traits=["visionnaire", "décisionnaire", "stratégique", "inspirante"],
-                voice_config={"voice": "fable", "speed": 1.0},
+                voice_config={"voice": "Grace", "speed": 1.0},
                 system_prompt="""Tu es Catherine Williams, PDG visionnaire.
 
 PERSONNALITÉ:
@@ -340,7 +340,7 @@ RÈGLES D'INTERACTION:
                 name="Omar Al-Rashid",
                 role="Directeur Financier",
                 personality_traits=["analytique", "prudent", "chiffré", "pragmatique"],
-                voice_config={"voice": "onyx", "speed": 0.95},
+                voice_config={"voice": "Liam", "speed": 0.95},
                 system_prompt="""Tu es Omar Al-Rashid, Directeur Financier expérimenté.
 
 PERSONNALITÉ:
@@ -385,7 +385,7 @@ RÈGLES D'INTERACTION:
                 name="Yuki Nakamura",
                 role="Client Principal",
                 personality_traits=["exigeante", "sceptique", "décisionnaire", "pragmatique"],
-                voice_config={"voice": "shimmer", "speed": 1.0},
+                voice_config={"voice": "Charlotte", "speed": 1.0},
                 system_prompt="""Tu es Yuki Nakamura, directrice des achats d'une grande entreprise.
 
 PERSONNALITÉ:
@@ -426,7 +426,7 @@ RÈGLES D'INTERACTION:
                 name="David Chen",
                 role="Partenaire Technique",
                 personality_traits=["détaillé", "technique", "pragmatique", "analytique"],
-                voice_config={"voice": "echo", "speed": 0.95},
+                voice_config={"voice": "Liam", "speed": 0.95},
                 system_prompt="""Tu es David Chen, directeur technique accompagnant Yuki.
 
 PERSONNALITÉ:
@@ -471,7 +471,7 @@ RÈGLES D'INTERACTION:
                 name="Elena Petrov",
                 role="Modératrice",
                 personality_traits=["facilitatrice", "engageante", "dynamique", "inclusive"],
-                voice_config={"voice": "nova", "speed": 1.05},
+                voice_config={"voice": "Grace", "speed": 1.05},
                 system_prompt="""Tu es Elena Petrov, modératrice de conférence expérimentée.
 
 PERSONNALITÉ:
@@ -512,7 +512,7 @@ RÈGLES D'INTERACTION:
                 name="James Wilson",
                 role="Expert Audience",
                 personality_traits=["curieux", "challengeant", "représentatif", "engagé"],
-                voice_config={"voice": "echo", "speed": 1.0},
+                voice_config={"voice": "Clyde", "speed": 1.0},
                 system_prompt="""Tu es James Wilson, représentant de l'audience expert.
 
 PERSONNALITÉ:
