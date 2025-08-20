@@ -39,22 +39,34 @@ class RobustLLMClient:
     async def generate_response(self, messages: List[Dict[str, str]], max_tokens: int = 150) -> Optional[str]:
         """Génère une réponse avec fallback automatique"""
         
-        # Tentative 1: OpenAI (priorité)
+        # Tentative 1: OpenAI (GPT-4o en priorité, GPT-3.5 en fallback)
         if self.openai_client:
             try:
-                logger.info("🤖 Tentative OpenAI...")
+                logger.info("🤖 Tentative OpenAI GPT-4o...")
                 response = await self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4o",
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=0.7
                 )
                 result = response.choices[0].message.content
-                logger.info("✅ Réponse OpenAI générée")
+                logger.info("✅ Réponse OpenAI GPT-4o générée")
                 return result
-            
             except Exception as e:
-                logger.error(f"❌ Erreur OpenAI: {e}")
+                logger.warning(f"⚠️ GPT-4o échoué, tentative GPT-3.5: {e}")
+                try:
+                    logger.info("🤖 Tentative OpenAI GPT-3.5...")
+                    response = await self.openai_client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=messages,
+                        max_tokens=max_tokens,
+                        temperature=0.7
+                    )
+                    result = response.choices[0].message.content
+                    logger.info("✅ Réponse OpenAI GPT-3.5 générée")
+                    return result
+                except Exception as e2:
+                    logger.error(f"❌ Erreur OpenAI GPT-3.5: {e2}")
         
         # Tentative 2: Mistral Scaleway (fallback)
         if self.mistral_url and self.mistral_key:

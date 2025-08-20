@@ -183,23 +183,37 @@ Réponds MAINTENANT :"""
         except Exception as e:
             logger.debug(f"⚠️ LLM Optimizer non disponible: {e}")
 
-        # ESSAI 2: OpenAI direct (si disponible)
+        # ESSAI 2: OpenAI direct (GPT-4o en priorité, GPT-3.5 en fallback)
         try:
             openai_key = os.getenv('OPENAI_API_KEY')
             if openai_key:
                 import openai as openai_client
                 client = openai_client.OpenAI(api_key=openai_key)
                 
-                response = await asyncio.wait_for(
-                    client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "system", "content": prompt}],
-                        temperature=0.8,
-                        max_tokens=50,  # Réduit pour plus de rapidité
-                    ),
-                    timeout=1.2,  # Réduit de 2.0 à 1.2s
-                )
-                return response.choices[0].message.content
+                # Essayer GPT-4o d'abord pour les réponses plus naturelles
+                try:
+                    response = await asyncio.wait_for(
+                        client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[{"role": "system", "content": prompt}],
+                            temperature=0.8,
+                            max_tokens=50,
+                        ),
+                        timeout=1.2,
+                    )
+                    return response.choices[0].message.content
+                except Exception:
+                    # Fallback vers GPT-3.5 si GPT-4o échoue
+                    response = await asyncio.wait_for(
+                        client.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[{"role": "system", "content": prompt}],
+                            temperature=0.8,
+                            max_tokens=50,
+                        ),
+                        timeout=1.2,
+                    )
+                    return response.choices[0].message.content
         except Exception as e:
             logger.debug(f"⚠️ OpenAI direct non disponible: {e}")
 
@@ -221,7 +235,7 @@ Réponds MAINTENANT :"""
                             "Content-Type": "application/json"
                         },
                         json={
-                            "model": os.getenv('MISTRAL_MODEL', 'mistral-small-latest'),
+                            "model": os.getenv('MISTRAL_MODEL', 'mistral-nemo-instruct-2407'),
                             # Respect strict alternance après system
                             "messages": [
                                 {"role": "system", "content": prompt},
