@@ -164,9 +164,14 @@ Réponds MAINTENANT :"""
             from llm_optimizer import llm_optimizer
 
             # Timeout ULTRA-RAPIDE pour réactivité maximale
+            # IMPORTANT pour compatibilité OpenAI-like (Scaleway): après le system,
+            # on DOIT fournir un message user pour respecter l'alternance des rôles.
             result = await asyncio.wait_for(
                 llm_optimizer.get_optimized_response(
-                    messages=[{"role": "system", "content": prompt}],
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": "Réponds immédiatement selon les instructions ci-dessus."},
+                    ],
                     task_type='multi_agent_orchestration',
                     complexity={'num_agents': 3, 'context_length': len(prompt), 'interaction_depth': 1},
                     use_cache=True,
@@ -198,22 +203,30 @@ Réponds MAINTENANT :"""
         except Exception as e:
             logger.debug(f"⚠️ OpenAI direct non disponible: {e}")
 
-        # ESSAI 3: Mistral (si disponible)
+        # ESSAI 3: Mistral (si disponible) — OpenAI-compatible endpoint
         try:
             mistral_url = os.getenv('MISTRAL_BASE_URL')
             mistral_key = os.getenv('MISTRAL_API_KEY')
             if mistral_url and mistral_key:
                 import aiohttp
                 async with aiohttp.ClientSession() as session:
+                    # Assurer le chemin /chat/completions si base_url fourni sans suffixe
+                    target_url = mistral_url.rstrip('/')
+                    if not target_url.endswith('/chat/completions'):
+                        target_url = f"{target_url}/chat/completions"
                     async with session.post(
-                        mistral_url,
+                        target_url,
                         headers={
                             "Authorization": f"Bearer {mistral_key}",
                             "Content-Type": "application/json"
                         },
                         json={
-                            "model": "mistral-small-latest",
-                            "messages": [{"role": "system", "content": prompt}],
+                            "model": os.getenv('MISTRAL_MODEL', 'mistral-small-latest'),
+                            # Respect strict alternance après system
+                            "messages": [
+                                {"role": "system", "content": prompt},
+                                {"role": "user", "content": "Réponds immédiatement selon les instructions ci-dessus."}
+                            ],
                             "max_tokens": 70,
                             "temperature": 0.7
                         },

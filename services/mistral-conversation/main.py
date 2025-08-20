@@ -14,6 +14,7 @@ import time
 
 import aiohttp
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -41,6 +42,12 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.7
     max_tokens: Optional[int] = 500
     stream: Optional[bool] = False
+    # Champs optionnels OpenAI‑compat (outils, options de stream, etc.)
+    tools: Optional[Any] = None
+    stream_options: Optional[Dict[str, Any]] = None
+
+    class Config:
+        extra = "allow"  # tolérer d'autres champs pour compatibilité
 
 class UsageInfo(BaseModel):
     prompt_tokens: Optional[int] = 0
@@ -91,6 +98,50 @@ class ScalewayMistralService:
         logger.info(f"📍 Base URL: {self.base_url}")
         logger.info(f"🤖 Modèle: {self.model}")
     
+    def _normalize_messages(self, msgs: List[ChatMessage]) -> List[ChatMessage]:
+        """Assure l'alternance system/(user|assistant) en fusionnant les rôles consécutifs
+        et en supprimant un éventuel assistant en tête après system.
+        """
+        if not msgs:
+            return []
+        # Copie profonde simple
+        norm: List[ChatMessage] = []
+        for m in msgs:
+            if not norm:
+                norm.append(ChatMessage(role=m.role, content=m.content))
+                continue
+            last = norm[-1]
+            if m.role == last.role:
+                # Fusionner le contenu des messages consécutifs de même rôle
+                sep = "\n\n---\n"
+                norm[-1] = ChatMessage(role=last.role, content=f"{last.content}{sep}{m.content}")
+            else:
+                norm.append(ChatMessage(role=m.role, content=m.content))
+
+        # Si on a system puis assistant en tête → intégrer l'assistant dans system
+        if len(norm) >= 2 and norm[0].role == "system" and norm[1].role == "assistant":
+            merged = ChatMessage(
+                role="system",
+                content=f"{norm[0].content}\n\n[Note: assistant prefill supprimé] {norm[1].content}"
+            )
+            norm = [merged] + norm[2:]
+
+        # Vérifier alternance stricte après system (si présent)
+        start_idx = 1 if norm and norm[0].role == "system" else 0
+        fixed: List[ChatMessage] = norm[:start_idx]
+        expected = "user"
+        for i in range(start_idx, len(norm)):
+            m = norm[i]
+            if m.role != expected:
+                # Convertir en rôle attendu en conservant le contenu
+                fixed.append(ChatMessage(role=expected, content=m.content))
+            else:
+                fixed.append(m)
+            # alterner
+            expected = "assistant" if expected == "user" else "user"
+
+        return fixed
+
     async def chat_completion(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
         """Génère une réponse via l'API Scaleway Mistral"""
         
@@ -100,77 +151,166 @@ class ScalewayMistralService:
             # Utiliser le modèle configuré si non spécifié
             model = request.model or self.model
             
+            # Normaliser les messages pour respecter l'alternance stricte
+            normalized_msgs = self._normalize_messages(request.messages)
+
             # Préparer la requête pour Scaleway
-            payload = {
+            payload: Dict[str, Any] = {
                 "model": model,
-                "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
+                "messages": [{"role": msg.role, "content": msg.content} for msg in normalized_msgs],
                 "temperature": request.temperature,
                 "max_tokens": request.max_tokens,
-                "stream": request.stream
+                # On traitera le streaming ci-dessous (FastAPI StreamingResponse)
+                "stream": bool(request.stream),
             }
+            # Transférer les champs OpenAI‑compat si présents
+            if request.tools is not None:
+                payload["tools"] = request.tools
+            if request.stream_options is not None:
+                payload["stream_options"] = request.stream_options
             
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
             }
             
-            logger.info(f"🔵 [SCALEWAY] Envoi requête - Modèle: {model}, Messages: {len(request.messages)}")
+            logger.info(f"🔵 [SCALEWAY] Envoi requête - Modèle: {model}, Messages: {len(payload['messages'])}, stream={payload['stream']}")
             logger.debug(f"🔍 [SCALEWAY] Payload: {payload}")
             
             # Appel à l'API Scaleway
-            timeout = aiohttp.ClientTimeout(total=30.0)
+            # Important: pour le streaming SSE, ne pas imposer de timeout total afin d'éviter
+            # une fermeture prématurée du flux (qui provoque des incomplete chunked read côté client).
+            # On protège uniquement la connexion; la lecture du socket est illimitée.
+            timeout = aiohttp.ClientTimeout(total=None, connect=10, sock_connect=10, sock_read=None)
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    f"{self.base_url}/chat/completions",
-                    json=payload,
-                    headers=headers
-                ) as response:
-                    
-                    processing_time = time.time() - start_time
-                    
-                    if response.status == 200:
-                        result_data = await response.json()
-                        
-                        # Enregistrer le succès
+                if payload["stream"]:
+                    # Compatibilité LiveKit/OpenAI: certaines combinaisons (tools, stream_options)
+                    # ne sont pas supportées en stream côté Scaleway. On appelle en non-stream,
+                    # puis on renvoie un flux SSE synthétique conforme OpenAI.
+                    synth_start = time.time()
+                    non_stream_payload = dict(payload)
+                    non_stream_payload["stream"] = False
+                    # Supprimer stream_options non supporté côté Scaleway en non-stream
+                    non_stream_payload.pop("stream_options", None)
+                    async with session.post(
+                        f"{self.base_url}/chat/completions",
+                        json=non_stream_payload,
+                        headers=headers
+                    ) as response:
+                        processing_time = time.time() - start_time
+                        if response.status != 200:
+                            error_text = await response.text()
+                            self._record_failure(f"http_{response.status}", processing_time)
+                            logger.error(f"❌ [SCALEWAY] Erreur HTTP {response.status} (compat-stream): {error_text}")
+                            raise HTTPException(status_code=response.status, detail=error_text)
+
+                        data = await response.json()
                         self._record_success(processing_time)
-                        
-                        logger.info(f"✅ [SCALEWAY] Réponse reçue en {processing_time:.2f}s")
-                        
-                        # Formater la réponse avec le modèle UsageInfo
-                        usage_data = result_data.get("usage", {})
-                        usage_info = UsageInfo(
-                            prompt_tokens=usage_data.get("prompt_tokens", 0),
-                            completion_tokens=usage_data.get("completion_tokens", 0),
-                            total_tokens=usage_data.get("total_tokens", 0),
-                            prompt_tokens_details=usage_data.get("prompt_tokens_details")
+                        logger.info(f"✅ [SCALEWAY] Réponse non-stream en {processing_time:.2f}s → renvoi SSE synthétique")
+
+                        # Extraire le contenu assistant
+                        choice = (data.get("choices") or [{}])[0]
+                        message = choice.get("message") or {}
+                        full_content = message.get("content", "")
+                        created_ts = int(time.time())
+
+                        # Générateur SSE synthétique minimalement compatible OpenAI
+                        async def synth_sse():
+                            try:
+                                # 1) Premier chunk avec delta role + contenu complet (acceptable pour la plupart des clients)
+                                chunk_1 = {
+                                    "id": data.get("id", f"chatcmpl-{created_ts}"),
+                                    "object": "chat.completion.chunk",
+                                    "created": created_ts,
+                                    "model": model,
+                                    "choices": [
+                                        {
+                                            "index": 0,
+                                            "delta": {"role": "assistant", "content": full_content},
+                                            "finish_reason": None,
+                                        }
+                                    ],
+                                }
+                                yield (f"data: {json.dumps(chunk_1, ensure_ascii=False)}\n\n").encode("utf-8")
+
+                                # 2) Chunk de fin
+                                chunk_2 = {
+                                    "id": data.get("id", f"chatcmpl-{created_ts}"),
+                                    "object": "chat.completion.chunk",
+                                    "created": created_ts,
+                                    "model": model,
+                                    "choices": [
+                                        {
+                                            "index": 0,
+                                            "delta": {},
+                                            "finish_reason": "stop",
+                                        }
+                                    ],
+                                }
+                                yield (f"data: {json.dumps(chunk_2, ensure_ascii=False)}\n\n").encode("utf-8")
+
+                                # 3) Fin officielle du flux SSE
+                                yield b"data: [DONE]\n\n"
+                            except asyncio.CancelledError:
+                                raise
+                            except Exception as e:
+                                logger.warning(f"⚠️ [SSE-SYNTH] Relais synthétique interrompu: {e}")
+                                return
+
+                        return StreamingResponse(
+                            synth_sse(),
+                            media_type="text/event-stream",
+                            headers={
+                                "Cache-Control": "no-cache",
+                                "Connection": "keep-alive",
+                                "X-Accel-Buffering": "no",
+                            },
                         )
-                        
-                        chat_response = ChatCompletionResponse(
-                            id=result_data.get("id", f"chat-{int(time.time())}"),
-                            created=int(time.time()),
-                            model=model,
-                            choices=result_data.get("choices", []),
-                            usage=usage_info
-                        )
-                        
-                        return chat_response
-                    
-                    else:
-                        error_text = await response.text()
-                        self._record_failure(f"http_{response.status}", processing_time)
-                        
-                        logger.error(f"❌ [SCALEWAY] Erreur HTTP {response.status}: {error_text}")
-                        raise HTTPException(
-                            status_code=response.status,
-                            detail=f"Erreur API Scaleway: {error_text}"
-                        )
+                else:
+                    # Assainir : si non-stream, retirer d'éventuelles stream_options envoyées par le client
+                    if not payload.get("stream"):
+                        payload.pop("stream_options", None)
+                    # Mode non-streaming: réponse JSON classique
+                    async with session.post(
+                        f"{self.base_url}/chat/completions",
+                        json=payload,
+                        headers=headers
+                    ) as response:
+                        processing_time = time.time() - start_time
+                        if response.status == 200:
+                            result_data = await response.json()
+                            self._record_success(processing_time)
+                            logger.info(f"✅ [SCALEWAY] Réponse reçue en {processing_time:.2f}s")
+
+                            usage_data = result_data.get("usage", {})
+                            usage_info = UsageInfo(
+                                prompt_tokens=usage_data.get("prompt_tokens", 0),
+                                completion_tokens=usage_data.get("completion_tokens", 0),
+                                total_tokens=usage_data.get("total_tokens", 0),
+                                prompt_tokens_details=usage_data.get("prompt_tokens_details")
+                            )
+                            chat_response = ChatCompletionResponse(
+                                id=result_data.get("id", f"chat-{int(time.time())}"),
+                                created=int(time.time()),
+                                model=model,
+                                choices=result_data.get("choices", []),
+                                usage=usage_info
+                            )
+                            return chat_response
+                        else:
+                            error_text = await response.text()
+                            self._record_failure(f"http_{response.status}", processing_time)
+                            logger.error(f"❌ [SCALEWAY] Erreur HTTP {response.status}: {error_text}")
+                            raise HTTPException(status_code=response.status, detail=f"Erreur API Scaleway: {error_text}")
         
         except aiohttp.ClientError as e:
             processing_time = time.time() - start_time
             self._record_failure("network_error", processing_time)
             logger.error(f"❌ [SCALEWAY] Erreur réseau: {e}")
             raise HTTPException(status_code=502, detail=f"Erreur réseau: {str(e)}")
-        
+        except HTTPException as e:
+            # Propager les erreurs HTTP (ex: 400 en compat‑stream) sans les convertir en 500
+            raise e
         except Exception as e:
             processing_time = time.time() - start_time
             self._record_failure("unexpected_error", processing_time)
@@ -297,6 +437,7 @@ async def chat_completions(request: ChatCompletionRequest):
         raise HTTPException(status_code=503, detail="Service non initialisé")
     
     try:
+        # Si stream demandé, la méthode retournera une StreamingResponse
         response = await mistral_service.chat_completion(request)
         return response
     except HTTPException:

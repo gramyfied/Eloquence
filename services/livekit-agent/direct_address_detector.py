@@ -118,10 +118,9 @@ class DirectAddressDetector:
 
         # NOUVEAU: Détection d'interpellations indirectes (questions sans nom)
         # MAIS seulement si c'est une question générale ET qu'on a un contexte d'animateur
-        if self._is_general_question(text_lower):
-            # Pour les questions générales, on ne détecte PAS automatiquement tous les agents
-            # Il faut un contexte spécifique (comme une directive d'animateur)
-            return False
+        # Si l'animateur s'adresse explicitement à un agent (ex: "Sarah !" ou "Marcus ?"),
+        # cela a déjà été couvert par les patterns ci-dessus.
+        # Les questions générales ne déclenchent pas par défaut.
 
         return False
 

@@ -62,11 +62,12 @@ class MultiAgentManager:
         self._last_reaction_by_agent: Dict[str, str] = {}
         
         # === SYSTÈME D'INTRODUCTION SIMPLIFIÉE ===
+        # Désactiver toute pré-intro bloquante et laisser le TTS démarrer immédiatement en cadence normale
         self.introduction_state = {
-            'step': 'debate_started',  # Démarrage direct du débat
+            'step': 'debate_started',
             'participant_name': 'Participant',
             'chosen_subject': 'débat général',
-            'introduction_completed': True  # Pas d'introduction interactive
+            'introduction_completed': True
         }
         
         # Pré-optimisation du pipeline de réponses (cache, pool, templates)

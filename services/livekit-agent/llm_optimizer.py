@@ -18,7 +18,8 @@ class LLMOptimizer:
     """Gestionnaire optimisé pour les appels LLM avec cache et sélection de modèle"""
     
     def __init__(self):
-        self.api_key = os.getenv('OPENAI_API_KEY')
+        # Prefer Scaleway Mistral if configured; fallback to OPENAI_API_KEY
+        self.api_key = os.getenv('MISTRAL_API_KEY') or os.getenv('OPENAI_API_KEY')
         self.redis_client = self._init_redis()
         self.cache_ttl = 3600  # 1 heure de cache par défaut
         self.usage_stats = {
@@ -33,7 +34,8 @@ class LLMOptimizer:
         # Coûts approximatifs par 1000 tokens (en USD)
         self.model_costs = {
             'gpt-3.5-turbo': {'input': 0.0015, 'output': 0.002},
-            'gpt-4o-mini': {'input': 0.00015, 'output': 0.0006}
+            'gpt-4o-mini': {'input': 0.00015, 'output': 0.0006},
+            'mistral-small-latest': {'input': 0.0003, 'output': 0.0006},
         }
         
     def _init_redis(self) -> Optional[redis.Redis]:
@@ -127,14 +129,20 @@ class LLMOptimizer:
         
         # Sélection intelligente du modèle
         use_advanced = self._should_use_advanced_model(task_type, complexity)
-        model = 'gpt-4o-mini' if use_advanced else 'gpt-3.5-turbo'
+        # Choose Mistral model if base_url configured
+        mistral_base = os.getenv('MISTRAL_BASE_URL')
+        model = (
+            os.getenv('MISTRAL_MODEL', 'mistral-small-latest') if mistral_base else
+            ('gpt-4o-mini' if use_advanced else 'gpt-3.5-turbo')
+        )
         
         # Optimisation des prompts pour réduire les tokens
         optimized_messages = self._optimize_messages(messages, task_type)
         
         try:
-            # Appel API OpenAI
-            client = openai_client.OpenAI(api_key=self.api_key)
+            # Appel via client OpenAI compatible (peut pointer vers Scaleway)
+            base_url = os.getenv('MISTRAL_BASE_URL') or 'https://api.openai.com/v1'
+            client = openai_client.OpenAI(api_key=self.api_key, base_url=base_url)
             
             # Paramètres optimisés selon le type de tâche
             temperature = self._get_optimal_temperature(task_type)

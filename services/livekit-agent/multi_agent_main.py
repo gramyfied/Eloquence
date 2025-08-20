@@ -48,10 +48,12 @@ logger = logging.getLogger(__name__)
 # Log des variables d'environnement critiques (sans exposer les secrets)
 logger.info("🔍 DIAGNOSTIC MULTI-AGENTS: Variables d'environnement")
 logger.info(f"   OPENAI_API_KEY présente: {'Oui' if os.getenv('OPENAI_API_KEY') else 'Non'}")
+logger.info(f"   ELEVENLABS_API_KEY présente: {'Oui' if os.getenv('ELEVENLABS_API_KEY') else 'Non'}")
 logger.info(f"   MISTRAL_BASE_URL: {os.getenv('MISTRAL_BASE_URL', 'Non définie')}")
 
 # URLs des services
-MISTRAL_API_URL = os.getenv('MISTRAL_BASE_URL', 'http://mistral-conversation:8001/v1/chat/completions')
+# Base OpenAI-compatible (le client ajoutera /chat/completions lui-même)
+MISTRAL_API_URL = os.getenv('MISTRAL_BASE_URL', 'http://mistral-conversation:8001/v1')
 VOSK_STT_URL = os.getenv('VOSK_STT_URL', 'http://vosk-stt:8002')
 
 class MultiAgentLiveKitService:
@@ -162,59 +164,130 @@ class MultiAgentLiveKitService:
             raise RuntimeError(f"Impossible de créer STT (Vosk: {vosk_error}, OpenAI: {openai_error})")
 
     def create_mistral_llm(self):
-        """Crée un LLM configuré pour utiliser OpenAI (plus stable)"""
-        api_key = os.getenv('OPENAI_API_KEY')
-        logger.info(f"🔍 Configuration OpenAI LLM Multi-Agents - Modèle: gpt-4o-mini")
-        
+        """Crée un LLM configuré pour utiliser le proxy Mistral côté backend.
+
+        Utilise une API compatible OpenAI et choisit la base_url finale en fonction
+        de `MISTRAL_USE_PROXY` et `MISTRAL_PROXY_URL`.
+        """
+        mistral_api_key = os.getenv('MISTRAL_API_KEY', '')
+        model = os.getenv('MISTRAL_MODEL', 'mistral-small-latest')
+        # Choix de la base_url: proxy local activable via MISTRAL_USE_PROXY=1, sinon direct (MISTRAL_BASE_URL)
+        use_proxy = os.getenv('MISTRAL_USE_PROXY', '0') == '1'
+        proxy_url = os.getenv('MISTRAL_PROXY_URL', 'http://mistral-conversation:8001/v1')
+        base_url = proxy_url if use_proxy else MISTRAL_API_URL
+        logger.info(
+            f"🔍 Configuration LLM Mistral - Modèle: {model} | "
+            f"use_proxy={'Oui' if use_proxy else 'Non'} | base_url={base_url}"
+        )
         return openai.LLM(
-            model="gpt-4o-mini",
-            api_key=api_key,
+            model=model,
+            api_key=mistral_api_key,
+            base_url=base_url,
         )
 
     async def create_multiagent_tts(self):
-        """Crée un système TTS dynamique qui peut changer de voix selon l'agent"""
-        api_key = os.getenv('OPENAI_API_KEY')
-        
-        if not api_key:
-            logger.warning("⚠️ OPENAI_API_KEY manquante, utilisation Silero TTS")
-            return silero.TTS()
-        
-        # Stocker les configurations de voix pour chaque agent
-        self.voice_configs = {}
-        for agent in self.config.agents:
-            voice = agent.voice_config.get('voice', 'alloy')
-            speed = agent.voice_config.get('speed', 1.0)
-            self.voice_configs[agent.agent_id] = {
-                'voice': voice,
-                'speed': speed,
-                'name': agent.name
-            }
-            logger.info(f"🎭 Configuration voix pour {agent.name}: {voice} (vitesse: {speed})")
-        
-        # Créer un TTS par défaut avec la voix du modérateur
-        moderator = None
-        for agent in self.config.agents:
-            if agent.interaction_style == InteractionStyle.MODERATOR:
-                moderator = agent
-                break
-        
-        if not moderator:
-            moderator = self.config.agents[0]
-            
-        default_voice = moderator.voice_config.get('voice', 'alloy')
-        
+        """Crée un TTS par défaut basé sur ElevenLabs pour les simulations Studio.
+
+        Note: Chaque agent utilisera ensuite son TTS dédié via _get_or_build_agent_tts.
+        Ce TTS par défaut est utilisé pour les annonces initiales au besoin.
+        """
         try:
-            tts = openai.TTS(
-                voice=default_voice,
-                api_key=api_key,
-                model="tts-1",
-                base_url="https://api.openai.com/v1"
-            )
-            logger.info(f"✅ TTS OpenAI créé avec voix par défaut: {default_voice}")
-            return tts
+            if elevenlabs_flash_service is None or not os.getenv('ELEVENLABS_API_KEY'):
+                raise RuntimeError("ELEVENLABS_API_KEY manquante ou service ElevenLabs indisponible")
+
+            class _ElevenLabsOnDemandTTS:
+                # Expose at class-level to satisfy frameworks accessing attributes before __init__
+                _sample_rate = 16000
+                _num_channels = 1
+                def __init__(self_inner):
+                    from livekit.agents import tts as _tts
+                    self_inner.capabilities = _tts.TTSCapabilities(streaming=False)
+                    self_inner._current_sample_rate = 16000
+                @property
+                def sample_rate(self_inner):
+                    return getattr(self_inner, "_current_sample_rate", 16000)
+                @property
+                def num_channels(self_inner):
+                    return 1
+                def on(self_inner, _event_name: str):  # hook requis par StreamAdapter
+                    def _decorator(fn):
+                        return fn
+                    return _decorator
+                def synthesize(self_inner, text_inner: str, **_kwargs):
+                    """Retourne un async context manager compatible StreamAdapter.
+
+                    L'appel ElevenLabs est effectué dans __aenter__ pour éviter de
+                    retourner une coroutine à 'async with'.
+                    """
+                    from livekit.agents import tts as _tts
+
+                    class _AsyncStream:
+                        def __init__(self, text_value: str):
+                            self._text = text_value
+                            self._audio: bytes = b""
+                            self._done = False
+                            self._sample_rate: int = 16000
+                            self._pos: int = 0
+                            self._chunk_bytes: int = int(0.02 * self._sample_rate) * 1 * 2
+                            self._sample_rate: int = 16000
+
+                        def __aiter__(self):
+                            return self
+
+                        async def __anext__(self):
+                            if self._done:
+                                raise StopAsyncIteration
+                            if not self._audio or self._pos >= len(self._audio):
+                                self._done = True
+                                raise StopAsyncIteration
+                            end = min(self._pos + self._chunk_bytes, len(self._audio))
+                            chunk = self._audio[self._pos:end]
+                            self._pos = end
+                            if self._pos >= len(self._audio):
+                                self._done = True
+                            class _CompatFrame:
+                                def __init__(self, buf: bytes, rate: int, channels: int = 1):
+                                    self.data = memoryview(buf)
+                                    self.duration = len(buf) / (2 * rate * channels)
+                            class _CompatAudio:
+                                def __init__(self, buf: bytes, rate: int, channels: int = 1):
+                                    self.frame = _CompatFrame(buf, rate, channels)
+                                    self.sample_rate = rate
+                                    self.num_channels = channels
+                            return _CompatAudio(chunk, self._sample_rate, 1)
+
+                        async def __aenter__(self):
+                            audio = await elevenlabs_flash_service.synthesize_speech_flash_v25(
+                                text=self._text, agent_id="michel_dubois_animateur"
+                            )
+                            self._audio = audio or b""
+                            # Flux natif 16 kHz PCM mono — pas de resampling vers 48 kHz
+                            self._sample_rate = 16000
+                            self_inner._current_sample_rate = 16000
+                            # Trim au multiple exact de 20ms pour éviter les drops
+                            try:
+                                frame_samples = int(0.02 * self._sample_rate)  # 20ms
+                                frame_bytes = frame_samples * 1 * 2
+                                if frame_bytes > 0 and len(self._audio) % frame_bytes != 0:
+                                    trimmed_len = len(self._audio) - (len(self._audio) % frame_bytes)
+                                    self._audio = self._audio[:trimmed_len]
+                                self._chunk_bytes = frame_bytes
+                                logger.debug(f"🎚️ [TTS-default] Préparation audio: {len(self._audio)} bytes, frame_bytes={frame_bytes}, rate={self._sample_rate}")
+                            except Exception:
+                                pass
+                            return self
+
+                        async def __aexit__(self, exc_type, exc, tb):
+                            return False
+
+                    return _AsyncStream(text_inner)
+
+            logger.info("✅ TTS par défaut ElevenLabs prêt (modérateur)")
+            return _ElevenLabsOnDemandTTS()
         except Exception as e:
-            logger.warning(f"⚠️ OpenAI TTS échoué: {e}, utilisation Silero")
-            return silero.TTS()
+            logger.error(f"❌ ElevenLabs TTS indisponible: {e}")
+            # Éviter Silero (non supporté). Lever clairement l'erreur pour visibilité.
+            raise
 
     def create_multiagent_agent(self) -> Agent:
         """Crée un agent LiveKit configuré pour le système multi-agents"""
@@ -429,60 +502,137 @@ class MultiAgentLiveKitService:
                 self.session._tts = original_tts
 
     async def _get_or_build_agent_tts(self, agent: AgentPersonality, force_recreate: bool = False):
-        """Retourne le TTS dédié à l'agent, en le créant si besoin (ou en le recréant si demandé)."""
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            logger.warning("⚠️ OPENAI_API_KEY manquante pour TTS agent — fallback Silero utilisé")
-            fallback = silero.TTS()
-            self.agent_tts[agent.agent_id] = fallback
-            return fallback
-
+        """Retourne le TTS ElevenLabs dédié à l'agent, en le créant si besoin."""
         existing = self.agent_tts.get(agent.agent_id)
         if existing and not force_recreate:
             return existing
 
-        # ElevenLabs Flash v2.5 pour modérateur en simulations temps réel
-        try:
-            if (
-                elevenlabs_flash_service is not None
-                and agent.interaction_style == InteractionStyle.MODERATOR
-                and str(self.config.exercise_id).startswith("studio_")
-            ):
-                class _ElevenLabsOnDemandTTS:
-                    async def synthesize(self_inner, text_inner: str):
+        if elevenlabs_flash_service is None or not os.getenv('ELEVENLABS_API_KEY'):
+            raise RuntimeError("ELEVENLABS_API_KEY manquante ou service ElevenLabs indisponible pour TTS agent")
+
+        # Mapping nom → id de voix ElevenLabs
+        mapped_voice_id = self._map_agent_to_elevenlabs_id(agent)
+
+        class _ElevenLabsOnDemandTTS:
+            # Expose at class-level to satisfy frameworks accessing attributes before __init__
+            _sample_rate = 16000
+            _num_channels = 1
+            def __init__(self_inner):
+                from livekit.agents import tts as _tts
+                # Activer le mode streaming pour émettre des trames 20ms
+                self_inner.capabilities = _tts.TTSCapabilities(streaming=True)
+                # Par défaut, aligner sur 48 kHz pour éviter tout ralentissement initial
+                self_inner._current_sample_rate = 16000
+                self_inner._frame_duration_sec = 0.02
+            @property
+            def sample_rate(self_inner):
+                return getattr(self_inner, "_current_sample_rate", 16000)
+            @property
+            def num_channels(self_inner):
+                return 1
+            def on(self_inner, _event_name: str):  # hook requis par StreamAdapter
+                def _decorator(fn):
+                    return fn
+                return _decorator
+            def synthesize(self_inner, text_inner: str, **_kwargs):
+                from livekit.agents import tts as _tts
+
+                class _AsyncStream:
+                    def __init__(self, text_value: str):
+                        self._text = text_value
+                        self._audio: bytes = b""
+                        self._done = False
+                        self._sample_rate = 16000
+                        self._pos = 0
+                        self._frame_bytes = 0
+
+                    def __aiter__(self):
+                        return self
+
+                    async def __anext__(self):
+                        if self._pos >= len(self._audio):
+                            raise StopAsyncIteration
+                        # Émettre par trames de 20ms en SynthesizedAudio natif
                         from livekit.agents import tts as _tts
+                        end = min(self._pos + self._frame_bytes, len(self._audio))
+                        chunk = self._audio[self._pos:end]
+                        self._pos = end
+                        try:
+                            return _tts.SynthesizedAudio(chunk, self._sample_rate)
+                        except TypeError:
+                            return _tts.SynthesizedAudio(data=chunk, sample_rate=self._sample_rate)
+
+                    async def __aenter__(self):
                         audio = await elevenlabs_flash_service.synthesize_speech_flash_v25(
-                            text=text_inner, agent_id="michel_dubois_animateur"
+                            text=self._text, agent_id=mapped_voice_id
                         )
-                        if not audio:
-                            yield _tts.SynthesizedAudio(data=b"", sample_rate=16000)
-                        else:
-                            yield _tts.SynthesizedAudio(data=audio, sample_rate=16000)
+                        self._audio = audio or b""
+                        # Forcer 16 kHz PCM mono bout‑à‑bout pour éviter ralentissements
+                        self._sample_rate = 16000
+                        self_inner._current_sample_rate = 16000
+                        # Limiteur doux (normalisation descendante) pour éviter saturation/clipping
+                        try:
+                            if self._audio:
+                                import audioop
+                                max_amp = audioop.max(self._audio, 2) or 1
+                                max_target = 28000  # ~-1.5 dBFS
+                                if max_amp > max_target:
+                                    ratio = max_target / max_amp
+                                    self._audio = audioop.mul(self._audio, 2, ratio)
+                        except Exception:
+                            pass
+                        # Sample rate déjà forcé à 16 kHz
+                        try:
+                            logger.debug(f"🎚️ [TTS-agent] Bytes reçus ElevenLabs: {len(self._audio)} @16k")
+                        except Exception:
+                            pass
+                        # Pas de resampling dynamique vers 48 kHz
+                        # Slicing en trames de 20ms (sans ré-échantillonnage) pour éviter les drops
+                        try:
+                            frame_samples = int(0.02 * self._sample_rate)
+                            frame_bytes = frame_samples * 1 * 2
+                            if frame_bytes > 0:
+                                remainder = len(self._audio) % frame_bytes
+                                if remainder != 0:
+                                    pad = frame_bytes - remainder
+                                    self._audio = self._audio + (b"\x00" * pad)
+                            self._frame_bytes = frame_bytes
+                            # Warm-up immédiat: émettre une très courte trame de silence pour cadrer le tempo
+                            self._audio = (b"\x00" * frame_bytes) + self._audio
+                            if len(self._audio) == 0:
+                                logger.warning("⚠️ [TTS] Audio vide après préparation")
+                            else:
+                                logger.debug(f"🎚️ [TTS-agent] Préparation audio: {len(self._audio)} bytes, frame_bytes={frame_bytes}, rate={self._sample_rate}Hz")
+                        except Exception as prep_err:
+                            logger.warning(f"⚠️ [TTS] Erreur préparation audio: {prep_err}")
+                        return self
 
-                tts = _ElevenLabsOnDemandTTS()
-                self.agent_tts[agent.agent_id] = tts
-                return tts
-        except Exception as e:  # pragma: no cover
-            logger.warning(f"⚠️ ElevenLabs indisponible, fallback: {e}")
+                    async def __aexit__(self, exc_type, exc, tb):
+                        return False
 
-        voice = agent.voice_config.get('voice', 'alloy')
-        speed = agent.voice_config.get('speed', 1.0)
+                return _AsyncStream(text_inner)
 
-        try:
-            tts = openai.TTS(
-                voice=voice,
-                api_key=api_key,
-                model="tts-1",
-                speed=speed
-            )
-            self.agent_tts[agent.agent_id] = tts
-            return tts
-        except Exception as e:
-            logger.warning(f"⚠️ Création TTS OpenAI échouée pour {agent.name} ({voice}): {e}")
-            # Fallback Silero (voix neutre mais évite confusion de voix du modérateur)
-            tts = silero.TTS()
-            self.agent_tts[agent.agent_id] = tts
-            return tts
+        tts = _ElevenLabsOnDemandTTS()
+        self.agent_tts[agent.agent_id] = tts
+        return tts
+
+    def _map_agent_to_elevenlabs_id(self, agent: AgentPersonality) -> str:
+        """Mappe l'agent logique vers l'identifiant de voix ElevenLabs configuré."""
+        name_lower = agent.name.lower()
+        if "michel" in name_lower and "dubois" in name_lower:
+            return "michel_dubois_animateur"
+        if "sarah" in name_lower and "johnson" in name_lower:
+            return "sarah_johnson_journaliste"
+        if "marcus" in name_lower and "thompson" in name_lower:
+            return "marcus_thompson_expert"
+        if "emma" in name_lower and "wilson" in name_lower:
+            return "emma_wilson_coach"
+        if "david" in name_lower and "chen" in name_lower:
+            return "david_chen_challenger"
+        if "sophie" in name_lower and "martin" in name_lower:
+            return "sophie_martin_diplomate"
+        # Défaut: voix du modérateur
+        return "michel_dubois_animateur"
 
     def _strip_name_prefix(self, agent: AgentPersonality, text: str) -> str:
         """Supprime un éventuel préfixe "Nom:" pour éviter double annonce au TTS."""
@@ -688,11 +838,12 @@ class MultiAgentLiveKitService:
             # Démarrage de la session
             await self.session.start(agent=agent, room=ctx.room)
             
-            # Message de bienvenue orchestré
-            welcome_message = await self.generate_orchestrated_welcome()
-            await self.session.say(text=welcome_message)
+            # IMPORTANT (Scaleway OpenAI-compat): ne pas pousser un message assistant
+            # avant le premier message utilisateur, sinon 400 alternance roles.
+            # On retire le "welcome prefill" vocal ici. Le 1er tour LLM se fera
+            # après le premier message user.
                 
-            logger.info(f"✅ Session multi-agents {self.config.exercise_id} démarrée avec succès")
+            logger.info(f"✅ Session multi-agents {self.config.exercise_id} démarrée avec succès (sans prefill assistant)")
             
             # Maintenir la session active
             await self.maintain_session()

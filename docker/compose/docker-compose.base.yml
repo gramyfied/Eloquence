@@ -48,7 +48,7 @@ services:
       - eloquence-network
     # env_file supprimé pour éviter dépendance à un .env local
     environment:
-      - SCALEWAY_MISTRAL_URL=https://api.scaleway.ai/v1
+      - SCALEWAY_MISTRAL_URL=${MISTRAL_BASE_URL}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - MISTRAL_MODEL=${MISTRAL_MODEL}
     healthcheck:
@@ -144,6 +144,8 @@ services:
 
 networks:
   eloquence-network:
+    driver: bridge
+  eloquence_default:
     driver: bridge
 
 volumes:

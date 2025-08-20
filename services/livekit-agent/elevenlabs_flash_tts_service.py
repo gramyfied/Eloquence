@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import time
+import io
 from dataclasses import dataclass
 import sys as _sys  # Fix dataclass processing in dynamic import contexts
 from typing import Any, AsyncGenerator, Dict, Optional
@@ -33,6 +34,11 @@ try:
     import redis
 except Exception:  # pragma: no cover
     redis = None  # type: ignore
+
+try:
+    import av  # PyAV for robust audio decoding/resampling
+except Exception:  # pragma: no cover
+    av = None  # type: ignore
 
 
 logger = logging.getLogger(__name__)
@@ -200,7 +206,7 @@ class ElevenLabsFlashTTSService:
             "voice_settings": voice_cfg["settings"],
             "output_format": voice_cfg["output_format"],
         }
-        headers = {"xi-api-key": self.api_key, "Content-Type": "application/json"}
+        headers = {"xi-api-key": self.api_key, "Content-Type": "application/json", "Accept": "application/octet-stream"}
 
         t0 = time.time()
         try:
@@ -211,6 +217,34 @@ class ElevenLabsFlashTTSService:
                 async with await _network_coro as resp:
                     if resp.status == 200:
                         audio = await resp.read()
+                        # Detect content-type; decode non-PCM (e.g., MP3/WAV) to PCM16 16k mono
+                        ct = (resp.headers.get('content-type') or resp.headers.get('Content-Type') or '').lower()
+                        try:
+                            if av is not None:
+                                is_mp3 = ('mpeg' in ct or 'mp3' in ct or audio[:3] == b'ID3' or audio[:2] == b'\xff\xfb')
+                                is_wav = ('wav' in ct or audio[:4] == b'RIFF')
+                                if is_mp3 or is_wav:
+                                    with av.open(io.BytesIO(audio), 'r') as container:
+                                        # Décoder et resampler en PCM16 16 kHz mono (laisser LiveKit upsampler)
+                                        resampler = av.audio.resampler.AudioResampler(format='s16', layout='mono', rate=16000)
+                                        pcm_chunks: list[bytes] = []
+                                        for frame in container.decode(audio=0):
+                                            res = resampler.resample(frame)
+                                            frames = res if isinstance(res, list) else [res]
+                                            for f in frames:
+                                                try:
+                                                    # Convertir l'audio mono s16 en bytes de manière robuste
+                                                    arr = f.to_ndarray()
+                                                    pcm_chunks.append(arr.tobytes())
+                                                except Exception:
+                                                    # Fallback: utiliser le buffer brut du premier plane si dispo
+                                                    try:
+                                                        pcm_chunks.append(bytes(f.planes[0]))
+                                                    except Exception:
+                                                        pass
+                                        audio = b''.join(pcm_chunks)
+                        except Exception as dec_err:
+                            logger.warning(f"⚠️ Décodage audio non-PCM échoué ({ct}): {dec_err}")
                         self.cache.put(cache_key, audio)
                         latency = time.time() - t0
                         logger.info(f"🎙️ ElevenLabs Flash v2.5: {latency:.3f}s, bytes={len(audio)}")
@@ -334,6 +368,8 @@ class ElevenLabsFlashTTSService:
             "voice_id": voice_cfg["voice_id"],
             "model_id": voice_cfg["model_id"],
             "settings": voice_cfg["settings"],
+            # versionner le format pour invalider les caches anciens
+            "format_version": "pcm16le_16000_mono_v2",
         }
         raw = json.dumps(payload, sort_keys=True).encode()
         return hashlib.md5(raw).hexdigest()
