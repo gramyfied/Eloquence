@@ -111,21 +111,66 @@ async def detect_exercise_from_context(ctx):
 
     # Méthode 3: Analyse du nom de room (patterns) - SEULEMENT si aucune métadonnée trouvée
     logger.info("🔍 Aucune métadonnée trouvée, analyse du nom de room...")
+    logger.info(f"🔍 ANALYSE DÉTAILLÉE: '{room_name}'")
+
+    # Analyse par mots-clés pour diagnostic
+    keywords_found = []
+    if 'confidence_boost' in room_name:
+        keywords_found.append('confidence_boost')
+    if 'tribunal' in room_name or 'idees' in room_name:
+        keywords_found.append('tribunal/idees')
+    if 'cosmic' in room_name or 'voice_control' in room_name:
+        keywords_found.append('cosmic/voice_control')
+    if 'job_interview' in room_name:
+        keywords_found.append('job_interview')
+    if any(keyword in room_name for keyword in ['debat', 'debate', 'plateau']):
+        keywords_found.append('debat/debate/plateau')
+    if 'entretien' in room_name or 'interview' in room_name:
+        keywords_found.append('entretien/interview')
+    if 'negociation' in room_name:
+        keywords_found.append('negociation')
+    if 'presentation' in room_name or 'investisseurs' in room_name:
+        keywords_found.append('presentation/investisseurs')
+    if 'reunion' in room_name or 'boardroom' in room_name:
+        keywords_found.append('reunion/boardroom')
+    if 'conference' in room_name or 'keynote' in room_name:
+        keywords_found.append('conference/keynote')
+    if 'sales' in room_name or 'vente' in room_name:
+        keywords_found.append('sales/vente')
+    if 'studio' in room_name:
+        keywords_found.append('studio')
+    if 'situation' in room_name:
+        keywords_found.append('situation')
+
+    logger.info(f"🔍 MOTS-CLÉS TROUVÉS: {keywords_found}")
+
+    # ✅ LOGIQUE RÉORGANISÉE AVEC PRIORITÉ CORRECTE
     if 'confidence_boost' in room_name:
         exercise_type = 'confidence_boost'
     elif 'tribunal' in room_name or 'idees' in room_name:
         exercise_type = 'tribunal_idees_impossibles'
-    elif 'studio' in room_name or 'situation' in room_name:
-        exercise_type = 'studio_situations_pro'
+    elif 'cosmic' in room_name or 'voice_control' in room_name:
+        exercise_type = 'cosmic_voice_control'
+    elif 'job_interview' in room_name:
+        exercise_type = 'job_interview'
+    # ✅ PRIORITÉ ABSOLUE : DÉBAT TV (avant 'studio' générique)
+    elif any(keyword in room_name for keyword in ['debat', 'debate', 'plateau']):
+        exercise_type = 'studio_debate_tv'  # ✅ PRIORITÉ DÉBAT TV
     elif 'entretien' in room_name or 'interview' in room_name:
         exercise_type = 'simulation_entretien'
-    elif 'debat' in room_name or 'debate' in room_name or 'plateau' in room_name:
-        # Par défaut router le débat vers le plateau TV
-        # (l'exercice contradictoire reste supporté via alias)
-        if 'tv' in room_name or 'plateau' in room_name or 'studio' in room_name:
-            exercise_type = 'studio_debate_tv'
-        else:
-            exercise_type = 'debat_contradictoire'
+    elif 'negociation' in room_name:
+        exercise_type = 'negociation_commerciale'
+    elif 'presentation' in room_name or 'investisseurs' in room_name:
+        exercise_type = 'presentation_investisseurs'
+    elif 'reunion' in room_name or 'boardroom' in room_name:
+        exercise_type = 'studio_boardroom'
+    elif 'conference' in room_name or 'keynote' in room_name:
+        exercise_type = 'studio_keynote'
+    elif 'sales' in room_name or 'vente' in room_name:
+        exercise_type = 'studio_sales_conference'
+    # ✅ 'studio' générique EN DERNIER (fallback pour autres studios)
+    elif 'studio' in room_name or 'situation' in room_name:
+        exercise_type = 'studio_situations_pro'
 
     # Normalisation finale (sécurité)
     if exercise_type:
@@ -137,6 +182,16 @@ async def detect_exercise_from_context(ctx):
         logger.warning("⚠️ Aucune détection, fallback vers confidence_boost")
 
     logger.info(f"✅ Exercice détecté: {exercise_type}")
+    logger.info(f"🔍 EST MULTI-AGENT: {exercise_type in MULTI_AGENT_EXERCISES}")
+    logger.info(f"🔍 EST INDIVIDUAL: {exercise_type in INDIVIDUAL_EXERCISES}")
+
+    # ✅ VALIDATION SPÉCIFIQUE POUR DÉBAT PLATEAU
+    if 'debatplateau' in room_name.lower() and exercise_type != 'studio_debate_tv':
+        logger.error(f"❌ ERREUR DÉTECTION: Room '{room_name}' devrait être 'studio_debate_tv' mais détectée comme '{exercise_type}'")
+        logger.error("🔧 CORRECTION AUTOMATIQUE: Forçage vers studio_debate_tv")
+        exercise_type = 'studio_debate_tv'
+        logger.info(f"✅ CORRECTION APPLIQUÉE: {exercise_type}")
+
     return exercise_type
 
 def _normalize_exercise_type(exercise_type: str, room_name: str) -> str:
@@ -147,13 +202,14 @@ def _normalize_exercise_type(exercise_type: str, room_name: str) -> str:
     """
     et = exercise_type.strip().lower()
     alias_map = {
-        # Débat TV et ses alias
+        # Débat TV et ses alias (PRIORITÉ ABSOLUE)
         'studio_debate_tv': 'studio_debate_tv',
         'studio-debate-tv': 'studio_debate_tv',
         'studio_debat_tv': 'studio_debate_tv',
         'studio-debat-tv': 'studio_debate_tv',
-        'studio_debatplateau': 'studio_debate_tv',
-        'studio-debatplateau': 'studio_debate_tv',
+        'studio_debatplateau': 'studio_debate_tv',  # ✅ AJOUTÉ
+        'studio-debatplateau': 'studio_debate_tv',  # ✅ AJOUTÉ
+        'debatplateau': 'studio_debate_tv',         # ✅ AJOUTÉ
         'debat_plateau': 'studio_debate_tv',
         'debat-plateau': 'studio_debate_tv',
         'debat_tv': 'studio_debate_tv',
@@ -187,8 +243,11 @@ def _normalize_exercise_type(exercise_type: str, room_name: str) -> str:
     # Correspondance exacte via alias_map
     if et in alias_map:
         return alias_map[et]
-    # Heuristique supplémentaire selon nom de room (priorité au débat TV)
+    
+    # ✅ HEURISTIQUE SPÉCIFIQUE POUR DÉBAT PLATEAU
     rn = (room_name or '').lower()
+    if 'debatplateau' in rn or 'debat_plateau' in rn:
+        return 'studio_debate_tv'
     if (('debat' in rn) or ('debate' in rn)) and (('tv' in rn) or ('plateau' in rn) or ('studio' in rn)):
         return 'studio_debate_tv'
     return exercise_type
