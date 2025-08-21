@@ -25,14 +25,14 @@ except Exception:  # pragma: no cover - tests peuvent manquer le module
     elevenlabs_flash_service = None  # type: ignore
 from vosk_stt_interface import VoskSTTFixed as VoskSTT
 
-# Imports du système multi-agents
+# Imports du système multi-agents RÉVOLUTIONNAIRE
 from multi_agent_config import (
     MultiAgentConfig, 
     AgentPersonality, 
     InteractionStyle,
     ExerciseTemplates
 )
-from multi_agent_manager import MultiAgentManager
+from enhanced_multi_agent_manager import EnhancedMultiAgentManager, get_enhanced_manager
 from naturalness_monitor import NaturalnessMonitor
 
 # Import du service TTS optimisé
@@ -80,21 +80,28 @@ class MultiAgentLiveKitService:
     def __init__(self, multi_agent_config: MultiAgentConfig, user_data: dict = None):
         self.config = multi_agent_config
         self.naturalness_monitor = NaturalnessMonitor()
-        self.manager = MultiAgentManager(multi_agent_config, monitor=self.naturalness_monitor)
+        
+        # SYSTÈME RÉVOLUTIONNAIRE : EnhancedMultiAgentManager avec GPT-4o + ElevenLabs
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
+        
+        if not openai_api_key or not elevenlabs_api_key:
+            logger.error("❌ CLÉS API MANQUANTES: OPENAI_API_KEY et/ou ELEVENLABS_API_KEY")
+            raise ValueError("Clés API requises pour le système révolutionnaire")
+        
+        self.manager = get_enhanced_manager(openai_api_key, elevenlabs_api_key, multi_agent_config)
         self.session: Optional[AgentSession] = None
         self.room = None
         self.is_running = False
         self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
-        # Cache de TTS par agent pour fiabiliser la voix et réduire la latence
-        self.agent_tts: Dict[str, Any] = {}
         
-        logger.info(f"🎭 MultiAgentLiveKitService initialisé pour: {multi_agent_config.exercise_id}")
+        logger.info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE initialisé pour: {multi_agent_config.exercise_id}")
         logger.info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
         logger.info(f"   Nombre d'agents: {len(multi_agent_config.agents)}")
         for agent in multi_agent_config.agents:
             logger.info(f"   - {agent.name} ({agent.role}) - Style: {agent.interaction_style.value}")
 
-        logger.info("🎭 SYSTÈME DE NATURALITÉ COMPLET initialisé")
+        logger.info("🎭 SYSTÈME GPT-4o + ElevenLabs ÉMOTIONNEL initialisé")
         
     async def initialize_components(self):
         """Initialise les composants LiveKit avec fallbacks robustes"""
@@ -120,7 +127,14 @@ class MultiAgentLiveKitService:
             
         # LLM avec fallback
         try:
-            llm_instance = self.create_mistral_llm()
+            # Créer LLM - OpenAI GPT-4o en premier, Mistral en fallback
+            try:
+                llm_instance = self.create_openai_llm()
+                logger.info("✅ LLM OpenAI GPT-4o créé (priorité 1)")
+            except Exception as e:
+                logger.warning(f"⚠️ Fallback vers Mistral: {e}")
+                llm_instance = self.create_mistral_llm()
+                logger.info("✅ LLM Mistral créé (fallback)")
             components['llm'] = llm_instance
             logger.info("✅ LLM OpenAI créé")
         except Exception as e:
@@ -180,6 +194,18 @@ class MultiAgentLiveKitService:
         except Exception as openai_error:
             logger.error(f"❌ [STT-MULTI-AGENTS] Échec STT OpenAI fallback: {openai_error}")
             raise RuntimeError(f"Impossible de créer STT (Vosk: {vosk_error}, OpenAI: {openai_error})")
+
+    def create_openai_llm(self):
+        """Crée un LLM OpenAI GPT-4o configuré."""
+        openai_api_key = os.getenv('OPENAI_API_KEY', '')
+        if not openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY manquante")
+        
+        logger.info("🔍 Configuration LLM OpenAI GPT-4o")
+        return openai.LLM(
+            model="gpt-4o",
+            api_key=openai_api_key,
+        )
 
     def create_mistral_llm(self):
         """Crée un LLM configuré pour utiliser le proxy Mistral côté backend.
@@ -356,12 +382,32 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 
     @function_tool
     async def generate_multiagent_response(self, user_message: str) -> str:
-        """Génère une réponse orchestrée du système multi-agents avec voix appropriée"""
+        """Génère une réponse orchestrée du système multi-agents RÉVOLUTIONNAIRE avec GPT-4o + ElevenLabs"""
         try:
-            logger.info(f"🎭 Orchestration multi-agents pour: {user_message[:50]}...")
+            logger.info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE pour: {user_message[:50]}...")
             
-            # Utiliser le MultiAgentManager pour orchestrer la réponse
-            response_data = await self.manager.handle_user_input(user_message)
+            # SYSTÈME RÉVOLUTIONNAIRE : Utiliser EnhancedMultiAgentManager avec GPT-4o + ElevenLabs
+            # Sélectionner l'agent principal (animateur) pour commencer
+            primary_agent_id = "michel_dubois_animateur"  # Animateur principal
+            
+            # Générer réponse complète avec GPT-4o + ElevenLabs
+            text_response, audio_data, context = await self.manager.generate_complete_agent_response(
+                agent_id=primary_agent_id,
+                user_message=user_message,
+                session_id="studio_debate_tv"
+            )
+            
+            logger.info(f"🎭 Réponse révolutionnaire générée: {text_response[:50]}...")
+            logger.info(f"🎵 Audio émotionnel: {len(audio_data)} bytes")
+            logger.info(f"📊 Contexte: {context}")
+            
+            # Simuler la structure de réponse attendue
+            response_data = {
+                'primary_speaker': primary_agent_id,
+                'primary_response': text_response,
+                'audio_data': audio_data,
+                'context': context
+            }
             
             # Récupérer l'agent principal qui répond
             primary_agent_id = response_data.get('primary_speaker')
@@ -370,7 +416,18 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             # Identifier l'agent et préparer les réponses vocales
             responses_to_speak = []
             
-            if primary_agent_id and primary_agent_id in self.manager.agents:
+            # Vérification défensive des attributs du manager
+            if not hasattr(self.manager, 'agents') or not hasattr(self.manager, 'config'):
+                logger.error("❌ Manager multi-agents mal configuré, réinitialisation")
+                # Réinitialiser le manager avec la configuration
+                openai_api_key = os.getenv('OPENAI_API_KEY')
+                elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
+                if openai_api_key and elevenlabs_api_key:
+                    self.manager = get_enhanced_manager(openai_api_key, elevenlabs_api_key, self.config)
+                else:
+                    return "[Système]: Configuration manquante. Pouvez-vous reformuler ?"
+            
+            if primary_agent_id and hasattr(self.manager, 'agents') and primary_agent_id in self.manager.agents:
                 agent = self.manager.agents[primary_agent_id]
                 logger.info(f"🗣️ {agent.name} ({agent.role}) répond")
                 
@@ -392,6 +449,42 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                     'delay': 0
                 })
 
+                # NOUVEAU: Forcer l'intervention des autres agents
+                try:
+                    # Générer une réponse de Sarah Johnson (journaliste)
+                    if "sarah_johnson_journaliste" in self.manager.agents:
+                        sarah_agent = self.manager.agents["sarah_johnson_journaliste"]
+                        sarah_response = await self.manager.generate_complete_agent_response(
+                            agent_id="sarah_johnson_journaliste",
+                            user_message=user_message,
+                            session_id="studio_debate_tv"
+                        )
+                        if sarah_response and sarah_response[0]:
+                            responses_to_speak.append({
+                                'agent': sarah_agent,
+                                'text': sarah_response[0],
+                                'delay': 2000  # 2 secondes après l'animateur
+                            })
+                            logger.info(f"📰 Sarah Johnson intervient: {sarah_response[0][:50]}...")
+                    
+                    # Générer une réponse de Marcus Thompson (expert)
+                    if "marcus_thompson_expert" in self.manager.agents:
+                        marcus_agent = self.manager.agents["marcus_thompson_expert"]
+                        marcus_response = await self.manager.generate_complete_agent_response(
+                            agent_id="marcus_thompson_expert",
+                            user_message=user_message,
+                            session_id="studio_debate_tv"
+                        )
+                        if marcus_response and marcus_response[0]:
+                            responses_to_speak.append({
+                                'agent': marcus_agent,
+                                'text': marcus_response[0],
+                                'delay': 4000  # 4 secondes après l'animateur
+                            })
+                            logger.info(f"🔬 Marcus Thompson intervient: {marcus_response[0][:50]}...")
+                except Exception as e:
+                    logger.warning(f"⚠️ Échec génération réponses multi-agents: {e}")
+
                 # NOUVEAU: Détecter immédiatement les interpellations dans la sortie de l'agent
                 try:
                     outcome = await self.manager.process_agent_output(primary_response, primary_agent_id)
@@ -401,7 +494,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                             logger.info(f"🎯 Chaîne d'interpellations déclenchée: {len(triggered)} réactions")
                             for idx, tr in enumerate(triggered):
                                 sec_id = tr.get('agent_id')
-                                if sec_id and sec_id in self.manager.agents:
+                                if sec_id and hasattr(self.manager, 'agents') and sec_id in self.manager.agents:
                                     sec_agent = self.manager.agents[sec_id]
                                     sec_text = tr.get('content') or tr.get('reaction') or ''
 
@@ -423,7 +516,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                 secondary_responses = response_data.get('secondary_responses', [])
                 for sec_resp in secondary_responses:
                     sec_agent_id = sec_resp.get('agent_id')
-                    if sec_agent_id in self.manager.agents:
+                    if hasattr(self.manager, 'agents') and sec_agent_id in self.manager.agents:
                         sec_agent = self.manager.agents[sec_agent_id]
                         
                         # LOGS DE DEBUG POUR RÉPONSES SECONDAIRES
@@ -441,24 +534,28 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                             'delay': sec_resp.get('delay_ms', 1500)
                         })
             
-            # VOIX DISTINCTES - CHAQUE AGENT PARLE AVEC SA VRAIE VOIX
-            if responses_to_speak:
-                logger.info(f"🎭 Début séquence vocale: {len(responses_to_speak)} agents")
-                await self.speak_multiple_agents_robust(responses_to_speak)
+            # SYSTÈME RÉVOLUTIONNAIRE : Utiliser directement l'audio ElevenLabs généré
+            if response_data.get('audio_data'):
+                logger.info(f"🎵 Diffusion audio révolutionnaire ElevenLabs")
+                # L'audio est déjà généré par le système GPT-4o + ElevenLabs
+                # Il sera diffusé automatiquement par le système LiveKit
+                return text_response
             else:
                 # Sécurité: si aucune réponse vocale générée, provoquer une réaction minimale
                 try:
                     fallback_agent = None
                     # Prioriser un non-modérateur si possible
-                    for a in self.manager.agents.values():
-                        if a.interaction_style != InteractionStyle.MODERATOR:
-                            fallback_agent = a
-                            break
-                    if not fallback_agent:
-                        fallback_agent = list(self.manager.agents.values())[0]
-                    await self.speak_multiple_agents_robust([
-                        {'agent': fallback_agent, 'text': "Je prends la parole pour lancer la discussion.", 'delay': 0}
-                    ])
+                    if hasattr(self.manager, 'agents') and self.manager.agents:
+                        for a in self.manager.agents.values():
+                            if a.interaction_style != InteractionStyle.MODERATOR:
+                                fallback_agent = a
+                                break
+                        if not fallback_agent:
+                            fallback_agent = list(self.manager.agents.values())[0]
+                    if fallback_agent:
+                        await self.speak_multiple_agents_robust([
+                            {'agent': fallback_agent, 'text': "Je prends la parole pour lancer la discussion.", 'delay': 0}
+                        ])
                 except Exception:
                     pass
             
