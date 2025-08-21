@@ -72,7 +72,7 @@ async def detect_exercise_from_context(ctx):
     logger.info("🔍 DIAGNOSTIC: Détection d'exercice en cours...")
     logger.info(f"🏠 Nom de room: {room_name}")
 
-    # Méthode 1: Métadonnées de la room (priorité ABSOLUE)
+    # Méthode 1: Métadonnées de la room (priorité haute mais sans retour immédiat)
     if hasattr(ctx.room, 'metadata') and ctx.room.metadata:
         try:
             metadata = json.loads(ctx.room.metadata)
@@ -81,13 +81,11 @@ async def detect_exercise_from_context(ctx):
                 # Normaliser immédiatement les alias connus
                 exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
                 logger.info(f"✅ Exercice depuis métadonnées room: {exercise_type}")
-                # RETOURNER IMMÉDIATEMENT si trouvé dans les métadonnées room
-                logger.info(f"🎯 PRIORITÉ MÉTADONNÉES ROOM: {exercise_type}")
-                return exercise_type
+                logger.info(f"🎯 PRIORITÉ MÉTADONNÉES ROOM (sans retour immédiat)")
         except json.JSONDecodeError:
             logger.warning("⚠️ Métadonnées room JSON invalides")
 
-    # Méthode 2: Métadonnées des participants (priorité haute)
+    # Méthode 2: Métadonnées des participants (priorité haute, sans retour immédiat)
     if hasattr(ctx.room, 'remote_participants'):
         participants = ctx.room.remote_participants
         try:
@@ -103,9 +101,8 @@ async def detect_exercise_from_context(ctx):
                         exercise_type = metadata['exercise_type']
                         exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
                         logger.info(f"✅ Exercice depuis métadonnées participant: {exercise_type}")
-                        # RETOURNER IMMÉDIATEMENT si trouvé dans les métadonnées participant
-                        logger.info(f"🎯 PRIORITÉ MÉTADONNÉES PARTICIPANT: {exercise_type}")
-                        return exercise_type
+                        logger.info(f"🎯 PRIORITÉ MÉTADONNÉES PARTICIPANT (sans retour immédiat)")
+                        break
                 except json.JSONDecodeError:
                     continue
 
@@ -144,8 +141,30 @@ async def detect_exercise_from_context(ctx):
 
     logger.info(f"🔍 MOTS-CLÉS TROUVÉS: {keywords_found}")
 
-    # ✅ LOGIQUE RÉORGANISÉE AVEC PRIORITÉ CORRECTE
-    if 'confidence_boost' in room_name:
+    # ✅ DIAGNOSTIC SPÉCIFIQUE DÉBAT
+    room_lower = room_name.lower()
+    debat_indicators = {
+        'debatplateau': 'debatplateau' in room_lower,
+        'debat_plateau': 'debat_plateau' in room_lower,
+        'debat': 'debat' in room_lower,
+        'debate': 'debate' in room_lower,
+        'plateau': 'plateau' in room_lower,
+        'studio': 'studio' in room_lower
+    }
+
+    logger.info(f"🎯 DIAGNOSTIC DÉBAT: {debat_indicators}")
+
+    # Prédiction logique
+    if debat_indicators['debatplateau'] or (debat_indicators['debat'] and debat_indicators['plateau']):
+        logger.info("🎯 PRÉDICTION: Devrait être studio_debate_tv")
+    elif debat_indicators['studio'] and not any([debat_indicators['debat'], debat_indicators['debate'], debat_indicators['plateau']]):
+        logger.info("🎯 PRÉDICTION: Devrait être studio_situations_pro")
+
+    # ✅ DÉTECTION SPÉCIFIQUE DÉBAT PLATEAU EN PREMIER
+    if 'debatplateau' in room_name.lower():
+        exercise_type = 'studio_debate_tv'
+        logger.info(f"🎯 DÉBAT PLATEAU DÉTECTÉ DIRECTEMENT: {exercise_type}")
+    elif 'confidence_boost' in room_name:
         exercise_type = 'confidence_boost'
     elif 'tribunal' in room_name or 'idees' in room_name:
         exercise_type = 'tribunal_idees_impossibles'
@@ -153,9 +172,10 @@ async def detect_exercise_from_context(ctx):
         exercise_type = 'cosmic_voice_control'
     elif 'job_interview' in room_name:
         exercise_type = 'job_interview'
-    # ✅ PRIORITÉ ABSOLUE : DÉBAT TV (avant 'studio' générique)
+    # ✅ DÉTECTION GÉNÉRALE DÉBAT (PRIORITÉ ABSOLUE)
     elif any(keyword in room_name for keyword in ['debat', 'debate', 'plateau']):
-        exercise_type = 'studio_debate_tv'  # ✅ PRIORITÉ DÉBAT TV
+        exercise_type = 'studio_debate_tv'
+        logger.info(f"🎯 DÉBAT GÉNÉRIQUE DÉTECTÉ: {exercise_type}")
     elif 'entretien' in room_name or 'interview' in room_name:
         exercise_type = 'simulation_entretien'
     elif 'negociation' in room_name:
@@ -168,9 +188,10 @@ async def detect_exercise_from_context(ctx):
         exercise_type = 'studio_keynote'
     elif 'sales' in room_name or 'vente' in room_name:
         exercise_type = 'studio_sales_conference'
-    # ✅ 'studio' générique EN DERNIER (fallback pour autres studios)
+    # ✅ 'studio' générique EN DERNIER (fallback)
     elif 'studio' in room_name or 'situation' in room_name:
         exercise_type = 'studio_situations_pro'
+        logger.info(f"🎯 STUDIO GÉNÉRIQUE DÉTECTÉ: {exercise_type}")
 
     # Normalisation finale (sécurité)
     if exercise_type:
@@ -178,17 +199,27 @@ async def detect_exercise_from_context(ctx):
 
     # Méthode 4: Fallback par défaut
     if not exercise_type:
-        exercise_type = 'confidence_boost'  # ✅ Fallback INDIVIDUEL par défaut
-        logger.warning("⚠️ Aucune détection, fallback vers confidence_boost")
+        exercise_type = 'studio_debate_tv'  # ✅ Fallback vers débat TV pour éviter erreurs silencieuses
+        logger.warning("⚠️ Aucune détection, fallback vers studio_debate_tv")
 
     logger.info(f"✅ Exercice détecté: {exercise_type}")
     logger.info(f"🔍 EST MULTI-AGENT: {exercise_type in MULTI_AGENT_EXERCISES}")
     logger.info(f"🔍 EST INDIVIDUAL: {exercise_type in INDIVIDUAL_EXERCISES}")
 
-    # ✅ VALIDATION SPÉCIFIQUE POUR DÉBAT PLATEAU
-    if 'debatplateau' in room_name.lower() and exercise_type != 'studio_debate_tv':
-        logger.error(f"❌ ERREUR DÉTECTION: Room '{room_name}' devrait être 'studio_debate_tv' mais détectée comme '{exercise_type}'")
-        logger.error("🔧 CORRECTION AUTOMATIQUE: Forçage vers studio_debate_tv")
+    # ✅ VALIDATION ÉLARGIE POUR TOUS LES CAS DE DÉBAT
+    room_lower = room_name.lower()
+    should_be_debate = (
+        'debatplateau' in room_lower or 
+        'debat_plateau' in room_lower or 
+        ('debat' in room_lower and 'plateau' in room_lower) or
+        ('debate' in room_lower and 'tv' in room_lower) or
+        ('studio' in room_lower and 'debat' in room_lower)
+    )
+
+    if should_be_debate and exercise_type != 'studio_debate_tv':
+        logger.error(f"❌ ERREUR DÉTECTION CRITIQUE: Room '{room_name}' devrait être 'studio_debate_tv' mais détectée comme '{exercise_type}'")
+        logger.error(f"🔍 ANALYSE: room_lower='{room_lower}', should_be_debate={should_be_debate}")
+        logger.error("🔧 CORRECTION AUTOMATIQUE FORCÉE: Forçage vers studio_debate_tv")
         exercise_type = 'studio_debate_tv'
         logger.info(f"✅ CORRECTION APPLIQUÉE: {exercise_type}")
 
@@ -260,6 +291,22 @@ async def unified_entrypoint(ctx):
     
     # Détection robuste de l'exercice
     exercise_type = await detect_exercise_from_context(ctx)
+
+    # Sécurité supplémentaire côté routage: forcer débat si les indicateurs sont présents
+    room_lower_route = (ctx.room.name or "").lower()
+    route_should_be_debate = (
+        'debatplateau' in room_lower_route or
+        'debat_plateau' in room_lower_route or
+        ('debat' in room_lower_route and 'plateau' in room_lower_route) or
+        ('debate' in room_lower_route and 'tv' in room_lower_route) or
+        ('studio' in room_lower_route and 'debat' in room_lower_route)
+    )
+    if route_should_be_debate and exercise_type != 'studio_debate_tv':
+        logger.error(
+            f"❌ ROUTE FIX: Room '{ctx.room.name}' devrait être 'studio_debate_tv' mais '{exercise_type}' détecté. Forçage côté routage."
+        )
+        exercise_type = 'studio_debate_tv'
+        logger.info(f"✅ ROUTE FIX APPLIQUÉ: {exercise_type}")
     
     # Routage vers le bon système
     if exercise_type in MULTI_AGENT_EXERCISES:

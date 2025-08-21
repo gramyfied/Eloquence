@@ -28,10 +28,19 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - LOG_LEVEL=DEBUG
     depends_on:
-      - livekit-server
-      - redis
-      - mistral-conversation
+      livekit-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
     networks:
       - eloquence-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     # Pas de bind-mount en dev pour éviter d'écraser le code embarqué dans l'image

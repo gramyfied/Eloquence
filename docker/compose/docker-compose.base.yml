@@ -75,7 +75,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
     environment:
       - "LIVEKIT_KEYS=devkey: devsecret123456789abcdef0123456789abcdef"
       - LIVEKIT_LOG_LEVEL=info

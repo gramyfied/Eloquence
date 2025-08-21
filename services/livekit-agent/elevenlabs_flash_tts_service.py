@@ -101,32 +101,87 @@ EMOTION_VOICE_MAPPING: Dict[str, Dict[str, float]] = {
 }
 
 def apply_emotional_preprocessing(text: str, emotion: str, intensity: float) -> str:
-    """Applique le préprocessing émotionnel au texte pour ElevenLabs v2.5"""
+    """Applique le préprocessing émotionnel SILENCIEUX pour ElevenLabs v2.5
+    
+    CORRECTION CRITIQUE : Les émotions sont exprimées UNIQUEMENT via les paramètres TTS,
+    JAMAIS via des marqueurs textuels audibles.
+    """
     
     if not text or not emotion:
         return text
     
-    # Préprocessing selon émotion et intensité
-    if emotion == "enthousiasme" and intensity > 0.7:
-        text = f"*avec enthousiasme* {text}"
-    elif emotion == "autorité" and intensity > 0.6:
-        text = f"*avec autorité* {text}"
-    elif emotion == "curiosité" and intensity > 0.6:
-        text = f"*avec curiosité* {text}"
-    elif emotion == "challenge" and intensity > 0.6:
-        text = f"*avec fermeté* {text}"
-    elif emotion == "réflexion" and intensity > 0.7:
-        text = f"*de manière réfléchie* {text}"
-    elif emotion == "bienveillance" and intensity > 0.6:
-        text = f"*avec bienveillance* {text}"
-    elif emotion == "analyse" and intensity > 0.7:
-        text = f"*de manière analytique* {text}"
-    elif emotion == "expertise" and intensity > 0.7:
-        text = f"*avec expertise* {text}"
-    elif emotion == "pédagogie" and intensity > 0.6:
-        text = f"*de manière pédagogique* {text}"
+    # CORRECTION CRITIQUE : Pas de marqueurs audibles !
+    # Les émotions sont gérées UNIQUEMENT par les paramètres TTS
     
-    return text
+    # Nettoyage du texte pour éliminer tout marqueur existant
+    cleaned_text = text
+    
+    # Suppression de TOUS les marqueurs émotionnels audibles
+    emotion_markers = [
+        "*avec enthousiasme*", "*avec autorité*", "*avec curiosité*",
+        "*avec fermeté*", "*de manière réfléchie*", "*avec bienveillance*",
+        "*de manière analytique*", "*avec expertise*", "*de manière pédagogique*",
+        "*enthousiasme*", "*autorité*", "*curiosité*", "*fermeté*",
+        "*réfléchie*", "*bienveillance*", "*analytique*", "*expertise*",
+        "*pédagogique*", "*avec*", "*de manière*"
+    ]
+    
+    for marker in emotion_markers:
+        cleaned_text = cleaned_text.replace(marker, "").strip()
+    
+    # Nettoyage des patterns avec astérisques
+    import re
+    cleaned_text = re.sub(r'\*[^*]*\*', '', cleaned_text)
+    
+    # Nettoyage des espaces multiples et normalisation
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    
+    # Nettoyage des ponctuations doubles
+    cleaned_text = re.sub(r'[.]{2,}', '.', cleaned_text)
+    cleaned_text = re.sub(r'[!]{2,}', '!', cleaned_text)
+    cleaned_text = re.sub(r'[?]{2,}', '?', cleaned_text)
+    
+    logger.debug(f"🎭 Préprocessing émotionnel SILENCIEUX: {emotion} ({intensity})")
+    logger.debug(f"   Texte original: {text[:50]}...")
+    logger.debug(f"   Texte nettoyé: {cleaned_text[:50]}...")
+    
+    return cleaned_text
+
+def validate_emotion_silence(text: str) -> bool:
+    """Valide qu'aucun marqueur émotionnel n'est audible dans le texte"""
+    
+    # Patterns à détecter
+    emotion_patterns = [
+        r'\*[^*]*\*',  # Tout texte entre astérisques
+        r'avec\s+(enthousiasme|autorité|curiosité|fermeté|bienveillance)',
+        r'de\s+manière\s+(réfléchie|analytique|pédagogique)',
+        r'\b(enthousiasme|autorité|curiosité|fermeté|bienveillance|réflexion)\b'
+    ]
+    
+    import re
+    for pattern in emotion_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            logger.warning(f"⚠️ Marqueur émotionnel détecté: {pattern} dans '{text[:50]}...'")
+            return False
+    
+    return True
+
+def clean_text_for_tts(text: str) -> str:
+    """Nettoie complètement un texte pour TTS sans marqueurs émotionnels"""
+    
+    # Étape 1: Suppression marqueurs émotionnels
+    cleaned = apply_emotional_preprocessing(text, "neutre", 0.5)
+    
+    # Étape 2: Validation
+    if not validate_emotion_silence(cleaned):
+        logger.error(f"❌ Texte contient encore des marqueurs: {cleaned}")
+        # Nettoyage agressif en dernier recours
+        import re
+        cleaned = re.sub(r'\*.*?\*', '', cleaned)
+        cleaned = re.sub(r'\b(avec|de manière)\s+\w+', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    
+    return cleaned
 
 def get_emotional_voice_settings(agent_id: str, emotion: str = "neutre") -> Dict[str, Any]:
     """Récupère les paramètres vocaux avec émotion pour un agent"""
@@ -225,18 +280,25 @@ class ElevenLabsFlashTTSService:
 
     async def synthesize_with_emotion(self, text: str, agent_id: str, 
                                      emotion: str = "neutre", intensity: float = 0.5) -> bytes:
-        """Synthèse vocale avec émotion ElevenLabs v2.5"""
+        """Synthèse vocale avec émotion ElevenLabs v2.5 - ÉMOTIONS SILENCIEUSES"""
         
         try:
-            # Préprocessing émotionnel du texte
-            processed_text = apply_emotional_preprocessing(text, emotion, intensity)
+            # CORRECTION CRITIQUE : Préprocessing émotionnel SILENCIEUX
+            processed_text = clean_text_for_tts(text)
             
-            # Configuration voix + émotion
+            # Validation finale obligatoire
+            if not validate_emotion_silence(processed_text):
+                logger.error(f"❌ ÉCHEC validation silence émotionnel: {processed_text}")
+                # Fallback : texte brut sans traitement
+                processed_text = text.replace("*", "").strip()
+            
+            # Configuration voix + émotion (paramètres TTS uniquement)
             voice_config = get_emotional_voice_settings(agent_id, emotion)
             
-            logger.info(f"🎭 Synthèse émotionnelle: {agent_id} - {emotion} ({intensity}) - {processed_text[:50]}...")
+            logger.info(f"🎭 Synthèse émotionnelle SILENCIEUSE: {agent_id} - {emotion} ({intensity})")
+            logger.info(f"   Texte final: {processed_text[:50]}...")
             
-            # Appel ElevenLabs avec paramètres émotionnels
+            # Appel ElevenLabs avec paramètres émotionnels UNIQUEMENT
             return await self._call_elevenlabs_api(
                 processed_text,
                 voice_config["voice_id"],

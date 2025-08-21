@@ -582,6 +582,26 @@ async def robust_entrypoint(ctx: JobContext):
     """Point d'entrée robuste avec framework modulaire et gestion d'erreurs"""
     logger.info("🚀 DÉMARRAGE AGENT ROBUSTE AVEC FRAMEWORK MODULAIRE")
     
+    # Garde-fou: si la room correspond à un débat, rerouter immédiatement vers le multi-agent
+    try:
+        room_lower = (ctx.room.name or "").lower()
+    except Exception:
+        room_lower = ""
+    should_route_debate = (
+        'debatplateau' in room_lower or 
+        'debat_plateau' in room_lower or 
+        ('debat' in room_lower and 'plateau' in room_lower) or
+        ('debate' in room_lower and 'tv' in room_lower) or
+        ('studio' in room_lower and 'debat' in room_lower)
+    )
+    if should_route_debate:
+        logger.error("❌ ROUTE FIX MAIN: Détection débat côté main.py, redirection vers multi-agent")
+        try:
+            from multi_agent_main import multiagent_entrypoint
+            return await multiagent_entrypoint(ctx)
+        except Exception as e:
+            logger.error(f"❌ ROUTE FIX MAIN ÉCHEC: {e}")
+    
     try:
         # 1. ÉTABLIR LA CONNEXION LIVEKIT
         logger.info("🔗 Établissement de la connexion LiveKit...")
