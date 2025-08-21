@@ -60,7 +60,7 @@ class StudioLiveKitService {
         ),
       );
       
-      // Générer un token (dans un cas réel, cela viendrait du backend)
+      // Générer un token avec métadonnées attachées
       final token = await _generateToken(roomName, userId, userName: userName, userSubject: userSubject);
 
       await _room!.connect(NetworkConfig.livekitUrl, token, roomOptions: roomOptions);
@@ -68,6 +68,9 @@ class StudioLiveKitService {
       _connectionStateController.add(ConnectionState.connected);
       
       UnifiedLoggerService.info('Successfully connected to LiveKit room: ${_room?.name}');
+      
+      // Attacher les métadonnées à la room après connexion (non-bloquant)
+      await _attachRoomMetadata(userName: userName, userSubject: userSubject);
       
       _setupListeners();
       
@@ -79,6 +82,45 @@ class StudioLiveKitService {
       _isConnected = false;
       _connectionStateController.add(ConnectionState.disconnected);
       rethrow;
+    }
+  }
+
+  /// Attache les métadonnées à la room pour que les agents puissent les récupérer
+  Future<void> _attachRoomMetadata({String? userName, String? userSubject}) async {
+    try {
+      if (_room?.localParticipant == null) {
+        UnifiedLoggerService.warning('Local participant not available for metadata attachment');
+        return;
+      }
+
+      // Créer les métadonnées de la room
+      final roomMetadata = {
+        'exercise_type': 'studio_debate_tv',
+        'user_name': userName ?? 'Participant',
+        'user_subject': userSubject ?? 'Sujet non défini',
+        'topic': userSubject ?? 'Sujet non défini',
+        'timestamp': DateTime.now().toIso8601String(),
+        'room_type': 'multi_agent_simulation',
+      };
+
+      // Attacher les métadonnées au participant local (non-bloquant)
+      try {
+        _room!.localParticipant!.setMetadata(json.encode(roomMetadata));
+        UnifiedLoggerService.info('✅ Métadonnées attachées au participant: ${json.encode(roomMetadata)}');
+        
+        // Envoyer également les métadonnées via un message de données pour s'assurer qu'elles sont reçues
+        await sendMessage(json.encode({
+          'type': 'room_metadata',
+          'metadata': roomMetadata,
+        }));
+        UnifiedLoggerService.info('✅ Métadonnées envoyées via message de données');
+        
+      } catch (e) {
+        UnifiedLoggerService.error('❌ Erreur lors de l\'attachement des métadonnées: $e');
+      }
+      
+    } catch (e) {
+      UnifiedLoggerService.error('❌ Erreur lors de l\'attachement des métadonnées: $e');
     }
   }
 

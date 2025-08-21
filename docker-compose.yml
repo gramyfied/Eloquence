@@ -9,6 +9,8 @@ services:
       context: .
       dockerfile: docker/dockerfiles/livekit-agent.multiagent.Dockerfile
     container_name: eloquence-multiagent
+    ports:
+      - "8080:8080"  # Exposer le port HTTP de l'agent
     environment:
       - LIVEKIT_URL=ws://livekit-server:7880
       - LIVEKIT_API_KEY=devkey

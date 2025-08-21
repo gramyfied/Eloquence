@@ -221,6 +221,7 @@ class ConfidenceLiveKitService {
         Uri.parse(NetworkConfig.studioTokenUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
+          // Ne pas imposer un préfixe qui pourrait biaiser la détection côté agent
           'room': roomName,
           'identity': userId,
           'metadata': json.encode({
