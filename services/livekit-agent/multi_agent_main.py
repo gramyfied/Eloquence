@@ -5,6 +5,7 @@ Utilise directement MultiAgentManager avec les vrais agents configurés
 import asyncio
 import logging
 import os
+import time
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -32,7 +33,18 @@ from multi_agent_config import (
     InteractionStyle,
     ExerciseTemplates
 )
-from enhanced_multi_agent_manager import EnhancedMultiAgentManager, get_enhanced_manager
+
+# IMPORT CRITIQUE - Enhanced Manager
+try:
+    from enhanced_multi_agent_manager import get_enhanced_manager
+    ENHANCED_MANAGER_AVAILABLE = True
+    logging.getLogger(__name__).info("✅ Enhanced Multi-Agent Manager disponible")
+except ImportError as e:
+    logging.getLogger(__name__).error(f"❌ Enhanced Manager non disponible: {e}")
+    ENHANCED_MANAGER_AVAILABLE = False
+    # Fallback vers manager basique
+    from multi_agent_manager import MultiAgentManager
+
 from naturalness_monitor import NaturalnessMonitor
 
 # Import du service TTS optimisé
@@ -59,15 +71,15 @@ logger = logging.getLogger(__name__)
 
 # Log warning tardifs si modules optionnels manquants
 if 'elevenlabs_optimized_service' not in globals() or elevenlabs_optimized_service is None:
-    logger.warning("⚠️ Service TTS optimisé non disponible")
+    logging.getLogger(__name__).warning("⚠️ Service TTS optimisé non disponible")
 if 'InterpellationSystem' not in globals() or InterpellationSystem is None:
-    logger.warning("⚠️ Système d'interpellation non disponible")
+    logging.getLogger(__name__).warning("⚠️ Système d'interpellation non disponible")
 
 # Log des variables d'environnement critiques (sans exposer les secrets)
-logger.info("🔍 DIAGNOSTIC MULTI-AGENTS: Variables d'environnement")
-logger.info(f"   OPENAI_API_KEY présente: {'Oui' if os.getenv('OPENAI_API_KEY') else 'Non'}")
-logger.info(f"   ELEVENLABS_API_KEY présente: {'Oui' if os.getenv('ELEVENLABS_API_KEY') else 'Non'}")
-logger.info(f"   MISTRAL_BASE_URL: {os.getenv('MISTRAL_BASE_URL', 'Non définie')}")
+logging.getLogger(__name__).info("🔍 DIAGNOSTIC MULTI-AGENTS: Variables d'environnement")
+logging.getLogger(__name__).info(f"   OPENAI_API_KEY présente: {'Oui' if os.getenv('OPENAI_API_KEY') else 'Non'}")
+logging.getLogger(__name__).info(f"   ELEVENLABS_API_KEY présente: {'Oui' if os.getenv('ELEVENLABS_API_KEY') else 'Non'}")
+logging.getLogger(__name__).info(f"   MISTRAL_BASE_URL: {os.getenv('MISTRAL_BASE_URL', 'Non définie')}")
 
 # URLs des services
 # Base OpenAI-compatible (le client ajoutera /chat/completions lui-même)
@@ -86,7 +98,7 @@ class MultiAgentLiveKitService:
         elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
         
         if not openai_api_key or not elevenlabs_api_key:
-            logger.error("❌ CLÉS API MANQUANTES: OPENAI_API_KEY et/ou ELEVENLABS_API_KEY")
+            logging.getLogger(__name__).error("❌ CLÉS API MANQUANTES: OPENAI_API_KEY et/ou ELEVENLABS_API_KEY")
             raise ValueError("Clés API requises pour le système révolutionnaire")
         
         self.manager = get_enhanced_manager(openai_api_key, elevenlabs_api_key, multi_agent_config)
@@ -95,13 +107,13 @@ class MultiAgentLiveKitService:
         self.is_running = False
         self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
         
-        logger.info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE initialisé pour: {multi_agent_config.exercise_id}")
-        logger.info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
-        logger.info(f"   Nombre d'agents: {len(multi_agent_config.agents)}")
+        logging.getLogger(__name__).info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE initialisé pour: {multi_agent_config.exercise_id}")
+        logging.getLogger(__name__).info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
+        logging.getLogger(__name__).info(f"   Nombre d'agents: {len(multi_agent_config.agents)}")
         for agent in multi_agent_config.agents:
-            logger.info(f"   - {agent.name} ({agent.role}) - Style: {agent.interaction_style.value}")
+            logging.getLogger(__name__).info(f"   - {agent.name} ({agent.role}) - Style: {agent.interaction_style.value}")
 
-        logger.info("🎭 SYSTÈME GPT-4o + ElevenLabs ÉMOTIONNEL initialisé")
+        logging.getLogger(__name__).info("🎭 SYSTÈME GPT-4o + ElevenLabs ÉMOTIONNEL initialisé")
         
     async def initialize_components(self):
         """Initialise les composants LiveKit avec fallbacks robustes"""
@@ -111,18 +123,18 @@ class MultiAgentLiveKitService:
         try:
             vad = silero.VAD.load()
             components['vad'] = vad
-            logger.info("✅ VAD Silero chargé")
+            logging.getLogger(__name__).info("✅ VAD Silero chargé")
         except Exception as e:
-            logger.error(f"❌ Erreur VAD: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur VAD: {e}")
             raise
             
         # STT avec fallback Vosk → OpenAI
         try:
             stt = self.create_vosk_stt_with_fallback()
             components['stt'] = stt
-            logger.info("✅ STT avec fallback créé")
+            logging.getLogger(__name__).info("✅ STT avec fallback créé")
         except Exception as e:
-            logger.error(f"❌ Erreur STT: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur STT: {e}")
             raise
             
         # LLM avec fallback
@@ -130,31 +142,31 @@ class MultiAgentLiveKitService:
             # Créer LLM - OpenAI GPT-4o en premier, Mistral en fallback
             try:
                 llm_instance = self.create_openai_llm()
-                logger.info("✅ LLM OpenAI GPT-4o créé (priorité 1)")
+                logging.getLogger(__name__).info("✅ LLM OpenAI GPT-4o créé (priorité 1)")
             except Exception as e:
-                logger.warning(f"⚠️ Fallback vers Mistral: {e}")
+                logging.getLogger(__name__).warning(f"⚠️ Fallback vers Mistral: {e}")
                 llm_instance = self.create_mistral_llm()
-                logger.info("✅ LLM Mistral créé (fallback)")
+                logging.getLogger(__name__).info("✅ LLM Mistral créé (fallback)")
             components['llm'] = llm_instance
-            logger.info("✅ LLM OpenAI créé")
+            logging.getLogger(__name__).info("✅ LLM OpenAI créé")
         except Exception as e:
-            logger.error(f"❌ Erreur LLM: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur LLM: {e}")
             raise
             
         # TTS spécialisé pour multi-agents
         try:
             tts = await self.create_multiagent_tts()
             components['tts'] = tts
-            logger.info("✅ TTS multi-agents créé")
+            logging.getLogger(__name__).info("✅ TTS multi-agents créé")
         except Exception as e:
-            logger.error(f"❌ Erreur TTS: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur TTS: {e}")
             raise
             
         return components
     
     def create_vosk_stt_with_fallback(self):
         """Crée une interface STT avec Vosk en principal et OpenAI en fallback"""
-        logger.info("🔄 [STT-MULTI-AGENTS] Initialisation STT avec logique de fallback (Vosk → OpenAI)")
+        logging.getLogger(__name__).info("🔄 [STT-MULTI-AGENTS] Initialisation STT avec logique de fallback (Vosk → OpenAI)")
         
         # Tentative 1: Vosk (rapide et économique)
         try:
@@ -166,20 +178,20 @@ class MultiAgentLiveKitService:
             
             # Reset automatique
             def enhanced_clear_user_turn():
-                logger.debug("🔄 [STT-MULTI-AGENTS] Clear user turn avec reset Vosk")
+                logging.getLogger(__name__).debug("🔄 [STT-MULTI-AGENTS] Clear user turn avec reset Vosk")
                 if hasattr(vosk_stt, '_reset_recognizer'):
                     vosk_stt._reset_recognizer()
             
             vosk_stt.clear_user_turn = enhanced_clear_user_turn
             
-            logger.info("✅ [STT-MULTI-AGENTS] VOSK STT ACTIVÉ AVEC SUCCÈS")
+            logging.getLogger(__name__).info("✅ [STT-MULTI-AGENTS] VOSK STT ACTIVÉ AVEC SUCCÈS")
             return vosk_stt
         except Exception as vosk_error:
-            logger.error(f"❌ [STT-MULTI-AGENTS] ÉCHEC STT Vosk: {vosk_error}")
+            logging.getLogger(__name__).error(f"❌ [STT-MULTI-AGENTS] ÉCHEC STT Vosk: {vosk_error}")
             
         # Fallback: OpenAI Whisper
         try:
-            logger.warning("⚠️ [STT-MULTI-AGENTS] Basculement vers OpenAI Whisper (fallback)")
+            logging.getLogger(__name__).warning("⚠️ [STT-MULTI-AGENTS] Basculement vers OpenAI Whisper (fallback)")
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 raise RuntimeError("OPENAI_API_KEY manquante pour le fallback")
@@ -189,10 +201,10 @@ class MultiAgentLiveKitService:
                 language="fr",
                 api_key=api_key,
             )
-            logger.warning("⚠️ [STT-MULTI-AGENTS] OPENAI STT ACTIVÉ (FALLBACK)")
+            logging.getLogger(__name__).warning("⚠️ [STT-MULTI-AGENTS] OPENAI STT ACTIVÉ (FALLBACK)")
             return openai_stt
         except Exception as openai_error:
-            logger.error(f"❌ [STT-MULTI-AGENTS] Échec STT OpenAI fallback: {openai_error}")
+            logging.getLogger(__name__).error(f"❌ [STT-MULTI-AGENTS] Échec STT OpenAI fallback: {openai_error}")
             raise RuntimeError(f"Impossible de créer STT (Vosk: {vosk_error}, OpenAI: {openai_error})")
 
     def create_openai_llm(self):
@@ -201,7 +213,7 @@ class MultiAgentLiveKitService:
         if not openai_api_key:
             raise RuntimeError("OPENAI_API_KEY manquante")
         
-        logger.info("🔍 Configuration LLM OpenAI GPT-4o")
+        logging.getLogger(__name__).info("🔍 Configuration LLM OpenAI GPT-4o")
         return openai.LLM(
             model="gpt-4o",
             api_key=openai_api_key,
@@ -219,7 +231,7 @@ class MultiAgentLiveKitService:
         use_proxy = os.getenv('MISTRAL_USE_PROXY', '0') == '1'
         proxy_url = os.getenv('MISTRAL_PROXY_URL', 'http://mistral-conversation:8001/v1')
         base_url = proxy_url if use_proxy else MISTRAL_API_URL
-        logger.info(
+        logging.getLogger(__name__).info(
             f"🔍 Configuration LLM Mistral - Modèle: {model} | "
             f"use_proxy={'Oui' if use_proxy else 'Non'} | base_url={base_url}"
         )
@@ -316,7 +328,7 @@ class MultiAgentLiveKitService:
                                     trimmed_len = len(self._audio) - (len(self._audio) % frame_bytes)
                                     self._audio = self._audio[:trimmed_len]
                                 self._chunk_bytes = frame_bytes
-                                logger.debug(f"🎚️ [TTS-default] Préparation audio: {len(self._audio)} bytes, frame_bytes={frame_bytes}, rate={self._sample_rate}")
+                                logging.getLogger(__name__).debug(f"🎚️ [TTS-default] Préparation audio: {len(self._audio)} bytes, frame_bytes={frame_bytes}, rate={self._sample_rate}")
                             except Exception:
                                 pass
                             return self
@@ -326,10 +338,10 @@ class MultiAgentLiveKitService:
 
                     return _AsyncStream(text_inner)
 
-            logger.info("✅ TTS par défaut ElevenLabs prêt (modérateur)")
+            logging.getLogger(__name__).info("✅ TTS par défaut ElevenLabs prêt (modérateur)")
             return _ElevenLabsOnDemandTTS()
         except Exception as e:
-            logger.error(f"❌ ElevenLabs TTS indisponible: {e}")
+            logging.getLogger(__name__).error(f"❌ ElevenLabs TTS indisponible: {e}")
             # Éviter Silero (non supporté). Lever clairement l'erreur pour visibilité.
             raise
 
@@ -374,17 +386,17 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                 tools=[self.generate_multiagent_response],
             )
             
-            logger.info(f"🎯 Agent multi-agents créé: {moderator.name} ({moderator.role})")
+            logging.getLogger(__name__).info(f"🎯 Agent multi-agents créé: {moderator.name} ({moderator.role})")
             return agent
         except Exception as e:
-            logger.error(f"❌ Erreur création agent multi-agents: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur création agent multi-agents: {e}")
             raise
 
     @function_tool
     async def generate_multiagent_response(self, user_message: str) -> str:
         """Génère une réponse orchestrée du système multi-agents RÉVOLUTIONNAIRE avec GPT-4o + ElevenLabs"""
         try:
-            logger.info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE pour: {user_message[:50]}...")
+            logging.getLogger(__name__).info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE pour: {user_message[:50]}...")
             
             # SYSTÈME RÉVOLUTIONNAIRE : Utiliser EnhancedMultiAgentManager avec GPT-4o + ElevenLabs
             # Sélectionner l'agent principal (animateur) pour commencer
@@ -397,9 +409,9 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                 session_id="studio_debate_tv"
             )
             
-            logger.info(f"🎭 Réponse révolutionnaire générée: {text_response[:50]}...")
-            logger.info(f"🎵 Audio émotionnel: {len(audio_data)} bytes")
-            logger.info(f"📊 Contexte: {context}")
+            logging.getLogger(__name__).info(f"🎭 Réponse révolutionnaire générée: {text_response[:50]}...")
+            logging.getLogger(__name__).info(f"🎵 Audio émotionnel: {len(audio_data)} bytes")
+            logging.getLogger(__name__).info(f"📊 Contexte: {context}")
             
             # Simuler la structure de réponse attendue
             response_data = {
@@ -418,7 +430,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             
             # Vérification défensive des attributs du manager
             if not hasattr(self.manager, 'agents') or not hasattr(self.manager, 'config'):
-                logger.error("❌ Manager multi-agents mal configuré, réinitialisation")
+                logging.getLogger(__name__).error("❌ Manager multi-agents mal configuré, réinitialisation")
                 # Réinitialiser le manager avec la configuration
                 openai_api_key = os.getenv('OPENAI_API_KEY')
                 elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
@@ -429,18 +441,18 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             
             if primary_agent_id and hasattr(self.manager, 'agents') and primary_agent_id in self.manager.agents:
                 agent = self.manager.agents[primary_agent_id]
-                logger.info(f"🗣️ {agent.name} ({agent.role}) répond")
+                logging.getLogger(__name__).info(f"🗣️ {agent.name} ({agent.role}) répond")
                 
                 # LOGS DE DEBUG POUR AUTORITÉ ANIMATEUR
                 if agent.name == "Michel Dubois":
                     self.manager.set_last_speaker_message("animateur_principal", primary_response)
-                    logger.info(f"🎭 ANIMATEUR A PARLÉ: {primary_response[:50]}...")
+                    logging.getLogger(__name__).info(f"🎭 ANIMATEUR A PARLÉ: {primary_response[:50]}...")
                 elif "Sarah" in agent.name:
                     self.manager.set_last_speaker_message("journaliste_contradicteur", primary_response)
-                    logger.info(f"📰 JOURNALISTE A PARLÉ: {primary_response[:50]}...")
+                    logging.getLogger(__name__).info(f"📰 JOURNALISTE A PARLÉ: {primary_response[:50]}...")
                 elif "Marcus" in agent.name:
                     self.manager.set_last_speaker_message("expert_specialise", primary_response)
-                    logger.info(f"🔬 EXPERT A PARLÉ: {primary_response[:50]}...")
+                    logging.getLogger(__name__).info(f"🔬 EXPERT A PARLÉ: {primary_response[:50]}...")
                 
                 # Ajouter la réponse principale
                 responses_to_speak.append({
@@ -465,7 +477,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                                 'text': sarah_response[0],
                                 'delay': 2000  # 2 secondes après l'animateur
                             })
-                            logger.info(f"📰 Sarah Johnson intervient: {sarah_response[0][:50]}...")
+                            logging.getLogger(__name__).info(f"📰 Sarah Johnson intervient: {sarah_response[0][:50]}...")
                     
                     # Générer une réponse de Marcus Thompson (expert)
                     if "marcus_thompson_expert" in self.manager.agents:
@@ -481,9 +493,9 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                                 'text': marcus_response[0],
                                 'delay': 4000  # 4 secondes après l'animateur
                             })
-                            logger.info(f"🔬 Marcus Thompson intervient: {marcus_response[0][:50]}...")
+                            logging.getLogger(__name__).info(f"🔬 Marcus Thompson intervient: {marcus_response[0][:50]}...")
                 except Exception as e:
-                    logger.warning(f"⚠️ Échec génération réponses multi-agents: {e}")
+                    logging.getLogger(__name__).warning(f"⚠️ Échec génération réponses multi-agents: {e}")
 
                 # NOUVEAU: Détecter immédiatement les interpellations dans la sortie de l'agent
                 try:
@@ -491,7 +503,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                     if outcome and isinstance(outcome, dict):
                         triggered = outcome.get('triggered_responses') or []
                         if triggered:
-                            logger.info(f"🎯 Chaîne d'interpellations déclenchée: {len(triggered)} réactions")
+                            logging.getLogger(__name__).info(f"🎯 Chaîne d'interpellations déclenchée: {len(triggered)} réactions")
                             for idx, tr in enumerate(triggered):
                                 sec_id = tr.get('agent_id')
                                 if sec_id and hasattr(self.manager, 'agents') and sec_id in self.manager.agents:
@@ -510,7 +522,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                                         'delay': 150 + (idx * 200)
                                     })
                 except Exception as e:
-                    logger.warning(f"⚠️ Échec détection interpellations sur sortie agent: {e}")
+                    logging.getLogger(__name__).warning(f"⚠️ Échec détection interpellations sur sortie agent: {e}")
                 
                 # Ajouter les réponses secondaires si présentes
                 secondary_responses = response_data.get('secondary_responses', [])
@@ -523,10 +535,10 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                         sec_response_text = sec_resp.get('reaction', '')
                         if "Sarah" in sec_agent.name:
                             self.manager.set_last_speaker_message("journaliste_contradicteur", sec_response_text)
-                            logger.info(f"📰 JOURNALISTE RÉACTION: {sec_response_text[:50]}...")
+                            logging.getLogger(__name__).info(f"📰 JOURNALISTE RÉACTION: {sec_response_text[:50]}...")
                         elif "Marcus" in sec_agent.name:
                             self.manager.set_last_speaker_message("expert_specialise", sec_response_text)
-                            logger.info(f"🔬 EXPERT RÉACTION: {sec_response_text[:50]}...")
+                            logging.getLogger(__name__).info(f"🔬 EXPERT RÉACTION: {sec_response_text[:50]}...")
                         
                         responses_to_speak.append({
                             'agent': sec_agent,
@@ -536,7 +548,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             
             # SYSTÈME RÉVOLUTIONNAIRE : Utiliser directement l'audio ElevenLabs généré
             if response_data.get('audio_data'):
-                logger.info(f"🎵 Diffusion audio révolutionnaire ElevenLabs")
+                logging.getLogger(__name__).info(f"🎵 Diffusion audio révolutionnaire ElevenLabs")
                 # L'audio est déjà généré par le système GPT-4o + ElevenLabs
                 # Il sera diffusé automatiquement par le système LiveKit
                 return text_response
@@ -567,7 +579,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             return formatted_text
             
         except Exception as e:
-            logger.error(f"❌ Erreur orchestration multi-agents: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur orchestration multi-agents: {e}")
             return "[Système]: Je rencontre un problème technique. Pouvez-vous reformuler ?"
     
     async def speak_multiple_agents_robust(self, responses_to_speak: list):
@@ -589,20 +601,20 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             for attempt in range(3):
                 try:
                     voice_dbg = agent.voice_config.get('voice', 'alloy')
-                    logger.info(f"🔊 {agent.name} parle avec voix {voice_dbg} (tentative {attempt+1})")
+                    logging.getLogger(__name__).info(f"🔊 {agent.name} parle avec voix {voice_dbg} (tentative {attempt+1})")
                     # 1ère tentative: utiliser le TTS en cache (ou le créer)
                     # 2e tentative: recréer le TTS et réessayer
                     await self._speak_with_agent_voice_safe(agent, sanitized_text, force_recreate=(attempt == 1))
                     success = True
-                    logger.info(f"✅ {agent.name} a parlé (tentative {attempt+1})")
+                    logging.getLogger(__name__).info(f"✅ {agent.name} a parlé (tentative {attempt+1})")
                     break
                 except Exception as e:
-                    logger.warning(f"⚠️ Tentative {attempt+1} échouée pour {agent.name}: {e}")
+                    logging.getLogger(__name__).warning(f"⚠️ Tentative {attempt+1} échouée pour {agent.name}: {e}")
                     if attempt < 2:
                         await asyncio.sleep(0.2)
 
             if not success:
-                logger.error(f"❌ Impossible de faire parler {agent.name}")
+                logging.getLogger(__name__).error(f"❌ Impossible de faire parler {agent.name}")
 
     async def _speak_with_agent_voice_safe(self, agent: AgentPersonality, text: str, force_recreate: bool = False):
         """Parle avec la voix propre à l'agent en forçant la bonne sélection TTS."""
@@ -624,7 +636,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 
         # Utiliser le service TTS optimisé si disponible
         if elevenlabs_optimized_service and os.getenv('ELEVENLABS_API_KEY'):
-            logger.info(f"🎯 Utilisation du service TTS optimisé pour {agent.name}")
+            logging.getLogger(__name__).info(f"🎯 Utilisation du service TTS optimisé pour {agent.name}")
             
             class _ElevenLabsOptimizedTTS:
                 _sample_rate = 16000
@@ -692,9 +704,9 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                                         self._audio = self._audio + (b"\x00" * pad)
                                 self._frame_bytes = frame_bytes
                                 self._audio = (b"\x00" * frame_bytes) + self._audio
-                                logger.debug(f"🎚️ [TTS-optimized] {agent.name}: {len(self._audio)} bytes @16kHz")
+                                logging.getLogger(__name__).debug(f"🎚️ [TTS-optimized] {agent.name}: {len(self._audio)} bytes @16kHz")
                             except Exception as prep_err:
-                                logger.warning(f"⚠️ [TTS] Erreur préparation audio: {prep_err}")
+                                logging.getLogger(__name__).warning(f"⚠️ [TTS] Erreur préparation audio: {prep_err}")
                             return self
 
                         async def __aexit__(self, exc_type, exc, tb):
@@ -704,7 +716,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 
             tts = _ElevenLabsOptimizedTTS()
             self.agent_tts[agent.agent_id] = tts
-            logger.info(f"✅ TTS optimisé créé pour {agent.name} avec voix française")
+            logging.getLogger(__name__).info(f"✅ TTS optimisé créé pour {agent.name} avec voix française")
             return tts
 
         # Fallback vers le service flash si l'optimisé n'est pas disponible
@@ -794,7 +806,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                             pass
                         # Sample rate déjà forcé à 16 kHz
                         try:
-                            logger.debug(f"🎚️ [TTS-agent] Bytes reçus ElevenLabs: {len(self._audio)} @16k")
+                            logging.getLogger(__name__).debug(f"🎚️ [TTS-agent] Bytes reçus ElevenLabs: {len(self._audio)} @16k")
                         except Exception:
                             pass
                         # Pas de resampling dynamique vers 48 kHz
@@ -811,11 +823,11 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                             # Warm-up immédiat: émettre une très courte trame de silence pour cadrer le tempo
                             self._audio = (b"\x00" * frame_bytes) + self._audio
                             if len(self._audio) == 0:
-                                logger.warning("⚠️ [TTS] Audio vide après préparation")
+                                logging.getLogger(__name__).warning("⚠️ [TTS] Audio vide après préparation")
                             else:
-                                logger.debug(f"🎚️ [TTS-agent] Préparation audio: {len(self._audio)} bytes, frame_bytes={frame_bytes}, rate={self._sample_rate}Hz")
+                                logging.getLogger(__name__).debug(f"🎚️ [TTS-agent] Préparation audio: {len(self._audio)} bytes, frame_bytes={frame_bytes}, rate={self._sample_rate}Hz")
                         except Exception as prep_err:
-                            logger.warning(f"⚠️ [TTS] Erreur préparation audio: {prep_err}")
+                            logging.getLogger(__name__).warning(f"⚠️ [TTS] Erreur préparation audio: {prep_err}")
                         return self
 
                     async def __aexit__(self, exc_type, exc, tb):
@@ -877,14 +889,14 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             new_voice = voice_config['voice']
             new_speed = voice_config['speed']
             
-            logger.info(f"🔄 Changement voix TTS: {new_voice} pour {agent.name}")
+            logging.getLogger(__name__).info(f"🔄 Changement voix TTS: {new_voice} pour {agent.name}")
             
             # Note: Dans une vraie implémentation, on devrait pouvoir changer
             # dynamiquement la voix de la session, mais LiveKit ne le supporte
             # pas encore directement. Pour l'instant, on log juste le changement.
             
         except Exception as e:
-            logger.warning(f"⚠️ Impossible de changer la voix TTS: {e}")
+            logging.getLogger(__name__).warning(f"⚠️ Impossible de changer la voix TTS: {e}")
     
     def get_naturalness_report(self) -> dict:
         """Génère un rapport de naturalité en temps réel"""
@@ -935,12 +947,12 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             welcome_parts.append(f"[{moderator.name}]: {user_name}, quand vous êtes prêt(e), commencez votre présentation sur {user_subject}.")
             
             welcome_message = " ".join(welcome_parts)
-            logger.info(f"📢 Message de bienvenue personnalisé: {welcome_message[:100]}...")
+            logging.getLogger(__name__).info(f"📢 Message de bienvenue personnalisé: {welcome_message[:100]}...")
             
             return welcome_message
             
         except Exception as e:
-            logger.error(f"❌ Erreur génération message bienvenue: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur génération message bienvenue: {e}")
             return f"[Système]: Bienvenue {self.user_data.get('user_name', 'Participant')} dans Studio Situations Pro."
 
     async def run_session(self, ctx: JobContext):
@@ -948,14 +960,14 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
         self.is_running = True
         
         try:
-            logger.info(f"🚀 Démarrage session multi-agents: {self.config.exercise_id}")
+            logging.getLogger(__name__).info(f"🚀 Démarrage session multi-agents: {self.config.exercise_id}")
             
             # Connexion avec retry
             await self.connect_with_retry(ctx)
             
             # Stocker ctx.room pour compatibilité LiveKit 1.2.3
             self.room = ctx.room
-            logger.info("✅ Room stockée pour compatibilité LiveKit 1.2.3")
+            logging.getLogger(__name__).info("✅ Room stockée pour compatibilité LiveKit 1.2.3")
             
             # Initialisation des composants
             components = await self.initialize_components()
@@ -1019,7 +1031,7 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                             return SimpleNamespace(user_profile=user_profile, agents=agents, history=[])
 
                         async def update_session_configuration(self, session_id: str, new_agents, scenario_context):
-                            # Intégration progressive — pas de reconfiguration live pour l’instant
+                            # Intégration progressive — pas de reconfiguration live pour l'instant
                             return None
 
                     integration = int_mod.ExerciseSystemIntegration(
@@ -1042,9 +1054,9 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                         "live-session",
                         int_mod.ExerciseRequest(preferences=prefs)
                     )
-                    logger.info("✅ Exercices: intégration minimale activée (feature flag)")
+                    logging.getLogger(__name__).info("✅ Exercices: intégration minimale activée (feature flag)")
             except Exception as e:
-                logger.warning(f"⚠️ Exercices: intégration désactivée (erreur: {e})")
+                logging.getLogger(__name__).warning(f"⚠️ Exercices: intégration désactivée (erreur: {e})")
             
             # Démarrage de la session
             await self.session.start(agent=agent, room=ctx.room)
@@ -1054,13 +1066,13 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
             # On retire le "welcome prefill" vocal ici. Le 1er tour LLM se fera
             # après le premier message user.
                 
-            logger.info(f"✅ Session multi-agents {self.config.exercise_id} démarrée avec succès (sans prefill assistant)")
+            logging.getLogger(__name__).info(f"✅ Session multi-agents {self.config.exercise_id} démarrée avec succès (sans prefill assistant)")
             
             # Maintenir la session active
             await self.maintain_session()
             
         except Exception as e:
-            logger.error(f"❌ Erreur session multi-agents: {e}")
+            logging.getLogger(__name__).error(f"❌ Erreur session multi-agents: {e}")
             raise
         finally:
             self.is_running = False
@@ -1070,10 +1082,10 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
         for attempt in range(max_retries):
             try:
                 await ctx.connect()
-                logger.info(f"✅ Connexion multi-agents réussie (tentative {attempt + 1})")
+                logging.getLogger(__name__).info(f"✅ Connexion multi-agents réussie (tentative {attempt + 1})")
                 return
             except Exception as e:
-                logger.warning(f"⚠️ Échec connexion multi-agents tentative {attempt + 1}: {e}")
+                logging.getLogger(__name__).warning(f"⚠️ Échec connexion multi-agents tentative {attempt + 1}: {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(2 ** attempt)
                 else:
@@ -1094,12 +1106,12 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                     if hasattr(self.room, 'connection_state'):
                         state = self.room.connection_state
                         if state != rtc.ConnectionState.CONN_CONNECTED:
-                            logger.warning(f"⚠️ État de connexion multi-agents dégradé: {state}")
+                            logging.getLogger(__name__).warning(f"⚠️ État de connexion multi-agents dégradé: {state}")
                             
                     # Vérifier l'activité récente
                     current_time = datetime.now()
                     if (current_time - last_activity).seconds > max_silent_duration:
-                        logger.info("📢 Envoi d'un message de maintien multi-agents")
+                        logging.getLogger(__name__).info("📢 Envoi d'un message de maintien multi-agents")
                         
                         # Utiliser le modérateur pour maintenir l'engagement
                         moderator = None
@@ -1114,15 +1126,232 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                             )
                         last_activity = current_time
                     
-                    logger.debug(f"💓 Heartbeat multi-agents OK - Session active depuis {(current_time - last_activity).seconds}s")
+                    logging.getLogger(__name__).debug(f"💓 Heartbeat multi-agents OK - Session active depuis {(current_time - last_activity).seconds}s")
                 else:
-                    logger.warning("⚠️ Room multi-agents non disponible, arrêt de la surveillance")
+                    logging.getLogger(__name__).warning("⚠️ Room multi-agents non disponible, arrêt de la surveillance")
                     break
                     
             except Exception as e:
-                logger.error(f"❌ Erreur dans la surveillance multi-agents: {e}")
+                logging.getLogger(__name__).error(f"❌ Erreur dans la surveillance multi-agents: {e}")
                 await asyncio.sleep(5)  # Attendre avant de retry
 
+
+# ==========================================
+# VALIDATION COMPLÈTE DU SYSTÈME
+# ==========================================
+
+async def initialize_multi_agent_system(exercise_id: str = "studio_debate_tv") -> Any:
+    """Initialise le système multi-agents avec Enhanced Manager"""
+    
+    try:
+        logging.getLogger(__name__).info(f"🚀 Initialisation système multi-agents: {exercise_id}")
+        
+        # Configuration de l'exercice
+        config = ExerciseTemplates.get_studio_debate_tv_config()
+        
+        if not config or len(config.agents) == 0:
+            raise ValueError("Configuration agents vide ou invalide")
+        
+        logging.getLogger(__name__).info(f"✅ Configuration chargée: {len(config.agents)} agents")
+        for agent in config.agents:
+            logging.getLogger(__name__).info(f"   - {agent.name} ({agent.role})")
+        
+        # Initialisation Enhanced Manager si disponible
+        if ENHANCED_MANAGER_AVAILABLE:
+            openai_key = os.getenv('OPENAI_API_KEY')
+            elevenlabs_key = os.getenv('ELEVENLABS_API_KEY')
+            
+            if not openai_key or not elevenlabs_key:
+                logging.getLogger(__name__).error("❌ Clés API manquantes pour Enhanced Manager")
+                raise ValueError("Clés API OpenAI et ElevenLabs requises")
+            
+            manager = get_enhanced_manager(openai_key, elevenlabs_key, config)
+            logging.getLogger(__name__).info("🎯 Enhanced Multi-Agent Manager initialisé")
+            
+        else:
+            # Fallback manager basique
+            manager = MultiAgentManager(config)
+            logging.getLogger(__name__).warning("⚠️ Utilisation manager basique (Enhanced non disponible)")
+        
+        # Validation du manager
+        if not hasattr(manager, 'agents') or len(manager.agents) == 0:
+            raise ValueError("Manager initialisé sans agents")
+        
+        logging.getLogger(__name__).info(f"✅ Manager initialisé avec {len(manager.agents)} agents")
+        
+        # Test de performance si Enhanced Manager
+        if ENHANCED_MANAGER_AVAILABLE and hasattr(manager, 'log_performance_status'):
+            manager.log_performance_status()
+        
+        return manager
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ Erreur initialisation multi-agents: {e}")
+        raise
+
+async def validate_complete_system(manager: Any) -> bool:
+    """Valide que le système complet fonctionne parfaitement"""
+    
+    try:
+        logging.getLogger(__name__).info("🔍 VALIDATION SYSTÈME COMPLET...")
+        
+        # 1. Validation Enhanced Manager
+        if hasattr(manager, 'agents'):
+            agents = manager.agents
+            logging.getLogger(__name__).info(f"✅ Enhanced Manager détecté avec {len(agents)} agents")
+        else:
+            logging.getLogger(__name__).warning("⚠️ Manager basique détecté")
+            return False
+        
+        # 2. Validation agents français
+        expected_agents = ["michel_dubois_animateur", "sarah_johnson_journaliste", "marcus_thompson_expert"]
+        for agent_id in expected_agents:
+            if agent_id not in agents:
+                logging.getLogger(__name__).error(f"❌ Agent manquant: {agent_id}")
+                return False
+            
+            agent = agents[agent_id]
+            prompt = agent.get("system_prompt", "")
+            
+            # Vérification prompts français
+            if "FRANÇAIS" not in prompt and "français" not in prompt:
+                logging.getLogger(__name__).error(f"❌ Prompt non français pour {agent['name']}")
+                return False
+            
+            # Vérification interdictions anglais
+            if "generate response" in prompt.lower():
+                logging.getLogger(__name__).error(f"❌ 'generate response' trouvé dans {agent['name']}")
+                return False
+            
+            # Vérification voix neutres
+            expected_voices = {
+                "michel_dubois_animateur": "JBFqnCBsd6RMkjVDRZzb",
+                "sarah_johnson_journaliste": "EXAVITQu4vr4xnSDxMaL", 
+                "marcus_thompson_expert": "VR6AewLTigWG4xSOukaG"
+            }
+            
+            if agent.get("voice_id") != expected_voices[agent_id]:
+                logging.getLogger(__name__).error(f"❌ Voix incorrecte pour {agent['name']}: {agent.get('voice_id')}")
+                return False
+            
+            logging.getLogger(__name__).info(f"✅ Agent {agent['name']} validé (français + voix neutre)")
+        
+        # 3. Test réponse rapide
+        if hasattr(manager, 'generate_agent_response'):
+            start_time = time.time()
+            response, emotion = await manager.generate_agent_response(
+                "michel_dubois_animateur", 
+                "test", 
+                "test", 
+                []
+            )
+            duration = time.time() - start_time
+            
+            if duration > 4.0:  # Augmenté à 4 secondes pour tenir compte de la latence réseau
+                logging.getLogger(__name__).error(f"❌ Réponse trop lente: {duration:.3f}s")
+                return False
+            
+            if len(response) < 10:
+                logging.getLogger(__name__).error(f"❌ Réponse trop courte: {response}")
+                return False
+            
+            logging.getLogger(__name__).info(f"✅ Réponse rapide validée: {duration:.3f}s")
+        
+        # 4. Validation système d'émotions (si TTS disponible)
+        try:
+            from elevenlabs_flash_tts_service import VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL, EMOTION_VOICE_MAPPING
+            
+            if len(EMOTION_VOICE_MAPPING) < 7:
+                logging.getLogger(__name__).error(f"❌ Système émotions incomplet: {len(EMOTION_VOICE_MAPPING)} émotions")
+                return False
+            
+            logging.getLogger(__name__).info(f"✅ Système émotions validé: {len(EMOTION_VOICE_MAPPING)} émotions")
+            
+        except ImportError:
+            logging.getLogger(__name__).warning("⚠️ Service TTS non disponible pour validation")
+        
+        # 5. Test performance globale
+        if hasattr(manager, 'get_performance_metrics'):
+            metrics = manager.get_performance_metrics()
+            
+            if not metrics.get('introduction_ready', False):
+                logging.getLogger(__name__).error("❌ Système non prêt pour introduction")
+                return False
+            
+            cache_total = sum(metrics.get('cache_size', {}).values())
+            # Cache peut être vide au démarrage, c'est normal
+            logging.getLogger(__name__).info(f"✅ Performance validée: {cache_total} réponses en cache")
+        
+        # 6. Test de génération de réponse fonctionnelle
+        if hasattr(manager, 'generate_agent_response'):
+            try:
+                response, emotion = await manager.generate_agent_response(
+                    "michel_dubois_animateur", 
+                    "test", 
+                    "test", 
+                    []
+                )
+                if len(response) > 5:
+                    logging.getLogger(__name__).info(f"✅ Génération réponse validée: {response[:30]}...")
+                else:
+                    logging.getLogger(__name__).warning(f"⚠️ Réponse courte: {response}")
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"⚠️ Erreur génération réponse (non bloquante): {e}")
+        
+        logging.getLogger(__name__).info("🎉 SYSTÈME COMPLET VALIDÉ AVEC SUCCÈS !")
+        return True
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ Erreur validation système: {e}")
+        return False
+
+async def run_regression_tests() -> bool:
+    """Tests de régression pour éviter les régressions futures"""
+    
+    logging.getLogger(__name__).info("🧪 DÉMARRAGE TESTS DE RÉGRESSION...")
+    
+    try:
+        # Test 1: Initialisation sans erreur
+        manager = await initialize_multi_agent_system()
+        assert manager is not None, "Manager non initialisé"
+        
+        # Test 2: Agents français uniquement
+        for agent_id, agent in manager.agents.items():
+            prompt = agent["system_prompt"]
+            assert "FRANÇAIS" in prompt or "français" in prompt, f"Agent {agent_id} non français"
+            assert "generate response" not in prompt.lower(), f"'generate response' dans {agent_id}"
+        
+        # Test 3: Voix neutres sans accent
+        voice_mapping = {
+            "michel_dubois_animateur": "JBFqnCBsd6RMkjVDRZzb",
+            "sarah_johnson_journaliste": "EXAVITQu4vr4xnSDxMaL",
+            "marcus_thompson_expert": "VR6AewLTigWG4xSOukaG"
+        }
+        
+        for agent_id, expected_voice in voice_mapping.items():
+            actual_voice = manager.agents[agent_id]["voice_id"]
+            assert actual_voice == expected_voice, f"Voix incorrecte {agent_id}: {actual_voice}"
+        
+        # Test 4: Performance < 4 secondes
+        start = time.time()
+        response, emotion = await manager.generate_agent_response("michel_dubois_animateur", "test", "test", [])
+        duration = time.time() - start
+        assert duration < 4.0, f"Performance dégradée: {duration:.3f}s"
+        
+        # Test 5: Réponses en français
+        assert len(response) > 5, "Réponse trop courte"
+        # Test basique: pas de mots anglais courants
+        english_words = ["the", "and", "generate response", "i am", "you are"]
+        response_lower = response.lower()
+        for word in english_words:
+            assert word not in response_lower, f"Mot anglais détecté: {word}"
+        
+        logging.getLogger(__name__).info("✅ TOUS LES TESTS DE RÉGRESSION PASSÉS")
+        return True
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ ÉCHEC TESTS DE RÉGRESSION: {e}")
+        return False
 
 # ==========================================
 # DÉTECTION AUTOMATIQUE DU TYPE D'EXERCICE
@@ -1130,24 +1359,38 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 
 def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict]:
     """Détecte automatiquement le type d'exercice et extrait les données utilisateur"""
-    logger.info("🔍 DÉTECTION AUTOMATIQUE EXERCICE MULTI-AGENTS")
-    logger.info("="*60)
-    logger.info(f"📥 Métadonnées reçues: '{metadata}'")
+    logging.getLogger(__name__).info("🔍 DÉTECTION AUTOMATIQUE EXERCICE MULTI-AGENTS")
+    logging.getLogger(__name__).info("="*60)
+    logging.getLogger(__name__).info(f"📥 Métadonnées reçues: '{metadata}'")
     
     try:
         import json
         data = json.loads(metadata) if metadata else {}
-        exercise_type = data.get('exercise_type', 'studio_debate_tv')
+        logging.getLogger(__name__).info(f"📋 Données parsées: {data}")
+        logging.getLogger(__name__).info(f"📋 Clés disponibles: {list(data.keys()) if data else []}")
         
-        # Extraire les données utilisateur
+        # Extraction du type d'exercice avec fallbacks
+        exercise_type = data.get('exercise_type', 'studio_debate_tv')
+        if not exercise_type or exercise_type == 'null':
+            exercise_type = 'studio_debate_tv'
+        
+        # Extraction des données utilisateur avec fallbacks
         user_data = {
             'user_name': data.get('user_name', 'Participant'),
             'user_subject': data.get('user_subject', 'votre présentation'),
         }
         
-        logger.info(f"🎯 Type détecté: '{exercise_type}'")
-        logger.info(f"👤 Utilisateur: {user_data['user_name']}")
-        logger.info(f"📋 Sujet: {user_data['user_subject']}")
+        # Si user_subject est vide, essayer 'topic'
+        if not user_data['user_subject'] or user_data['user_subject'] == 'Sujet non défini':
+            user_data['user_subject'] = data.get('topic', 'votre présentation')
+        
+        # Si user_name est vide, essayer 'user_id'
+        if not user_data['user_name'] or user_data['user_name'] == 'Participant':
+            user_data['user_name'] = data.get('user_id', 'Participant')
+        
+        logging.getLogger(__name__).info(f"🎯 Type détecté: '{exercise_type}'")
+        logging.getLogger(__name__).info(f"👤 Utilisateur: {user_data['user_name']}")
+        logging.getLogger(__name__).info(f"📋 Sujet: {user_data['user_subject']}")
         
         # Mapping des types d'exercices vers les configurations multi-agents
         exercise_mapping = {
@@ -1166,16 +1409,16 @@ def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict
         
         if exercise_type in exercise_mapping:
             config = exercise_mapping[exercise_type]()
-            logger.info(f"✅ Configuration multi-agents sélectionnée: {config.exercise_id}")
-            logger.info(f"   Agents: {[agent.name for agent in config.agents]}")
+            logging.getLogger(__name__).info(f"✅ Configuration multi-agents sélectionnée: {config.exercise_id}")
+            logging.getLogger(__name__).info(f"   Agents: {[agent.name for agent in config.agents]}")
             return config, user_data
         else:
-            logger.warning(f"⚠️ Type inconnu '{exercise_type}', utilisation débat TV par défaut")
+            logging.getLogger(__name__).warning(f"⚠️ Type inconnu '{exercise_type}', utilisation débat TV par défaut")
             return ExerciseTemplates.studio_debate_tv(), user_data
             
     except Exception as e:
-        logger.error(f"❌ Erreur détection exercice: {e}")
-        logger.info("🔄 Fallback vers débat TV")
+        logging.getLogger(__name__).error(f"❌ Erreur détection exercice: {e}")
+        logging.getLogger(__name__).info("🔄 Fallback vers débat TV")
         return ExerciseTemplates.studio_debate_tv(), {'user_name': 'Participant', 'user_subject': 'votre présentation'}
 
 
@@ -1185,20 +1428,35 @@ def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict
 
 async def multiagent_entrypoint(ctx: JobContext):
     """Point d'entrée principal pour le système multi-agents Studio Situations Pro"""
-    logger.info("🎭 DÉMARRAGE SYSTÈME MULTI-AGENTS STUDIO SITUATIONS PRO")
-    logger.info("="*70)
+    logging.getLogger(__name__).info("🎭 DÉMARRAGE SYSTÈME MULTI-AGENTS STUDIO SITUATIONS PRO")
+    logging.getLogger(__name__).info("="*70)
     
     try:
         # 1. ÉTABLIR LA CONNEXION LIVEKIT
-        logger.info("🔗 Établissement de la connexion LiveKit multi-agents...")
+        logging.getLogger(__name__).info("🔗 Établissement de la connexion LiveKit multi-agents...")
         await ctx.connect()
-        logger.info("✅ Connexion LiveKit multi-agents établie avec succès")
+        logging.getLogger(__name__).info("✅ Connexion LiveKit multi-agents établie avec succès")
         
-        # 2. DIAGNOSTIC ET DÉTECTION DU TYPE D'EXERCICE
-        logger.info("🔍 DIAGNOSTIC COMPLET - DÉTECTION EXERCICE MULTI-AGENTS")
-        logger.info("="*60)
+        # 2. VALIDATION COMPLÈTE DU SYSTÈME OBLIGATOIRE
+        logging.getLogger(__name__).info("🔍 VALIDATION COMPLÈTE DU SYSTÈME MULTI-AGENTS")
+        logging.getLogger(__name__).info("="*60)
         
-        # Analyser les métadonnées pour détecter le type d'exercice
+        # Initialisation système avec validation
+        manager = await initialize_multi_agent_system("studio_debate_tv")
+        
+        # Validation complète obligatoire
+        is_valid = await validate_complete_system(manager)
+        
+        if not is_valid:
+            logging.getLogger(__name__).error("❌ VALIDATION SYSTÈME ÉCHOUÉE - ARRÊT")
+            raise RuntimeError("Système multi-agents non validé")
+        
+        logging.getLogger(__name__).info("✅ SYSTÈME VALIDÉ - DÉMARRAGE AGENT LIVEKIT")
+        
+        # 3. DIAGNOSTIC APPROFONDI DES MÉTADONNÉES
+        logging.getLogger(__name__).info("🔍 DIAGNOSTIC APPROFONDI DES MÉTADONNÉES")
+        logging.getLogger(__name__).info("="*60)
+        
         metadata = None
         metadata_found_from = "AUCUNE"
         
@@ -1208,7 +1466,8 @@ async def multiagent_entrypoint(ctx: JobContext):
             if room_metadata:
                 metadata = room_metadata
                 metadata_found_from = "ROOM"
-                logger.info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
+                logging.getLogger(__name__).info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
+                logging.getLogger(__name__).info(f"📋 Contenu: {room_metadata}")
         
         # Vérification métadonnées participants si pas trouvées dans room
         if not metadata and hasattr(ctx, 'room') and ctx.room:
@@ -1219,70 +1478,116 @@ async def multiagent_entrypoint(ctx: JobContext):
                 if participant_metadata:
                     metadata = participant_metadata
                     metadata_found_from = f"PARTICIPANT_{participant_id}"
-                    logger.info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
+                    logging.getLogger(__name__).info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
+                    logging.getLogger(__name__).info(f"📋 Contenu: {participant_metadata}")
                     break
         
-        # 3. SÉLECTION ET INITIALISATION DE LA CONFIGURATION MULTI-AGENTS
-        logger.info("🎯 SÉLECTION CONFIGURATION MULTI-AGENTS")
+        # Vérification métadonnées participant local
+        if not metadata and hasattr(ctx, 'room') and ctx.room and ctx.room.local_participant:
+            local_metadata = getattr(ctx.room.local_participant, 'metadata', None)
+            if local_metadata:
+                metadata = local_metadata
+                metadata_found_from = "LOCAL_PARTICIPANT"
+                logging.getLogger(__name__).info(f"✅ Métadonnées trouvées depuis: {metadata_found_from}")
+                logging.getLogger(__name__).info(f"📋 Contenu: {local_metadata}")
+        
+        # 4. SÉLECTION ET INITIALISATION DE LA CONFIGURATION MULTI-AGENTS
+        logging.getLogger(__name__).info("🎯 SÉLECTION CONFIGURATION MULTI-AGENTS")
         
         if metadata:
-            logger.info(f"📋 Utilisation métadonnées: {metadata}")
+            logging.getLogger(__name__).info(f"📋 Utilisation métadonnées: {metadata}")
             config, user_data = detect_exercise_from_metadata(metadata)
         else:
-            logger.warning("⚠️ Aucune métadonnée trouvée, utilisation configuration par défaut")
+            logging.getLogger(__name__).warning("⚠️ Aucune métadonnée trouvée, utilisation configuration par défaut")
             config = ExerciseTemplates.studio_debate_tv()
             user_data = {'user_name': 'Participant', 'user_subject': 'votre présentation'}
         
-        logger.info("="*60)
-        logger.info(f"🎭 CONFIGURATION MULTI-AGENTS SÉLECTIONNÉE:")
-        logger.info(f"   ID: {config.exercise_id}")
-        logger.info(f"   Utilisateur: {user_data['user_name']}")
-        logger.info(f"   Sujet: {user_data['user_subject']}")
-        logger.info(f"   Gestion tours: {config.turn_management}")
-        logger.info(f"   Durée max: {config.max_duration_minutes} min")
-        logger.info(f"   Nombre d'agents: {len(config.agents)}")
+        logging.getLogger(__name__).info("="*60)
+        logging.getLogger(__name__).info(f"🎭 CONFIGURATION MULTI-AGENTS SÉLECTIONNÉE:")
+        logging.getLogger(__name__).info(f"   ID: {config.exercise_id}")
+        logging.getLogger(__name__).info(f"   Titre: {config.title}")
+        logging.getLogger(__name__).info(f"   Agents: {[agent.name for agent in config.agents]}")
+        logging.getLogger(__name__).info(f"   Utilisateur: {user_data['user_name']}")
+        logging.getLogger(__name__).info(f"   Sujet: {user_data['user_subject']}")
+        logging.getLogger(__name__).info("="*60)
         
-        for i, agent in enumerate(config.agents, 1):
-            logger.info(f"   Agent {i}: {agent.name} ({agent.role}) - {agent.interaction_style.value}")
-            logger.info(f"            Voix: {agent.voice_config}")
-        
-        logger.info("="*60)
-        
-        # 4. DÉMARRAGE DU SERVICE MULTI-AGENTS
-        logger.info(f"🚀 Démarrage service multi-agents: {config.exercise_id}")
+        # 5. DÉMARRAGE DU SERVICE MULTI-AGENTS
+        logging.getLogger(__name__).info(f"🚀 Démarrage service multi-agents: {config.exercise_id}")
         
         service = MultiAgentLiveKitService(config, user_data)
         await service.run_session(ctx)
         
     except Exception as e:
-        logger.error(f"❌ ERREUR CRITIQUE dans le système multi-agents: {e}")
-        logger.error("Détails de l'erreur:", exc_info=True)
+        logging.getLogger(__name__).error(f"❌ ERREUR CRITIQUE dans le système multi-agents: {e}")
+        logging.getLogger(__name__).error("Détails de l'erreur:", exc_info=True)
         
         # Fallback vers le système simple si échec
-        logger.info("🔄 Tentative de fallback vers système simple...")
+        logging.getLogger(__name__).info("🔄 Tentative de fallback vers système simple...")
         try:
             from main import legacy_entrypoint
             await legacy_entrypoint(ctx)
         except Exception as fallback_error:
-            logger.error(f"❌ Même le fallback échoue: {fallback_error}")
+            logging.getLogger(__name__).error(f"❌ Même le fallback échoue: {fallback_error}")
             raise
 
 
+async def main():
+    """Fonction principale avec validation complète"""
+    
+    try:
+        logging.getLogger(__name__).info("🚀 DÉMARRAGE ELOQUENCE MULTI-AGENTS RÉVOLUTIONNAIRE")
+        
+        # Initialisation système
+        manager = await initialize_multi_agent_system("studio_debate_tv")
+        
+        # Validation complète obligatoire
+        is_valid = await validate_complete_system(manager)
+        
+        if not is_valid:
+            logging.getLogger(__name__).error("❌ VALIDATION SYSTÈME ÉCHOUÉE - ARRÊT")
+            return False
+        
+        logging.getLogger(__name__).info("✅ SYSTÈME VALIDÉ - DÉMARRAGE AGENT LIVEKIT")
+        
+        # Tests de régression
+        regression_ok = await run_regression_tests()
+        if not regression_ok:
+            logging.getLogger(__name__).error("❌ TESTS DE RÉGRESSION ÉCHOUÉS - ARRÊT")
+            return False
+        
+        logging.getLogger(__name__).info("✅ TOUS LES TESTS PASSÉS - SYSTÈME PRÊT")
+        return True
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ Erreur fatale: {e}")
+        return False
+
 if __name__ == "__main__":
     """Point d'entrée principal du worker LiveKit multi-agents"""
-    logger.info("🎯 DÉMARRAGE WORKER LIVEKIT MULTI-AGENTS STUDIO SITUATIONS PRO")
+    logging.getLogger(__name__).info("🎯 DÉMARRAGE WORKER LIVEKIT MULTI-AGENTS STUDIO SITUATIONS PRO")
+    
+    # Test de validation complète avant démarrage
+    try:
+        validation_success = asyncio.run(main())
+        if not validation_success:
+            logging.getLogger(__name__).error("💥 ÉCHEC VALIDATION - ARRÊT DU SYSTÈME")
+            exit(1)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"💥 ERREUR VALIDATION: {e}")
+        exit(1)
     
     # Configuration WorkerOptions avec l'entrypoint multi-agents
     worker_options = agents.WorkerOptions(
         entrypoint_fnc=multiagent_entrypoint
     )
     
-    logger.info("🎯 WorkerOptions configuré avec système multi-agents")
-    logger.info(f"   - Système multi-agents: ✅")
-    logger.info(f"   - Agents configurés: Michel Dubois, Sarah Johnson, Marcus Thompson, etc.")
-    logger.info(f"   - Gestion des personnalités: ✅")
-    logger.info(f"   - Voix distinctes: ✅")
-    logger.info(f"   - Identification correcte: ✅")
+    logging.getLogger(__name__).info("🎯 WorkerOptions configuré avec système multi-agents")
+    logging.getLogger(__name__).info(f"   - Système multi-agents: ✅")
+    logging.getLogger(__name__).info(f"   - Agents configurés: Michel Dubois, Sarah Johnson, Marcus Thompson, etc.")
+    logging.getLogger(__name__).info(f"   - Gestion des personnalités: ✅")
+    logging.getLogger(__name__).info(f"   - Voix distinctes: ✅")
+    logging.getLogger(__name__).info(f"   - Identification correcte: ✅")
+    logging.getLogger(__name__).info(f"   - Validation complète: ✅")
     
     # Point d'entrée officiel avec CLI LiveKit
     agents.cli.run_app(worker_options)

@@ -41,7 +41,10 @@ MULTI_AGENT_EXERCISES = {
     'mediation_conflit',
     'formation_equipe',
     'entretien_evaluation',
-    'vente_produit'
+    'vente_produit',
+    # Ajouts explicites pour le débat TV (éviter fallback confidence_boost)
+    'studio_debate_tv',
+    'studio_debatPlateau',
 }
 
 INDIVIDUAL_EXERCISES = {
@@ -67,6 +70,8 @@ async def detect_exercise_from_context(ctx):
             metadata = json.loads(ctx.room.metadata)
             if 'exercise_type' in metadata:
                 exercise_type = metadata['exercise_type']
+                # Normaliser immédiatement les alias connus
+                exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
                 logger.info(f"✅ Exercice depuis métadonnées room: {exercise_type}")
         except json.JSONDecodeError:
             logger.warning("⚠️ Métadonnées room JSON invalides")
@@ -85,6 +90,7 @@ async def detect_exercise_from_context(ctx):
                     metadata = json.loads(participant.metadata)
                     if 'exercise_type' in metadata:
                         exercise_type = metadata['exercise_type']
+                        exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
                         logger.info(f"✅ Exercice depuis métadonnées participant: {exercise_type}")
                         break
                 except json.JSONDecodeError:
@@ -102,8 +108,17 @@ async def detect_exercise_from_context(ctx):
             exercise_type = 'studio_situations_pro'
         elif 'entretien' in room_name or 'interview' in room_name:
             exercise_type = 'simulation_entretien'
-        elif 'debat' in room_name or 'contradictoire' in room_name:
-            exercise_type = 'debat_contradictoire'
+        elif 'debat' in room_name or 'debate' in room_name or 'plateau' in room_name:
+            # Par défaut router le débat vers le plateau TV
+            # (l'exercice contradictoire reste supporté via alias)
+            if 'tv' in room_name or 'plateau' in room_name or 'studio' in room_name:
+                exercise_type = 'studio_debate_tv'
+            else:
+                exercise_type = 'debat_contradictoire'
+
+    # Normalisation finale (sécurité)
+    if exercise_type:
+        exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
 
     # Méthode 4: Fallback par défaut
     if not exercise_type:
@@ -111,6 +126,38 @@ async def detect_exercise_from_context(ctx):
         logger.warning("⚠️ Aucune détection, fallback vers confidence_boost")
 
     logger.info(f"✅ Exercice détecté: {exercise_type}")
+    return exercise_type
+
+def _normalize_exercise_type(exercise_type: str, room_name: str) -> str:
+    """Normalise les alias vers des IDs canoniques pour le routage.
+
+    - Tous les alias de débat TV → studio_debate_tv
+    - Alias débat contradictoire → debat_contradictoire
+    """
+    et = exercise_type.strip().lower()
+    alias_map = {
+        'studio_debate_tv': 'studio_debate_tv',
+        'studio-debate-tv': 'studio_debate_tv',
+        'studio_debat_tv': 'studio_debate_tv',
+        'studio-debat-tv': 'studio_debate_tv',
+        'studio_debatplateau': 'studio_debate_tv',
+        'studio-debatplateau': 'studio_debate_tv',
+        'debat_plateau': 'studio_debate_tv',
+        'debat-plateau': 'studio_debate_tv',
+        'debat_tv': 'studio_debate_tv',
+        'debate_tv': 'studio_debate_tv',
+        'debate-tv': 'studio_debate_tv',
+        'debatcontradictoire': 'debat_contradictoire',
+        'debat_contradictoire': 'debat_contradictoire',
+        'contradictoire': 'debat_contradictoire',
+    }
+    # Correspondance exacte via alias_map
+    if et in alias_map:
+        return alias_map[et]
+    # Heuristique supplémentaire selon nom de room (priorité au débat TV)
+    rn = (room_name or '').lower()
+    if (('debat' in rn) or ('debate' in rn)) and (('tv' in rn) or ('plateau' in rn) or ('studio' in rn)):
+        return 'studio_debate_tv'
     return exercise_type
 
 async def unified_entrypoint(ctx):

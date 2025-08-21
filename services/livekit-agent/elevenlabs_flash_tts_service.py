@@ -44,11 +44,11 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-# Mapping voix françaises neutres / professionnelles (Flash v2.5)
+# Mapping voix neutres SANS accent pour coaching vocal professionnel
 VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = {
-    # Animateur TV - Voix masculine française neutre autorité
+    # Animateur TV - Voix masculine neutre SANS accent
     "michel_dubois_animateur": {
-        "voice_id": "Daniel",  # Voix française masculine neutre
+        "voice_id": "JBFqnCBsd6RMkjVDRZzb",  # George - Voix masculine neutre sans accent
         "model": "eleven_flash_v2_5",
         "settings": {
             "stability": 0.75,
@@ -58,10 +58,10 @@ VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = {
         },
     },
 
-    # Journaliste - Voix féminine française neutre professionnelle
+    # Journaliste - Voix féminine neutre SANS accent professionnelle  
     "sarah_johnson_journaliste": {
-        "voice_id": "Charlotte",  # Voix française féminine neutre
-        "model": "eleven_flash_v2_5",
+        "voice_id": "EXAVITQu4vr4xnSDxMaL",  # Bella - Voix féminine neutre sans accent
+        "model": "eleven_flash_v2_5", 
         "settings": {
             "stability": 0.6,
             "similarity_boost": 0.8,
@@ -70,9 +70,9 @@ VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = {
         },
     },
 
-    # Expert - Voix masculine française mesurée académique
+    # Expert - Voix masculine mesurée SANS accent académique
     "marcus_thompson_expert": {
-        "voice_id": "Clyde",  # Voix française masculine mesurée
+        "voice_id": "VR6AewLTigWG4xSOukaG",  # Arnold - Voix masculine mesurée sans accent
         "model": "eleven_flash_v2_5",
         "settings": {
             "stability": 0.8,
@@ -80,47 +80,75 @@ VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = {
             "style": 0.3,
             "use_speaker_boost": True,
         },
-    },
-
-    # Coach - Voix féminine française chaleureuse supportive
-    "emma_wilson_coach": {
-        "voice_id": "Louise",  # Voix française féminine chaleureuse
-        "model": "eleven_flash_v2_5",
-        "settings": {
-            "stability": 0.65,
-            "similarity_boost": 0.8,
-            "style": 0.35,
-            "use_speaker_boost": True,
-        },
-    },
-
-    # Challenger - Voix masculine française dynamique provocante
-    "david_chen_challenger": {
-        "voice_id": "Liam",  # Voix française masculine dynamique
-        "model": "eleven_flash_v2_5",
-        "settings": {
-            "stability": 0.45,
-            "similarity_boost": 0.9,
-            "style": 0.65,
-            "use_speaker_boost": True,
-        },
-    },
-
-    # Diplomate - Voix féminine française sophistiquée mesurée
-    "sophie_martin_diplomate": {
-        "voice_id": "Grace",  # Voix française féminine sophistiquée
-        "model": "eleven_flash_v2_5",
-        "settings": {
-            "stability": 0.75,
-            "similarity_boost": 0.75,
-            "style": 0.25,
-            "use_speaker_boost": True,
-        },
-    },
+    }
 }
 
 # Compatibilité ascendante pour les tests et intégrations existants
 VOICE_MAPPING_NEUTRAL_PROFESSIONAL: Dict[str, Dict[str, Any]] = VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL
+
+# Système d'émotions vocales ElevenLabs v2.5 Flash
+EMOTION_VOICE_MAPPING: Dict[str, Dict[str, float]] = {
+    "enthousiasme": {"stability": 0.6, "similarity_boost": 0.9, "style": 0.6},
+    "autorité": {"stability": 0.8, "similarity_boost": 0.8, "style": 0.4},
+    "bienveillance": {"stability": 0.7, "similarity_boost": 0.85, "style": 0.35},
+    "curiosité": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.7},
+    "challenge": {"stability": 0.6, "similarity_boost": 0.75, "style": 0.6},
+    "analyse": {"stability": 0.75, "similarity_boost": 0.8, "style": 0.3},
+    "réflexion": {"stability": 0.8, "similarity_boost": 0.75, "style": 0.25},
+    "expertise": {"stability": 0.75, "similarity_boost": 0.8, "style": 0.35},
+    "pédagogie": {"stability": 0.7, "similarity_boost": 0.85, "style": 0.4},
+    "neutre": {"stability": 0.7, "similarity_boost": 0.8, "style": 0.4}
+}
+
+def apply_emotional_preprocessing(text: str, emotion: str, intensity: float) -> str:
+    """Applique le préprocessing émotionnel au texte pour ElevenLabs v2.5"""
+    
+    if not text or not emotion:
+        return text
+    
+    # Préprocessing selon émotion et intensité
+    if emotion == "enthousiasme" and intensity > 0.7:
+        text = f"*avec enthousiasme* {text}"
+    elif emotion == "autorité" and intensity > 0.6:
+        text = f"*avec autorité* {text}"
+    elif emotion == "curiosité" and intensity > 0.6:
+        text = f"*avec curiosité* {text}"
+    elif emotion == "challenge" and intensity > 0.6:
+        text = f"*avec fermeté* {text}"
+    elif emotion == "réflexion" and intensity > 0.7:
+        text = f"*de manière réfléchie* {text}"
+    elif emotion == "bienveillance" and intensity > 0.6:
+        text = f"*avec bienveillance* {text}"
+    elif emotion == "analyse" and intensity > 0.7:
+        text = f"*de manière analytique* {text}"
+    elif emotion == "expertise" and intensity > 0.7:
+        text = f"*avec expertise* {text}"
+    elif emotion == "pédagogie" and intensity > 0.6:
+        text = f"*de manière pédagogique* {text}"
+    
+    return text
+
+def get_emotional_voice_settings(agent_id: str, emotion: str = "neutre") -> Dict[str, Any]:
+    """Récupère les paramètres vocaux avec émotion pour un agent"""
+    
+    if agent_id not in VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL:
+        logger.warning(f"Agent {agent_id} non trouvé, utilisation paramètres par défaut")
+        agent_id = "michel_dubois_animateur"
+    
+    # Configuration de base de l'agent
+    base_config = VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL[agent_id]
+    
+    # Configuration émotionnelle
+    emotion_config = EMOTION_VOICE_MAPPING.get(emotion, EMOTION_VOICE_MAPPING["neutre"])
+    
+    # Fusion des paramètres
+    final_settings = {**base_config["settings"], **emotion_config}
+    
+    return {
+        "voice_id": base_config["voice_id"],
+        "model": base_config["model"],
+        "settings": final_settings
+    }
 
 
 class ElevenLabsFlashConfig:  # pragma: no cover - utilitaire, non utilisé par les tests
@@ -194,6 +222,65 @@ class ElevenLabsFlashTTSService:
             self._voices_ttl: float = float(os.getenv("ELEVENLABS_VOICES_TTL", "1800"))  # 30 min
         except Exception:
             self._voices_ttl = 1800.0
+
+    async def synthesize_with_emotion(self, text: str, agent_id: str, 
+                                     emotion: str = "neutre", intensity: float = 0.5) -> bytes:
+        """Synthèse vocale avec émotion ElevenLabs v2.5"""
+        
+        try:
+            # Préprocessing émotionnel du texte
+            processed_text = apply_emotional_preprocessing(text, emotion, intensity)
+            
+            # Configuration voix + émotion
+            voice_config = get_emotional_voice_settings(agent_id, emotion)
+            
+            logger.info(f"🎭 Synthèse émotionnelle: {agent_id} - {emotion} ({intensity}) - {processed_text[:50]}...")
+            
+            # Appel ElevenLabs avec paramètres émotionnels
+            return await self._call_elevenlabs_api(
+                processed_text,
+                voice_config["voice_id"],
+                voice_config["settings"]
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur synthèse émotionnelle {agent_id}: {e}")
+            # Fallback sans émotion
+            return await self.synthesize(text, agent_id)
+
+    async def synthesize(self, text: str, agent_id: str) -> bytes:
+        """Méthode de synthèse standard (compatibilité)"""
+        return await self.synthesize_with_emotion(text, agent_id, "neutre", 0.5)
+
+    async def _call_elevenlabs_api(self, text: str, voice_id: str, settings: Dict[str, Any]) -> bytes:
+        """Appel API ElevenLabs avec paramètres personnalisés"""
+        
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": self.api_key
+        }
+        
+        data = {
+            "text": text,
+            "model_id": "eleven_flash_v2_5",
+            "voice_settings": {
+                "stability": settings.get("stability", 0.7),
+                "similarity_boost": settings.get("similarity_boost", 0.8),
+                "style": settings.get("style", 0.4),
+                "use_speaker_boost": settings.get("use_speaker_boost", True)
+            }
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data, headers=headers) as response:
+                if response.status == 200:
+                    return await response.read()
+                else:
+                    error_text = await response.text()
+                    raise Exception(f"ElevenLabs API error {response.status}: {error_text}")
 
     async def synthesize_speech_flash_v25(
         self,
