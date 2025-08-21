@@ -101,19 +101,76 @@ class MultiAgentLiveKitService:
             logging.getLogger(__name__).error("❌ CLÉS API MANQUANTES: OPENAI_API_KEY et/ou ELEVENLABS_API_KEY")
             raise ValueError("Clés API requises pour le système révolutionnaire")
         
+        # CORRECTION CRITIQUE : Validation et normalisation user_data
+        self.user_data = self._validate_and_normalize_user_data(user_data)
+        
+        # Initialisation du manager révolutionnaire
         self.manager = get_enhanced_manager(openai_api_key, elevenlabs_api_key, multi_agent_config)
+        
+        # CORRECTION CRITIQUE : Configuration IMMÉDIATE du contexte utilisateur
+        if hasattr(self.manager, 'set_user_context'):
+            self.manager.set_user_context(
+                self.user_data.get('user_name', 'Participant'),
+                self.user_data.get('user_subject', 'votre présentation')
+            )
+            logging.getLogger(__name__).info(f"✅ Contexte utilisateur configuré dans le manager")
+            logging.getLogger(__name__).info(f"   👤 Utilisateur: {self.user_data['user_name']}")
+            logging.getLogger(__name__).info(f"   🎯 Sujet: {self.user_data['user_subject']}")
+        else:
+            logging.getLogger(__name__).error("❌ Manager ne supporte pas set_user_context")
+        
         self.session: Optional[AgentSession] = None
         self.room = None
         self.is_running = False
-        self.user_data = user_data or {'user_name': 'Participant', 'user_subject': 'votre présentation'}
         
         logging.getLogger(__name__).info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE initialisé pour: {multi_agent_config.exercise_id}")
-        logging.getLogger(__name__).info(f"👤 Utilisateur: {self.user_data['user_name']}, Sujet: {self.user_data['user_subject']}")
         logging.getLogger(__name__).info(f"   Nombre d'agents: {len(multi_agent_config.agents)}")
         for agent in multi_agent_config.agents:
             logging.getLogger(__name__).info(f"   - {agent.name} ({agent.role}) - Style: {agent.interaction_style.value}")
 
         logging.getLogger(__name__).info("🎭 SYSTÈME GPT-4o + ElevenLabs ÉMOTIONNEL initialisé")
+
+    def _validate_and_normalize_user_data(self, user_data: dict = None) -> dict:
+        """Valide et normalise les données utilisateur"""
+        
+        if not user_data:
+            logging.getLogger(__name__).warning("⚠️ Aucune user_data fournie, utilisation valeurs par défaut")
+            return {
+                'user_name': 'Participant',
+                'user_subject': 'votre présentation'
+            }
+        
+        # Validation et nettoyage
+        normalized = {}
+        
+        # Nom utilisateur
+        user_name = user_data.get('user_name', '').strip()
+        if not user_name or len(user_name) < 2:
+            logging.getLogger(__name__).warning(f"⚠️ Nom utilisateur invalide: '{user_name}', utilisation 'Participant'")
+            normalized['user_name'] = 'Participant'
+        else:
+            # Capitalisation du prénom
+            normalized['user_name'] = user_name.title()
+        
+        # Sujet
+        user_subject = user_data.get('user_subject', '').strip()
+        if not user_subject or len(user_subject) < 5:
+            logging.getLogger(__name__).warning(f"⚠️ Sujet invalide: '{user_subject}', utilisation 'votre présentation'")
+            normalized['user_subject'] = 'votre présentation'
+        else:
+            normalized['user_subject'] = user_subject
+        
+        # Autres données optionnelles
+        normalized['user_level'] = user_data.get('user_level', 'intermédiaire')
+        normalized['user_preferences'] = user_data.get('user_preferences', {})
+        
+        logging.getLogger(__name__).info(f"✅ User_data validées et normalisées: {normalized}")
+        
+        return normalized
+
+    def get_user_context_summary(self) -> str:
+        """Retourne un résumé du contexte utilisateur pour logs"""
+        return f"👤 {self.user_data['user_name']} | 🎯 {self.user_data['user_subject']}"
         
     async def initialize_components(self):
         """Initialise les composants LiveKit avec fallbacks robustes"""
@@ -346,35 +403,52 @@ class MultiAgentLiveKitService:
             raise
 
     def create_multiagent_agent(self) -> Agent:
-        """Crée un agent LiveKit configuré pour le système multi-agents"""
+        """Crée un agent LiveKit configuré pour le système multi-agents avec contexte utilisateur"""
         try:
-            # Instructions combinées pour tous les agents
-            primary_agent = self.config.agents[0]
-            
-            # Trouver le modérateur ou utiliser le premier agent
-            moderator = None
-            for agent in self.config.agents:
-                if agent.interaction_style == InteractionStyle.MODERATOR:
-                    moderator = agent
-                    break
-            
-            if not moderator:
-                moderator = primary_agent
-            
-            # Instructions système minimales et STRICTEMENT orientées outil (évite toute intro répétée)
-            system_instructions = f"""Tu es {moderator.name}, {moderator.role} dans une simulation multi-agents.
+            # Instructions RÉVOLUTIONNAIRES pour animateur TV actif avec contexte utilisateur
+            system_instructions = f"""Tu es le système de coordination pour une émission de débat TV française personnalisée.
+
+🎯 MISSION PRINCIPALE :
+- Coordonner Michel Dubois (animateur TV), Sarah Johnson (journaliste), Marcus Thompson (expert)
+- Michel MÈNE le débat activement et présente les participants
+- Assurer des conversations naturelles et engageantes
+- CONTEXTE SPÉCIFIQUE : {self.user_data['user_name']} débat sur "{self.user_data['user_subject']}"
+
+🎭 RÔLES DES AGENTS AVEC CONTEXTE :
+- Michel Dubois : ANIMATEUR ACTIF qui mène, présente, relance
+  → Utilise TOUJOURS le prénom "{self.user_data['user_name']}"
+  → Centre le débat sur "{self.user_data['user_subject']}"
+- Sarah Johnson : Journaliste qui pose des questions incisives
+  → Challenge {self.user_data['user_name']} sur les aspects de "{self.user_data['user_subject']}"
+- Marcus Thompson : Expert qui apporte l'éclairage technique
+  → Expertise spécifique sur "{self.user_data['user_subject']}"
+
+🚨 RÈGLES CRITIQUES :
+- TOUJOURS en français
+- Michel prend l'initiative et mène le débat
+- Conversations naturelles sans marqueurs émotionnels audibles
+- OBLIGATION d'utiliser le nom "{self.user_data['user_name']}" régulièrement
+- OBLIGATION de centrer sur le sujet "{self.user_data['user_subject']}"
+
+🎪 STYLE REQUIS :
+- Débat TV professionnel et dynamique
+- Questions stimulantes liées à "{self.user_data['user_subject']}"
+- Échanges naturels entre les 3 agents
+- Engagement maximum de {self.user_data['user_name']}
+
+💬 EXEMPLES D'INTERPELLATIONS PERSONNALISÉES :
+- "{self.user_data['user_name']}, sur {self.user_data['user_subject']}, quelle est votre position ?"
+- "Sarah, {self.user_data['user_name']} soulève un point intéressant..."
+- "Marcus, concernant {self.user_data['user_subject']}, que pensez-vous ?"
+
+🎯 OBJECTIF FINAL :
+Créer une expérience de débat TV personnalisée où {self.user_data['user_name']} se sent reconnu et engagé sur le sujet {self.user_data['user_subject']} qui l'intéresse.
 
 RÈGLES CRITIQUES (STRICT):
 - N'écris AUCUNE réponse directe.
 - À CHAQUE message utilisateur, APPELLE UNIQUEMENT l'outil generate_multiagent_response avec le message exact.
 - N'inclus AUCUNE formule d'introduction (ex: "Bonsoir et bienvenue...").
 - Ne te présentes pas et ne paraphrase pas la sortie de l'outil.
-
-CONTEXTE:
-- Exercice: {self.config.exercise_id}
-- Gestion des tours: {self.config.turn_management}
-- Durée max: {self.config.max_duration_minutes} min
-- Agents: {', '.join([a.name + ' (' + a.role + ')' for a in self.config.agents])}
 
 OUTIL DISPONIBLE:
 - generate_multiagent_response(user_message: str): orchestre la réponse multi-agents (Michel + Sarah + Marcus) et génère les réactions.
@@ -386,7 +460,8 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
                 tools=[self.generate_multiagent_response],
             )
             
-            logging.getLogger(__name__).info(f"🎯 Agent multi-agents créé: {moderator.name} ({moderator.role})")
+            logging.getLogger(__name__).info(f"✅ Agent multi-agents créé avec contexte: {self.get_user_context_summary()}")
+            
             return agent
         except Exception as e:
             logging.getLogger(__name__).error(f"❌ Erreur création agent multi-agents: {e}")
@@ -394,6 +469,64 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 
     @function_tool
     async def generate_multiagent_response(self, user_message: str) -> str:
+        """Génère une réponse multi-agents avec système d'interpellation intelligente"""
+        
+        try:
+            logger.info(f"🎬 GÉNÉRATION RÉPONSE MULTI-AGENTS: '{user_message[:50]}...'")
+            
+            # Utilisation du nouveau système d'interpellation
+            if hasattr(self.manager, 'process_user_message_with_interpellations'):
+                responses = await self.manager.process_user_message_with_interpellations(
+                    user_message, 
+                    "user",  # Speaker ID pour l'utilisateur
+                    []  # Historique de conversation (peut être enrichi)
+                )
+                
+                if responses:
+                    # Prendre la première réponse (la plus pertinente)
+                    response = responses[0]
+                    agent_name = response['agent_name']
+                    message = response['message']
+                    response_type = response.get('response_type', 'normal')
+                    
+                    logger.info(f"✅ Réponse générée par {agent_name} ({response_type}): {message[:50]}...")
+                    return f"{agent_name}: {message}"
+                else:
+                    logger.warning("⚠️ Aucune réponse générée par le système d'interpellation")
+                    return "Système: Pouvez-vous reformuler votre question ?"
+            else:
+                # Fallback vers l'ancien système
+                logger.warning("⚠️ Système d'interpellation non disponible, utilisation du système classique")
+                return await self._generate_classic_response(user_message)
+                
+        except Exception as e:
+            logger.error(f"❌ Erreur génération réponse multi-agents: {e}")
+            return f"Système: Erreur technique. Pouvez-vous reformuler ?"
+    
+    async def _generate_classic_response(self, user_message: str) -> str:
+        """Méthode de fallback pour la génération classique de réponses"""
+        
+        # Logique classique de sélection d'agent
+        try:
+            # Sélection simple basée sur le contenu du message
+            if any(word in user_message.lower() for word in ["journaliste", "enquête", "investigation", "sarah"]):
+                agent_id = "sarah_johnson_journaliste"
+            elif any(word in user_message.lower() for word in ["expert", "technique", "marcus"]):
+                agent_id = "marcus_thompson_expert"
+            else:
+                agent_id = "michel_dubois_animateur"  # Par défaut
+            
+            # Génération de réponse
+            response, emotion = await self.manager.generate_agent_response(
+                agent_id, "conversation", user_message, []
+            )
+            
+            agent_name = self.manager.agents[agent_id]['name']
+            return f"{agent_name}: {response}"
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur génération classique: {e}")
+            return "Système: Erreur technique. Pouvez-vous reformuler ?"
         """Génère une réponse orchestrée du système multi-agents RÉVOLUTIONNAIRE avec GPT-4o + ElevenLabs"""
         try:
             logging.getLogger(__name__).info(f"🚀 SYSTÈME RÉVOLUTIONNAIRE pour: {user_message[:50]}...")
@@ -1140,6 +1273,104 @@ Ta sortie doit être UNIQUEMENT l'appel d'outil approprié."""
 # VALIDATION COMPLÈTE DU SYSTÈME
 # ==========================================
 
+async def initialize_multi_agent_system_with_context(exercise_id: str = "studio_debate_tv", 
+                                                   user_data: dict = None) -> Any:
+    """Initialise le système multi-agents avec contexte utilisateur"""
+    
+    try:
+        logging.getLogger(__name__).info(f"🚀 Initialisation système multi-agents avec contexte: {exercise_id}")
+        
+        # Configuration de l'exercice
+        config = ExerciseTemplates.get_studio_debate_tv_config()
+        
+        if not config or len(config.agents) == 0:
+            raise ValueError("Configuration agents vide ou invalide")
+        
+        logging.getLogger(__name__).info(f"✅ Configuration chargée: {len(config.agents)} agents")
+        for agent in config.agents:
+            logging.getLogger(__name__).info(f"   - {agent.name} ({agent.role})")
+        
+        # Validation user_data
+        if user_data:
+            logging.getLogger(__name__).info(f"📋 User_data reçues: {user_data}")
+        else:
+            logging.getLogger(__name__).warning("⚠️ Aucune user_data fournie")
+        
+        # Initialisation service avec user_data
+        service = MultiAgentLiveKitService(config, user_data)
+        
+        # Validation que le contexte est bien configuré
+        if hasattr(service.manager, 'get_user_context'):
+            context = service.manager.get_user_context()
+            logging.getLogger(__name__).info(f"✅ Contexte utilisateur validé: {context}")
+        
+        logging.getLogger(__name__).info(f"🎉 Système multi-agents initialisé avec succès")
+        logging.getLogger(__name__).info(f"   {service.get_user_context_summary()}")
+        
+        return service
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ Erreur initialisation multi-agents avec contexte: {e}")
+        raise
+
+def create_multiagent_service_with_user_data(user_name: str, user_subject: str) -> MultiAgentLiveKitService:
+    """Fonction utilitaire pour créer le service avec données utilisateur"""
+    
+    user_data = {
+        'user_name': user_name,
+        'user_subject': user_subject
+    }
+    
+    config = ExerciseTemplates.get_studio_debate_tv_config()
+    return MultiAgentLiveKitService(config, user_data)
+
+async def validate_user_context_integration() -> bool:
+    """Valide que l'intégration du contexte utilisateur fonctionne de bout en bout"""
+    
+    try:
+        logging.getLogger(__name__).info("🔍 VALIDATION INTÉGRATION CONTEXTE UTILISATEUR...")
+        
+        # Test avec données utilisateur spécifiques
+        test_user_data = {
+            'user_name': 'Alice',
+            'user_subject': 'Intelligence Artificielle et Emploi'
+        }
+        
+        # Initialisation du service
+        service = await initialize_multi_agent_system_with_context("studio_debate_tv", test_user_data)
+        
+        # Validation 1: Service créé avec user_data
+        assert service.user_data['user_name'] == 'Alice'
+        assert service.user_data['user_subject'] == 'Intelligence Artificielle et Emploi'
+        logging.getLogger(__name__).info("✅ Validation 1: Service avec user_data")
+        
+        # Validation 2: Manager a le contexte
+        if hasattr(service.manager, 'get_user_context'):
+            context = service.manager.get_user_context()
+            assert context['user_name'] == 'Alice'
+            assert context['user_subject'] == 'Intelligence Artificielle et Emploi'
+            logging.getLogger(__name__).info("✅ Validation 2: Manager avec contexte")
+        
+        # Validation 3: Prompts des agents contiennent le contexte
+        for agent_id, agent in service.manager.agents.items():
+            prompt = agent["system_prompt"]
+            assert "Alice" in prompt, f"Nom absent du prompt de {agent_id}"
+            assert "Intelligence Artificielle" in prompt, f"Sujet absent du prompt de {agent_id}"
+        
+        logging.getLogger(__name__).info("✅ Validation 3: Prompts avec contexte")
+        
+        # Validation 4: Instructions système avec contexte
+        agent = service.create_multiagent_agent()
+        # Note: Validation que l'agent est créé sans erreur
+        logging.getLogger(__name__).info("✅ Validation 4: Agent système avec contexte")
+        
+        logging.getLogger(__name__).info("🎉 VALIDATION INTÉGRATION CONTEXTE RÉUSSIE !")
+        return True
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ ÉCHEC VALIDATION INTÉGRATION: {e}")
+        return False
+
 async def initialize_multi_agent_system(exercise_id: str = "studio_debate_tv") -> Any:
     """Initialise le système multi-agents avec Enhanced Manager"""
     
@@ -1394,9 +1625,9 @@ def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict
         
         # Mapping des types d'exercices vers les configurations multi-agents
         exercise_mapping = {
-            'studio_situations_pro': ExerciseTemplates.studio_debate_tv,
-            'studio_debate_tv': ExerciseTemplates.studio_debate_tv,
-            'studio_debatPlateau': ExerciseTemplates.studio_debate_tv,
+            'studio_situations_pro': ExerciseTemplates.get_studio_debate_tv_config,
+            'studio_debate_tv': ExerciseTemplates.get_studio_debate_tv_config,
+            'studio_debatPlateau': ExerciseTemplates.get_studio_debate_tv_config,
             'studio_job_interview': ExerciseTemplates.studio_job_interview,
             'studio_entretienEmbauche': ExerciseTemplates.studio_job_interview,
             'studio_boardroom': ExerciseTemplates.studio_boardroom,
@@ -1414,12 +1645,12 @@ def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict
             return config, user_data
         else:
             logging.getLogger(__name__).warning(f"⚠️ Type inconnu '{exercise_type}', utilisation débat TV par défaut")
-            return ExerciseTemplates.studio_debate_tv(), user_data
+            return ExerciseTemplates.get_studio_debate_tv_config(), user_data
             
     except Exception as e:
         logging.getLogger(__name__).error(f"❌ Erreur détection exercice: {e}")
         logging.getLogger(__name__).info("🔄 Fallback vers débat TV")
-        return ExerciseTemplates.studio_debate_tv(), {'user_name': 'Participant', 'user_subject': 'votre présentation'}
+        return ExerciseTemplates.get_studio_debate_tv_config(), {'user_name': 'Participant', 'user_subject': 'votre présentation'}
 
 
 # ==========================================
@@ -1499,7 +1730,7 @@ async def multiagent_entrypoint(ctx: JobContext):
             config, user_data = detect_exercise_from_metadata(metadata)
         else:
             logging.getLogger(__name__).warning("⚠️ Aucune métadonnée trouvée, utilisation configuration par défaut")
-            config = ExerciseTemplates.studio_debate_tv()
+            config = ExerciseTemplates.get_studio_debate_tv_config()
             user_data = {'user_name': 'Participant', 'user_subject': 'votre présentation'}
         
         logging.getLogger(__name__).info("="*60)

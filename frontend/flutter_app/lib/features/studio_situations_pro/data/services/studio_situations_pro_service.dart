@@ -502,7 +502,7 @@ class StudioSituationsProService extends ChangeNotifier {
   }) async {
     final metadata = {
       'type': 'simulation_start',
-      'exercise_type': 'studio_${type.name}',
+      'exercise_type': _getExerciseTypeForSimulation(type),
       'simulation_type': type.name,
       'agents_count': _activeAgents.length,
       'agents': _activeAgents.map((agent) => {
@@ -519,6 +519,24 @@ class StudioSituationsProService extends ChangeNotifier {
     };
     
     await _livekitService.sendMessage(json.encode(metadata));
+  }
+  
+  /// Mappe les types de simulation vers les types d'exercices du backend
+  String _getExerciseTypeForSimulation(SimulationType type) {
+    switch (type) {
+      case SimulationType.debatPlateau:
+        return 'studio_debate_tv';
+      case SimulationType.entretienEmbauche:
+        return 'studio_job_interview';
+      case SimulationType.reunionDirection:
+        return 'studio_boardroom';
+      case SimulationType.conferenceVente:
+        return 'studio_sales_conference';
+      case SimulationType.conferencePublique:
+        return 'studio_keynote';
+      default:
+        return 'studio_${type.name}';
+    }
   }
   
   /// Configure les listeners pour les événements LiveKit

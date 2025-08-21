@@ -42,9 +42,17 @@ MULTI_AGENT_EXERCISES = {
     'formation_equipe',
     'entretien_evaluation',
     'vente_produit',
-    # Ajouts explicites pour le débat TV (éviter fallback confidence_boost)
+    # Exercices Studio Situations Pro multi-agents
     'studio_debate_tv',
     'studio_debatPlateau',
+    'studio_job_interview',
+    'studio_entretienEmbauche',
+    'studio_boardroom',
+    'studio_reunionDirection',
+    'studio_sales_conference',
+    'studio_conferenceVente',
+    'studio_keynote',
+    'studio_conferencePublique',
 }
 
 INDIVIDUAL_EXERCISES = {
@@ -64,7 +72,7 @@ async def detect_exercise_from_context(ctx):
     logger.info("🔍 DIAGNOSTIC: Détection d'exercice en cours...")
     logger.info(f"🏠 Nom de room: {room_name}")
 
-    # Méthode 1: Métadonnées de la room (priorité)
+    # Méthode 1: Métadonnées de la room (priorité ABSOLUE)
     if hasattr(ctx.room, 'metadata') and ctx.room.metadata:
         try:
             metadata = json.loads(ctx.room.metadata)
@@ -73,11 +81,14 @@ async def detect_exercise_from_context(ctx):
                 # Normaliser immédiatement les alias connus
                 exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
                 logger.info(f"✅ Exercice depuis métadonnées room: {exercise_type}")
+                # RETOURNER IMMÉDIATEMENT si trouvé dans les métadonnées room
+                logger.info(f"🎯 PRIORITÉ MÉTADONNÉES ROOM: {exercise_type}")
+                return exercise_type
         except json.JSONDecodeError:
             logger.warning("⚠️ Métadonnées room JSON invalides")
 
-    # Méthode 2: Métadonnées des participants
-    if not exercise_type and hasattr(ctx.room, 'remote_participants'):
+    # Méthode 2: Métadonnées des participants (priorité haute)
+    if hasattr(ctx.room, 'remote_participants'):
         participants = ctx.room.remote_participants
         try:
             # LiveKit Python expose souvent un dict {id: Participant}
@@ -92,29 +103,29 @@ async def detect_exercise_from_context(ctx):
                         exercise_type = metadata['exercise_type']
                         exercise_type = _normalize_exercise_type(str(exercise_type), room_name)
                         logger.info(f"✅ Exercice depuis métadonnées participant: {exercise_type}")
-                        break
+                        # RETOURNER IMMÉDIATEMENT si trouvé dans les métadonnées participant
+                        logger.info(f"🎯 PRIORITÉ MÉTADONNÉES PARTICIPANT: {exercise_type}")
+                        return exercise_type
                 except json.JSONDecodeError:
                     continue
 
-    # Ne pas forcer de reroutage: respecter le type détecté
-
-    # Méthode 3: Analyse du nom de room (patterns)
-    if not exercise_type:
-        if 'confidence_boost' in room_name:
-            exercise_type = 'confidence_boost'
-        elif 'tribunal' in room_name or 'idees' in room_name:
-            exercise_type = 'tribunal_idees_impossibles'
-        elif 'studio' in room_name or 'situation' in room_name:
-            exercise_type = 'studio_situations_pro'
-        elif 'entretien' in room_name or 'interview' in room_name:
-            exercise_type = 'simulation_entretien'
-        elif 'debat' in room_name or 'debate' in room_name or 'plateau' in room_name:
-            # Par défaut router le débat vers le plateau TV
-            # (l'exercice contradictoire reste supporté via alias)
-            if 'tv' in room_name or 'plateau' in room_name or 'studio' in room_name:
-                exercise_type = 'studio_debate_tv'
-            else:
-                exercise_type = 'debat_contradictoire'
+    # Méthode 3: Analyse du nom de room (patterns) - SEULEMENT si aucune métadonnée trouvée
+    logger.info("🔍 Aucune métadonnée trouvée, analyse du nom de room...")
+    if 'confidence_boost' in room_name:
+        exercise_type = 'confidence_boost'
+    elif 'tribunal' in room_name or 'idees' in room_name:
+        exercise_type = 'tribunal_idees_impossibles'
+    elif 'studio' in room_name or 'situation' in room_name:
+        exercise_type = 'studio_situations_pro'
+    elif 'entretien' in room_name or 'interview' in room_name:
+        exercise_type = 'simulation_entretien'
+    elif 'debat' in room_name or 'debate' in room_name or 'plateau' in room_name:
+        # Par défaut router le débat vers le plateau TV
+        # (l'exercice contradictoire reste supporté via alias)
+        if 'tv' in room_name or 'plateau' in room_name or 'studio' in room_name:
+            exercise_type = 'studio_debate_tv'
+        else:
+            exercise_type = 'debat_contradictoire'
 
     # Normalisation finale (sécurité)
     if exercise_type:
@@ -136,6 +147,7 @@ def _normalize_exercise_type(exercise_type: str, room_name: str) -> str:
     """
     et = exercise_type.strip().lower()
     alias_map = {
+        # Débat TV et ses alias
         'studio_debate_tv': 'studio_debate_tv',
         'studio-debate-tv': 'studio_debate_tv',
         'studio_debat_tv': 'studio_debate_tv',
@@ -147,6 +159,27 @@ def _normalize_exercise_type(exercise_type: str, room_name: str) -> str:
         'debat_tv': 'studio_debate_tv',
         'debate_tv': 'studio_debate_tv',
         'debate-tv': 'studio_debate_tv',
+        
+        # Studio Situations Pro (générique)
+        'studio_situations_pro': 'studio_situations_pro',
+        
+        # Entretien d'embauche
+        'studio_job_interview': 'studio_job_interview',
+        'studio_entretienEmbauche': 'studio_job_interview',
+        
+        # Réunion de direction
+        'studio_boardroom': 'studio_boardroom',
+        'studio_reunionDirection': 'studio_boardroom',
+        
+        # Conférence de vente
+        'studio_sales_conference': 'studio_sales_conference',
+        'studio_conferenceVente': 'studio_sales_conference',
+        
+        # Conférence publique
+        'studio_keynote': 'studio_keynote',
+        'studio_conferencePublique': 'studio_keynote',
+        
+        # Débat contradictoire
         'debatcontradictoire': 'debat_contradictoire',
         'debat_contradictoire': 'debat_contradictoire',
         'contradictoire': 'debat_contradictoire',

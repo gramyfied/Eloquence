@@ -135,7 +135,7 @@ class StudioLiveKitService {
           'room': roomName,
           'identity': userId,
           'metadata': json.encode({
-            'exercise_type': 'studio_situations_pro',
+            'exercise_type': 'studio_debate_tv',
             'user_role': 'participant',
             // Propager la configuration utilisateur dès le token
             'user_name': userName ?? 'Participant',
