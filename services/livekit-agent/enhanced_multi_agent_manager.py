@@ -14,6 +14,17 @@ from dataclasses import dataclass
 import openai
 from multi_agent_config import MultiAgentConfig, AgentPersonality
 
+# ✅ IMPORT TTS ELEVENLABS
+try:
+    from elevenlabs_flash_tts_service import ElevenLabsFlashTTSService
+    TTS_AVAILABLE = True
+    print("✅ ElevenLabs TTS Service importé avec succès")
+except ImportError as e:
+    print(f"❌ Erreur import ElevenLabs TTS: {e}")
+    TTS_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -26,10 +37,22 @@ class EmotionalContext:
 class EnhancedMultiAgentManager:
     """Gestionnaire multi-agents révolutionnaire avec GPT-4o et ElevenLabs v2.5"""
     
-    def __init__(self, openai_api_key: str, elevenlabs_api_key: str, config: MultiAgentConfig):
+        def __init__(self, openai_api_key: str, elevenlabs_api_key: str, config: MultiAgentConfig):
         self.openai_client = openai.OpenAI(api_key=openai_api_key)
         self.elevenlabs_api_key = elevenlabs_api_key
         self.config = config
+        
+        # ✅ INITIALISATION TTS ELEVENLABS
+        if TTS_AVAILABLE:
+            try:
+                self.tts_service = ElevenLabsFlashTTSService(elevenlabs_api_key)
+                logger.info("✅ ElevenLabs TTS Service initialisé")
+            except Exception as e:
+                logger.error(f"❌ Erreur initialisation TTS: {e}")
+                self.tts_service = None
+        else:
+            logger.warning("⚠️ TTS Service non disponible")
+            self.tts_service = None
         
         # Agents avec prompts révolutionnaires français
         self.agents = self._initialize_revolutionary_agents()
@@ -652,7 +675,7 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
         
         return "Pouvez-vous répéter la question ?"
 
-    async def generate_complete_agent_response(self, agent_id: str, user_message: str, session_id: str) -> Tuple[str, bytes, Dict]:
+        async def generate_complete_agent_response(self, agent_id: str, user_message: str, session_id: str) -> Tuple[str, bytes, Dict]:
         """Génère une réponse complète avec texte et audio pour l'agent"""
         try:
             # Générer la réponse texte
@@ -663,15 +686,42 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
                 []
             )
             
-            # Simuler l'audio (dans une vraie implémentation, on utiliserait ElevenLabs)
-            audio_data = b"audio_simulation"  # Placeholder
+            # ✅ GÉNÉRATION AUDIO RÉELLE AVEC ELEVENLABS
+            audio_data = b""
+            if self.tts_service and response:
+                try:
+                    # Sélection de la voix selon l'agent
+                    voice_mapping = {
+                        'michel_dubois_animateur': 'George',  # Voix masculine neutre
+                        'sarah_johnson_journaliste': 'Bella',  # Voix féminine neutre
+                        'marcus_thompson_expert': 'Arnold'     # Voix masculine mesurée
+                    }
+                    
+                    voice_id = voice_mapping.get(agent_id, 'George')
+                    
+                    # Génération audio avec émotion
+                    audio_data = await self.tts_service.synthesize_with_emotion(
+                        text=response,
+                        voice_id=voice_id,
+                        emotion=emotion.primary_emotion,
+                        intensity=emotion.intensity
+                    )
+                    
+                    logger.info(f"✅ Audio généré pour {agent_id}: {len(audio_data)} bytes")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Erreur génération audio TTS: {e}")
+                    audio_data = b""
+            else:
+                logger.warning("⚠️ TTS Service non disponible, pas d'audio généré")
             
             # Contexte de la réponse
             context = {
                 "agent_id": agent_id,
                 "emotion": emotion.primary_emotion,
                 "intensity": emotion.intensity,
-                "session_id": session_id
+                "session_id": session_id,
+                "audio_generated": len(audio_data) > 0
             }
             
             return response, audio_data, context
@@ -939,6 +989,34 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
                 }
             ]
         }
+
+
+    async def test_tts_integration(self) -> bool:
+        """Teste l'intégration TTS ElevenLabs"""
+        if not self.tts_service:
+            logger.error("❌ TTS Service non initialisé")
+            return False
+        
+        try:
+            # Test simple
+            test_audio = await self.tts_service.synthesize_with_emotion(
+                text="Test de connexion ElevenLabs",
+                voice_id="George",
+                emotion="neutre",
+                intensity=0.5
+            )
+            
+            if len(test_audio) > 0:
+                logger.info("✅ Test TTS réussi")
+                return True
+            else:
+                logger.error("❌ Test TTS échoué: audio vide")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Test TTS échoué: {e}")
+            return False
+
 
 def get_enhanced_manager(openai_api_key: str, elevenlabs_api_key: str, 
                         config: MultiAgentConfig) -> EnhancedMultiAgentManager:
