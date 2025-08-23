@@ -37,7 +37,7 @@ class EmotionalContext:
 class EnhancedMultiAgentManager:
     """Gestionnaire multi-agents révolutionnaire avec GPT-4o et ElevenLabs v2.5"""
     
-        def __init__(self, openai_api_key: str, elevenlabs_api_key: str, config: MultiAgentConfig):
+    def __init__(self, openai_api_key: str, elevenlabs_api_key: str, config: MultiAgentConfig):
         self.openai_client = openai.OpenAI(api_key=openai_api_key)
         self.elevenlabs_api_key = elevenlabs_api_key
         self.config = config
@@ -675,7 +675,7 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
         
         return "Pouvez-vous répéter la question ?"
 
-        async def generate_complete_agent_response(self, agent_id: str, user_message: str, session_id: str) -> Tuple[str, bytes, Dict]:
+    async def generate_complete_agent_response(self, agent_id: str, user_message: str, session_id: str) -> Tuple[str, bytes, Dict]:
         """Génère une réponse complète avec texte et audio pour l'agent"""
         try:
             # Générer la réponse texte
