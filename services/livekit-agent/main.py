@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import (
+from unified_entrypoint import unified_entrypoint
     Agent,
     AgentSession,
     JobContext,
@@ -1287,7 +1288,7 @@ if __name__ == "__main__":
     
     # Configuration WorkerOptions avec l'entrypoint robuste
     worker_options = agents.WorkerOptions(
-        entrypoint_fnc=robust_entrypoint
+        entrypoint_fnc=unified_entrypoint
     )
     
     logger.info("🎯 WorkerOptions configuré avec agent robuste")
