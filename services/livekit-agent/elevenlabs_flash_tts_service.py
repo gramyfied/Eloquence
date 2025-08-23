@@ -186,12 +186,22 @@ def clean_text_for_tts(text: str) -> str:
 def get_emotional_voice_settings(agent_id: str, emotion: str = "neutre") -> Dict[str, Any]:
     """Récupère les paramètres vocaux avec émotion pour un agent"""
     
+    # LOG DIAGNOSTIC CRITIQUE
+    logger.info(f"🔍 RECHERCHE VOIX: agent_id='{agent_id}', emotion='{emotion}'")
+    
+    original_agent_id = agent_id
     if agent_id not in VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL:
-        logger.warning(f"Agent {agent_id} non trouvé, utilisation paramètres par défaut")
+        logger.warning(f"❌ Agent {agent_id} non trouvé dans mapping")
+        logger.info(f"🔧 Agents disponibles: {list(VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL.keys())}")
         agent_id = "michel_dubois_animateur"
+        logger.info(f"🔧 Fallback vers: {agent_id}")
     
     # Configuration de base de l'agent
     base_config = VOICE_MAPPING_FRENCH_NEUTRAL_PROFESSIONAL[agent_id]
+    voice_id = base_config["voice_id"]
+    
+    # LOG MAPPING TROUVÉ
+    logger.info(f"✅ MAPPING TROUVÉ: {original_agent_id} → {agent_id} → voix {voice_id}")
     
     # Configuration émotionnelle
     emotion_config = EMOTION_VOICE_MAPPING.get(emotion, EMOTION_VOICE_MAPPING["neutre"])
@@ -199,11 +209,16 @@ def get_emotional_voice_settings(agent_id: str, emotion: str = "neutre") -> Dict
     # Fusion des paramètres
     final_settings = {**base_config["settings"], **emotion_config}
     
-    return {
+    result = {
         "voice_id": base_config["voice_id"],
         "model": base_config["model"],
         "settings": final_settings
     }
+    
+    # LOG FINAL
+    logger.info(f"🎭 CONFIG FINALE: voix={result['voice_id']}, model={result['model']}")
+    
+    return result
 
 
 class ElevenLabsFlashConfig:  # pragma: no cover - utilitaire, non utilisé par les tests

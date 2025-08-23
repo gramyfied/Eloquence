@@ -34,6 +34,28 @@ class EmotionalContext:
     intensity: float  # 0.0 à 1.0
     context_tags: List[str]  # ["débat", "challenge", "support"]
 
+
+def clean_agent_names(text: str) -> str:
+    """Nettoie les noms d'agents du texte avant TTS"""
+    
+    # Patterns à retirer
+    patterns = [
+        r'^Michel Dubois:\s*',
+        r'^Sarah Johnson:\s*', 
+        r'^Marcus Thompson:\s*',
+        r'^[A-Za-z\s]+:\s*'  # Pattern générique
+    ]
+    
+    original_text = text
+    for pattern in patterns:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+    
+    # Log si nettoyage effectué
+    if text != original_text:
+        logger.info(f"🧹 Nom agent retiré: '{original_text[:30]}...' → '{text[:30]}...'")
+    
+    return text.strip()
+
 class EnhancedMultiAgentManager:
     """Gestionnaire multi-agents révolutionnaire avec GPT-4o et ElevenLabs v2.5"""
     
@@ -709,7 +731,7 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
                     logger.info(f"🎭 Émotion: {emotion.primary_emotion}, Intensité: {emotion.intensity}")
                     
                     audio_data = await self.tts_service.synthesize_with_emotion(
-                        text=response,
+                text=clean_agent_names(response),
                         agent_id=voice_id,
                         emotion=emotion.primary_emotion,
                         intensity=emotion.intensity
@@ -1075,7 +1097,7 @@ Commençons ce débat enrichissant !"""
         if self.tts_service:
             try:
                 audio_data = await self.tts_service.synthesize_with_emotion(
-                    text=intro_text,
+                text=clean_agent_names(intro_text),
                     agent_id="michel_dubois_animateur",  # Michel pour l'introduction
                     emotion="enthousiasme",
                     intensity=0.7
@@ -1099,7 +1121,7 @@ Commençons ce débat enrichissant !"""
         try:
             # Test simple
             test_audio = await self.tts_service.synthesize_with_emotion(
-                text="Test de connexion ElevenLabs",
+                text=clean_agent_names("Test de connexion ElevenLabs"),
                 agent_id="michel_dubois_animateur",
                 emotion="neutre",
                 intensity=0.5
@@ -1116,6 +1138,28 @@ Commençons ce débat enrichissant !"""
             logger.error(f"❌ Test TTS échoué: {e}")
             return False
 
+
+
+    def clean_agent_text(self, text: str, agent_id: str) -> str:
+        """Nettoie le texte en retirant le nom de l'agent"""
+        
+        # Patterns à retirer (noms d'agents au début)
+        patterns = [
+            r'^Michel Dubois:\s*',
+            r'^Sarah Johnson:\s*', 
+            r'^Marcus Thompson:\s*',
+            r'^[A-Za-z\s]+:\s*'  # Pattern générique
+        ]
+        
+        cleaned_text = text
+        for pattern in patterns:
+            cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
+        
+        # Log du nettoyage
+        if cleaned_text != text:
+            logger.info(f"🧹 Texte nettoyé pour {agent_id}: '{text[:30]}...' → '{cleaned_text[:30]}...'")
+        
+        return cleaned_text.strip()
 
 def get_enhanced_manager(openai_api_key: str, elevenlabs_api_key: str, 
                         config: MultiAgentConfig) -> EnhancedMultiAgentManager:
