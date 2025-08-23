@@ -282,6 +282,9 @@ class ElevenLabsFlashTTSService:
                                      emotion: str = "neutre", intensity: float = 0.5) -> bytes:
         """Synthèse vocale avec émotion ElevenLabs v2.5 - ÉMOTIONS SILENCIEUSES"""
         
+        # LOG DIAGNOSTIC AJOUTÉ
+        logger.info(f"🎵 TTS DÉBUT: {agent_id} - {emotion} - {text[:30]}...")
+        
         try:
             # CORRECTION CRITIQUE : Préprocessing émotionnel SILENCIEUX
             processed_text = clean_text_for_tts(text)
@@ -316,6 +319,9 @@ class ElevenLabsFlashTTSService:
 
     async def _call_elevenlabs_api(self, text: str, voice_id: str, settings: Dict[str, Any]) -> bytes:
         """Appel API ElevenLabs avec paramètres personnalisés"""
+        
+        # LOGS AJOUTÉS POUR DIAGNOSTIC
+        logger.info(f"🌐 APPEL TTS: voix {voice_id} - {text[:30]}...")
         
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         

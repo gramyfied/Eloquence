@@ -1737,6 +1737,27 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
         await ctx.connect()
         logging.getLogger(__name__).info("✅ Connexion LiveKit multi-agents établie avec succès")
         
+        # 🎬 GÉNÉRATION INTRODUCTION SIMPLE
+        try:
+            logging.getLogger(__name__).info("🎬 Génération introduction...")
+            
+            # Récupération user_data depuis le contexte
+            user_data = {
+                'user_name': getattr(ctx, 'user_name', 'notre invité'),
+                'user_subject': getattr(ctx, 'user_subject', 'un sujet passionnant')
+            }
+            
+            # Génération introduction avec manager
+            intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
+            logging.getLogger(__name__).info(f"✅ Introduction générée: {len(intro_text)} caractères")
+            
+            # Note: L'audio sera géré par le système TTS existant
+            
+        except Exception as e:
+            logging.getLogger(__name__).error(f"❌ Erreur génération introduction: {e}")
+            # Continuer sans introduction
+            pass
+        
         # 2. INITIALISATION DU MANAGER AVANT UTILISATION
         logging.getLogger(__name__).info(f"🎯 Initialisation système: {exercise_type}")
         manager = await initialize_multi_agent_system(exercise_type)
