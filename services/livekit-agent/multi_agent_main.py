@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from livekit import agents, rtc
+from livekit import agents, rtc, rtc
 from livekit.agents import (
     Agent,
     AgentSession,
@@ -1736,6 +1736,42 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
         logging.getLogger(__name__).info("🔗 Établissement de la connexion LiveKit multi-agents...")
         await ctx.connect()
         logging.getLogger(__name__).info("✅ Connexion LiveKit multi-agents établie avec succès")
+        # 3. GÉNÉRATION INTRODUCTION AVEC CACHE REDIS
+        logging.getLogger(__name__).info("🎬 Génération introduction...")
+        
+        # Récupération user_data depuis le contexte
+        user_data = {
+            'user_name': getattr(ctx, 'user_name', 'notre invité'),
+            'user_subject': getattr(ctx, 'user_subject', 'un sujet passionnant')
+        }
+        
+        # Génération ou récupération depuis cache
+        try:
+            intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
+            logging.getLogger(__name__).info(f"✅ Introduction générée: {len(intro_text)} caractères, {len(intro_audio)} bytes audio")
+            
+            # Diffusion de l'introduction
+            if intro_audio and len(intro_audio) > 0:
+                # Créer un track audio pour l'introduction
+                audio_source = rtc.AudioSource(sample_rate=24000, num_channels=1)
+                track = rtc.LocalAudioTrack.create_audio_track("introduction", audio_source)
+                
+                # Publier le track
+                await ctx.room.local_participant.publish_track(track, rtc.TrackPublishOptions())
+                logging.getLogger(__name__).info("🎵 Introduction audio diffusée")
+                
+                # Attendre la fin de l'introduction
+                import asyncio
+                await asyncio.sleep(len(intro_audio) / 24000)  # Durée approximative
+            else:
+                logging.getLogger(__name__).warning("⚠️ Pas d'audio d'introduction généré")
+                
+        except Exception as e:
+            logging.getLogger(__name__).error(f"❌ Erreur génération introduction: {e}")
+            # Introduction de fallback
+            intro_text = f"Bienvenue dans notre studio de débat TV ! Je suis Michel Dubois, votre animateur."
+            logging.getLogger(__name__).info("🔧 Introduction de fallback utilisée")
+
         
         # 2. VALIDATION COMPLÈTE DU SYSTÈME OBLIGATOIRE
         logging.getLogger(__name__).info("🔍 VALIDATION COMPLÈTE DU SYSTÈME MULTI-AGENTS")
