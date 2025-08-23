@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import (
-from unified_entrypoint import unified_entrypoint
     Agent,
     AgentSession,
     JobContext,
@@ -15,6 +14,7 @@ from unified_entrypoint import unified_entrypoint
     function_tool,
     llm,
 )
+from unified_entrypoint import unified_entrypoint
 from livekit.plugins import openai, silero
 from vosk_stt_interface import VoskSTTFixed as VoskSTT
 from llm_client import llm_client

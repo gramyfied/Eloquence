@@ -1736,6 +1736,11 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
         logging.getLogger(__name__).info("🔗 Établissement de la connexion LiveKit multi-agents...")
         await ctx.connect()
         logging.getLogger(__name__).info("✅ Connexion LiveKit multi-agents établie avec succès")
+        
+        # 2. INITIALISATION DU MANAGER AVANT UTILISATION
+        logging.getLogger(__name__).info(f"🎯 Initialisation système: {exercise_type}")
+        manager = await initialize_multi_agent_system(exercise_type)
+        
         # 3. GÉNÉRATION INTRODUCTION AVEC CACHE REDIS
         logging.getLogger(__name__).info("🎬 Génération introduction...")
         
@@ -1761,7 +1766,6 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
                 logging.getLogger(__name__).info("🎵 Introduction audio diffusée")
                 
                 # Attendre la fin de l'introduction
-                import asyncio
                 await asyncio.sleep(len(intro_audio) / 24000)  # Durée approximative
             else:
                 logging.getLogger(__name__).warning("⚠️ Pas d'audio d'introduction généré")
@@ -1776,10 +1780,6 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
         # 2. VALIDATION COMPLÈTE DU SYSTÈME OBLIGATOIRE
         logging.getLogger(__name__).info("🔍 VALIDATION COMPLÈTE DU SYSTÈME MULTI-AGENTS")
         logging.getLogger(__name__).info("="*60)
-        
-        # ✅ INITIALISATION AVEC EXERCISE_TYPE CORRECT
-        logging.getLogger(__name__).info(f"🎯 Initialisation système: {exercise_type}")
-        manager = await initialize_multi_agent_system(exercise_type)
         
         # Validation complète obligatoire
         is_valid = await validate_complete_system(manager)
