@@ -58,6 +58,37 @@ class EnhancedMultiAgentManager:
         
         logger.info("🚀 ENHANCED MULTI-AGENT MANAGER initialisé avec GPT-4o + ElevenLabs v2.5 + Interpellation")
 
+    def initialize_session(self) -> None:
+        """Initialise/réinitialise l'état de session pour le manager amélioré.
+        Aligne l'interface avec `MultiAgentManager.initialize_session()` afin d'être compatible
+        avec `MultiAgentLiveKitService.run_session()`.
+        """
+        try:
+            logger.info(f"🎭 Initialisation session multi-agents (enhanced): {self.config.exercise_id}")
+
+            # Réinitialiser les mémoires de conversation/réponses
+            self.conversation_memory = {}
+            self.last_responses = {}
+
+            # Marqueurs de session
+            self.session_start_time = datetime.now()
+            self.last_speaker_change = datetime.now()
+            self.is_session_active = True
+
+            # Compteurs de participation et temps de parole par agent
+            agent_ids = list(self.agents.keys())
+            self.speaking_times = {agent_id: 0.0 for agent_id in agent_ids}
+            self.interaction_count = {agent_id: 0 for agent_id in agent_ids}
+
+            # Orchestration initiale: Michel ouvre le débat par défaut
+            self.current_speaker = "michel_dubois_animateur" if "michel_dubois_animateur" in self.agents else (agent_ids[0] if agent_ids else None)
+
+            logger.info(f"✅ Session initialisée avec {len(self.agents)} agents")
+        except Exception as e:
+            logger.error(f"❌ Impossible d'initialiser la session (enhanced): {e}")
+            # En cas d'erreur, on laisse l'état cohérent pour éviter un crash en chaîne
+            self.is_session_active = False
+
     def _initialize_revolutionary_agents(self) -> Dict[str, Dict]:
         """Initialise les agents avec prompts révolutionnaires français optimisés"""
         return {

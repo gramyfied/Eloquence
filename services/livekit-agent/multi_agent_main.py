@@ -1377,8 +1377,16 @@ async def initialize_multi_agent_system(exercise_id: str = "studio_debate_tv") -
     try:
         logging.getLogger(__name__).info(f"🚀 Initialisation système multi-agents: {exercise_id}")
         
-        # Configuration de l'exercice
-        config = ExerciseTemplates.get_studio_debate_tv_config()
+        # ✅ CONFIGURATION SELON EXERCISE_TYPE
+        if exercise_id == 'studio_debate_tv':
+            logging.getLogger(__name__).info("✅ CONFIGURATION DÉBAT TV: Michel, Sarah, Marcus")
+            config = ExerciseTemplates.get_studio_debate_tv_config()
+        elif exercise_id == 'studio_situations_pro':
+            logging.getLogger(__name__).info("✅ CONFIGURATION SITUATIONS PRO: Thomas, Sophie, Marc")
+            config = ExerciseTemplates.get_studio_situations_pro_config()
+        else:
+            logging.getLogger(__name__).warning(f"⚠️ Exercise type non reconnu: {exercise_id}, fallback vers débat TV")
+            config = ExerciseTemplates.get_studio_debate_tv_config()
         
         if not config or len(config.agents) == 0:
             raise ValueError("Configuration agents vide ou invalide")
@@ -1625,7 +1633,7 @@ def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict
         
         # Mapping des types d'exercices vers les configurations multi-agents
         exercise_mapping = {
-            'studio_situations_pro': ExerciseTemplates.get_studio_debate_tv_config,
+            'studio_situations_pro': ExerciseTemplates.get_studio_situations_pro_config,
             'studio_debate_tv': ExerciseTemplates.get_studio_debate_tv_config,
             'studio_debatPlateau': ExerciseTemplates.get_studio_debate_tv_config,
             'studio_job_interview': ExerciseTemplates.studio_job_interview,
@@ -1654,14 +1662,75 @@ def detect_exercise_from_metadata(metadata: str) -> tuple[MultiAgentConfig, dict
 
 
 # ==========================================
-# POINT D'ENTRÉE PRINCIPAL MULTI-AGENTS
+# FONCTIONS SPÉCIALISÉES PAR TYPE D'EXERCICE
 # ==========================================
 
-async def multiagent_entrypoint(ctx: JobContext):
-    """Point d'entrée principal pour le système multi-agents Studio Situations Pro"""
-    logging.getLogger(__name__).info("🎭 DÉMARRAGE SYSTÈME MULTI-AGENTS STUDIO SITUATIONS PRO")
-    logging.getLogger(__name__).info("="*70)
+async def start_debate_tv_system(ctx: JobContext):
+    """Démarre le système spécialisé pour débat TV"""
     
+    logging.getLogger(__name__).info("🎬 === DÉMARRAGE SYSTÈME DÉBAT TV ===")
+    logging.getLogger(__name__).info("🎭 Agents: Michel Dubois (Animateur), Sarah Johnson (Journaliste), Marcus Thompson (Expert)")
+    
+    # Configuration spécifique débat TV
+    exercise_config = {
+        'type': 'studio_debate_tv',
+        'agents': ['michel_dubois_animateur', 'sarah_johnson_journaliste', 'marcus_thompson_expert'],
+        'scenario': 'debate_tv',
+        'voice_mapping': {
+            'michel_dubois_animateur': 'George',
+            'sarah_johnson_journaliste': 'Bella', 
+            'marcus_thompson_expert': 'Arnold'
+        }
+    }
+    
+    # Démarrage du système avec configuration débat TV
+    return await start_enhanced_multiagent_system(ctx, exercise_config)
+
+async def start_situations_pro_system(ctx: JobContext):
+    """Démarre le système spécialisé pour situations professionnelles"""
+    
+    logging.getLogger(__name__).info("🎭 === DÉMARRAGE SYSTÈME SITUATIONS PRO ===")
+    logging.getLogger(__name__).info("🎭 Agents: Thomas (Coach), Sophie (RH), Marc (Consultant)")
+    
+    # Configuration spécifique situations pro
+    exercise_config = {
+        'type': 'studio_situations_pro',
+        'agents': ['thomas_expert', 'sophie_rh', 'marc_consultant'],
+        'scenario': 'situations_pro',
+        'voice_mapping': {
+            'thomas_expert': 'George',
+            'sophie_rh': 'Bella',
+            'marc_consultant': 'Arnold'
+        }
+    }
+    
+    # Démarrage du système avec configuration situations pro
+    return await start_enhanced_multiagent_system(ctx, exercise_config)
+
+async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dict):
+    """Démarre le système multi-agents avec configuration spécifique"""
+    
+    exercise_type = exercise_config['type']
+    agents = exercise_config['agents']
+    
+    logging.getLogger(__name__).info(f"🚀 Initialisation système multi-agents: {exercise_type}")
+    logging.getLogger(__name__).info(f"🎭 Agents configurés: {agents}")
+    
+    # ✅ VÉRIFICATION CRITIQUE
+    if exercise_type == 'studio_debate_tv':
+        logging.getLogger(__name__).info("✅ CONFIRMATION: Démarrage système DÉBAT TV")
+        if 'michel_dubois_animateur' not in agents:
+            logging.getLogger(__name__).error("❌ ERREUR: Michel Dubois manquant pour débat TV")
+            agents = ['michel_dubois_animateur', 'sarah_johnson_journaliste', 'marcus_thompson_expert']
+            logging.getLogger(__name__).info(f"🔧 CORRECTION: Agents corrigés: {agents}")
+    elif exercise_type == 'studio_situations_pro':
+        logging.getLogger(__name__).info("✅ CONFIRMATION: Démarrage système SITUATIONS PRO")
+        if 'thomas_expert' not in agents:
+            logging.getLogger(__name__).error("❌ ERREUR: Thomas manquant pour situations pro")
+            agents = ['thomas_expert', 'sophie_rh', 'marc_consultant']
+            logging.getLogger(__name__).info(f"🔧 CORRECTION: Agents corrigés: {agents}")
+    
+    # Suite de la logique existante...
     try:
         # 1. ÉTABLIR LA CONNEXION LIVEKIT
         logging.getLogger(__name__).info("🔗 Établissement de la connexion LiveKit multi-agents...")
@@ -1672,8 +1741,9 @@ async def multiagent_entrypoint(ctx: JobContext):
         logging.getLogger(__name__).info("🔍 VALIDATION COMPLÈTE DU SYSTÈME MULTI-AGENTS")
         logging.getLogger(__name__).info("="*60)
         
-        # Initialisation système avec validation
-        manager = await initialize_multi_agent_system("studio_debate_tv")
+        # ✅ INITIALISATION AVEC EXERCISE_TYPE CORRECT
+        logging.getLogger(__name__).info(f"🎯 Initialisation système: {exercise_type}")
+        manager = await initialize_multi_agent_system(exercise_type)
         
         # Validation complète obligatoire
         is_valid = await validate_complete_system(manager)
@@ -1730,7 +1800,12 @@ async def multiagent_entrypoint(ctx: JobContext):
             config, user_data = detect_exercise_from_metadata(metadata)
         else:
             logging.getLogger(__name__).warning("⚠️ Aucune métadonnée trouvée, utilisation configuration par défaut")
-            config = ExerciseTemplates.get_studio_debate_tv_config()
+            if exercise_type == 'studio_debate_tv':
+                config = ExerciseTemplates.get_studio_debate_tv_config()
+            elif exercise_type == 'studio_situations_pro':
+                config = ExerciseTemplates.get_studio_situations_pro_config()
+            else:
+                config = ExerciseTemplates.get_studio_debate_tv_config()
             user_data = {'user_name': 'Participant', 'user_subject': 'votre présentation'}
         
         logging.getLogger(__name__).info("="*60)
@@ -1760,6 +1835,36 @@ async def multiagent_entrypoint(ctx: JobContext):
         except Exception as fallback_error:
             logging.getLogger(__name__).error(f"❌ Même le fallback échoue: {fallback_error}")
             raise
+
+# ==========================================
+# POINT D'ENTRÉE PRINCIPAL MULTI-AGENTS
+# ==========================================
+
+async def multiagent_entrypoint(ctx: JobContext):
+    """Point d'entrée principal pour le système multi-agents avec détection automatique"""
+    
+    # ✅ DIAGNOSTIC OBLIGATOIRE
+    logging.getLogger(__name__).info(f"🔍 MULTI-AGENT ENTRYPOINT: Démarrage pour room {ctx.room.name}")
+    
+    # ✅ RÉCUPÉRATION EXERCISE_TYPE DEPUIS LE CONTEXTE OU DÉTECTION
+    exercise_type = getattr(ctx, 'exercise_type', None)
+    if not exercise_type:
+        # Fallback vers détection depuis le nom de room
+        from unified_entrypoint import detect_exercise_from_context
+        exercise_type = await detect_exercise_from_context(ctx)
+    
+    logging.getLogger(__name__).info(f"🎯 EXERCISE_TYPE REÇU: {exercise_type}")
+    
+    # ✅ ROUTAGE CORRECT SELON EXERCISE_TYPE
+    if exercise_type == 'studio_debate_tv':
+        logging.getLogger(__name__).info("🎬 DÉMARRAGE SYSTÈME DÉBAT TV")
+        return await start_debate_tv_system(ctx)
+    elif exercise_type == 'studio_situations_pro':
+        logging.getLogger(__name__).info("🎭 DÉMARRAGE SYSTÈME SITUATIONS PRO")
+        return await start_situations_pro_system(ctx)
+    else:
+        logging.getLogger(__name__).warning(f"⚠️ Exercise type non reconnu: {exercise_type}, fallback vers débat TV")
+        return await start_debate_tv_system(ctx)
 
 
 async def main():

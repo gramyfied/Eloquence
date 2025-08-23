@@ -29,8 +29,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Définition des listes d'exercices au niveau du module
+# EXERCICES SITUATIONS PRO - Multi-agents LiveKit pour immersion totale
 MULTI_AGENT_EXERCISES = {
-    'studio_situations_pro',
+    # Simulations de situations professionnelles multi-agents
+    'studio_debate_tv',           # Débat plateau TV (Michel, Sarah, Marcus)
+    'studio_debatPlateau',        # Alias pour débat plateau TV
+    'studio_job_interview',       # Entretien d'embauche multi-agents
+    'studio_entretienEmbauche',   # Alias pour entretien d'embauche
+    'studio_boardroom',           # Réunion de direction
+    'studio_reunionDirection',    # Alias pour réunion de direction
+    'studio_sales_conference',    # Conférence de vente
+    'studio_conferenceVente',     # Alias pour conférence de vente
+    'studio_keynote',             # Conférence publique
+    'studio_conferencePublique',  # Alias pour conférence publique
+    'studio_situations_pro',      # Coaching général (Thomas, Sophie, Marc)
+    
+    # Anciens exercices (à migrer vers la nouvelle structure)
     'simulation_entretien',
     'negociation_commerciale',
     'presentation_investisseurs',
@@ -42,24 +56,14 @@ MULTI_AGENT_EXERCISES = {
     'formation_equipe',
     'entretien_evaluation',
     'vente_produit',
-    # Exercices Studio Situations Pro multi-agents
-    'studio_debate_tv',
-    'studio_debatPlateau',
-    'studio_job_interview',
-    'studio_entretienEmbauche',
-    'studio_boardroom',
-    'studio_reunionDirection',
-    'studio_sales_conference',
-    'studio_conferenceVente',
-    'studio_keynote',
-    'studio_conferencePublique',
 }
 
+# EXERCICES INDIVIDUELS - Agent unique pour développement personnel
 INDIVIDUAL_EXERCISES = {
-    'confidence_boost',
-    'tribunal_idees_impossibles',
-    'cosmic_voice_control',
-    'job_interview'
+    'confidence_boost',           # Boost de confiance avec agent unique
+    'tribunal_idees_impossibles', # Défense d'idées impossibles
+    'cosmic_voice_control',       # Contrôle vocal
+    'job_interview'               # Entretien d'embauche individuel
 }
 
 
@@ -160,22 +164,37 @@ async def detect_exercise_from_context(ctx):
     elif debat_indicators['studio'] and not any([debat_indicators['debat'], debat_indicators['debate'], debat_indicators['plateau']]):
         logger.info("🎯 PRÉDICTION: Devrait être studio_situations_pro")
 
-    # ✅ DÉTECTION SPÉCIFIQUE DÉBAT PLATEAU EN PREMIER
+    # ✅ DÉTECTION SPÉCIFIQUE DÉBAT PLATEAU EN PREMIER (SITUATION PRO)
     if 'debatplateau' in room_name.lower():
         exercise_type = 'studio_debate_tv'
         logger.info(f"🎯 DÉBAT PLATEAU DÉTECTÉ DIRECTEMENT: {exercise_type}")
+    # ✅ DÉTECTION EXERCICES INDIVIDUELS
     elif 'confidence_boost' in room_name:
         exercise_type = 'confidence_boost'
     elif 'tribunal' in room_name or 'idees' in room_name:
         exercise_type = 'tribunal_idees_impossibles'
     elif 'cosmic' in room_name or 'voice_control' in room_name:
         exercise_type = 'cosmic_voice_control'
-    elif 'job_interview' in room_name:
-        exercise_type = 'job_interview'
-    # ✅ DÉTECTION GÉNÉRALE DÉBAT (PRIORITÉ ABSOLUE)
+    elif 'job_interview' in room_name and 'studio' not in room_name:
+        exercise_type = 'job_interview'  # Exercice individuel
+    # ✅ DÉTECTION SITUATIONS PRO MULTI-AGENTS
+    elif 'studio_job_interview' in room_name or ('studio' in room_name and 'interview' in room_name):
+        exercise_type = 'studio_job_interview'  # Situation pro multi-agents
+    elif 'studio_boardroom' in room_name or ('studio' in room_name and 'reunion' in room_name):
+        exercise_type = 'studio_boardroom'  # Situation pro multi-agents
+    elif 'studio_sales' in room_name or ('studio' in room_name and 'vente' in room_name):
+        exercise_type = 'studio_sales_conference'  # Situation pro multi-agents
+    elif 'studio_keynote' in room_name or ('studio' in room_name and 'conference' in room_name):
+        exercise_type = 'studio_keynote'  # Situation pro multi-agents
+    # ✅ DÉTECTION GÉNÉRALE DÉBAT (SITUATION PRO)
     elif any(keyword in room_name for keyword in ['debat', 'debate', 'plateau']):
         exercise_type = 'studio_debate_tv'
         logger.info(f"🎯 DÉBAT GÉNÉRIQUE DÉTECTÉ: {exercise_type}")
+    # ✅ DÉTECTION SITUATIONS PRO GÉNÉRIQUES
+    elif 'studio' in room_name or 'situation' in room_name:
+        exercise_type = 'studio_situations_pro'
+        logger.info(f"🎯 STUDIO GÉNÉRIQUE DÉTECTÉ: {exercise_type}")
+    # ✅ DÉTECTION ANCIENS EXERCICES (à migrer)
     elif 'entretien' in room_name or 'interview' in room_name:
         exercise_type = 'simulation_entretien'
     elif 'negociation' in room_name:
@@ -188,10 +207,6 @@ async def detect_exercise_from_context(ctx):
         exercise_type = 'studio_keynote'
     elif 'sales' in room_name or 'vente' in room_name:
         exercise_type = 'studio_sales_conference'
-    # ✅ 'studio' générique EN DERNIER (fallback)
-    elif 'studio' in room_name or 'situation' in room_name:
-        exercise_type = 'studio_situations_pro'
-        logger.info(f"🎯 STUDIO GÉNÉRIQUE DÉTECTÉ: {exercise_type}")
 
     # Normalisation finale (sécurité)
     if exercise_type:
@@ -311,6 +326,11 @@ async def unified_entrypoint(ctx):
     # Routage vers le bon système
     if exercise_type in MULTI_AGENT_EXERCISES:
         logger.info(f"🎭 Routage vers MULTI-AGENT pour {exercise_type}")
+        
+        # ✅ TRANSMISSION EXERCISE_TYPE AU CONTEXTE
+        ctx.exercise_type = exercise_type
+        logger.info(f"🔗 EXERCISE_TYPE TRANSMIS AU CONTEXTE: {exercise_type}")
+        
         try:
             from multi_agent_main import multiagent_entrypoint
             await multiagent_entrypoint(ctx)
