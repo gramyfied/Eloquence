@@ -1047,7 +1047,7 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
         except Exception as e:
             logger.error(f"❌ Erreur mise en cache Redis: {e}")
 
-        async def generate_introduction(self, exercise_type: str, user_data: dict) -> Tuple[str, bytes]:
+    async def generate_introduction(self, exercise_type: str, user_data: dict) -> Tuple[str, bytes]:
         """Génère ou récupère l'introduction depuis le cache"""
         
         # 1. ESSAYER DE RÉCUPÉRER DEPUIS REDIS
