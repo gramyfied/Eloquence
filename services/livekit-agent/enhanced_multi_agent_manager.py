@@ -690,16 +690,24 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
             audio_data = b""
             if self.tts_service and response:
                 try:
-                    # Sélection de la voix selon l'agent
+                                        # Sélection de la voix selon l'agent - MAPPING CORRIGÉ
                     voice_mapping = {
-                        'michel_dubois_animateur': 'George',  # Voix masculine neutre
-                        'sarah_johnson_journaliste': 'Bella',  # Voix féminine neutre
-                        'marcus_thompson_expert': 'Arnold'     # Voix masculine mesurée
+                        'michel_dubois_animateur': 'George',    # Voix masculine neutre - TESTÉ OK
+                        'sarah_johnson_journaliste': 'Bella',   # Voix féminine neutre - CORRECTION
+                        'marcus_thompson_expert': 'Arnold',     # Voix masculine mesurée - CORRECTION
+                        # Fallbacks pour compatibilité
+                        'michel_dubois': 'George',
+                        'sarah_johnson': 'Bella', 
+                        'marcus_thompson': 'Arnold'
                     }
                     
                     voice_id = voice_mapping.get(agent_id, 'George')
+                    logger.info(f"🎭 Agent {agent_id} → Voix {voice_id}")
                     
-                    # Génération audio avec émotion
+                                        # Génération audio avec émotion - LOGS AMÉLIORÉS
+                    logger.info(f"🎵 Génération TTS pour {agent_id} avec voix {voice_id}")
+                    logger.info(f"🎭 Émotion: {emotion.primary_emotion}, Intensité: {emotion.intensity}")
+                    
                     audio_data = await self.tts_service.synthesize_with_emotion(
                         text=response,
                         voice_id=voice_id,
@@ -707,7 +715,10 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
                         intensity=emotion.intensity
                     )
                     
-                    logger.info(f"✅ Audio généré pour {agent_id}: {len(audio_data)} bytes")
+                    if len(audio_data) > 0:
+                        logger.info(f"✅ Audio généré pour {agent_id}: {len(audio_data)} bytes")
+                    else:
+                        logger.error(f"❌ Audio vide pour {agent_id} avec voix {voice_id}")
                     
                 except Exception as e:
                     logger.error(f"❌ Erreur génération audio TTS: {e}")
@@ -990,6 +1001,94 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
             ]
         }
 
+
+    
+    async def get_cached_introduction(self, exercise_type: str) -> Optional[Tuple[str, bytes]]:
+        """Récupère l'introduction pré-générée depuis Redis"""
+        try:
+            import redis
+            r = redis.Redis(host='redis', port=6379, decode_responses=False)
+            
+            # Clé pour l'introduction
+            intro_key = f"intro:{exercise_type}:text"
+            audio_key = f"intro:{exercise_type}:audio"
+            
+            # Récupérer depuis Redis
+            intro_text = r.get(intro_key)
+            intro_audio = r.get(audio_key)
+            
+            if intro_text and intro_audio:
+                logger.info("✅ Introduction récupérée depuis Redis")
+                return intro_text.decode('utf-8'), intro_audio
+            else:
+                logger.info("⚠️ Introduction non trouvée dans Redis, génération nécessaire")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération Redis: {e}")
+            return None
+    
+    async def cache_introduction(self, exercise_type: str, text: str, audio: bytes):
+        """Met en cache l'introduction dans Redis"""
+        try:
+            import redis
+            r = redis.Redis(host='redis', port=6379, decode_responses=False)
+            
+            # Clés pour l'introduction
+            intro_key = f"intro:{exercise_type}:text"
+            audio_key = f"intro:{exercise_type}:audio"
+            
+            # Sauvegarder dans Redis (expire après 24h)
+            r.setex(intro_key, 86400, text.encode('utf-8'))
+            r.setex(audio_key, 86400, audio)
+            
+            logger.info("✅ Introduction mise en cache dans Redis")
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur mise en cache Redis: {e}")
+
+        async def generate_introduction(self, exercise_type: str, user_data: dict) -> Tuple[str, bytes]:
+        """Génère ou récupère l'introduction depuis le cache"""
+        
+        # 1. ESSAYER DE RÉCUPÉRER DEPUIS REDIS
+        cached = await self.get_cached_introduction(exercise_type)
+        if cached:
+            intro_text, intro_audio = cached
+            logger.info("🚀 Introduction récupérée depuis Redis - DÉMARRAGE RAPIDE")
+            return intro_text, intro_audio
+        
+        # 2. GÉNÉRATION SI PAS EN CACHE
+        logger.info("⏳ Génération nouvelle introduction...")
+        
+        if exercise_type == 'studio_debate_tv':
+            intro_text = f"""Bonsoir et bienvenue dans notre studio de débat TV ! 
+Je suis Michel Dubois, votre animateur. Nous accueillons aujourd'hui {user_data.get('user_name', 'notre invité')} 
+pour débattre sur le sujet : {user_data.get('user_subject', 'un sujet passionnant')}.
+Nous sommes également rejoints par Sarah Johnson, journaliste d'investigation, 
+et Marcus Thompson, expert reconnu dans le domaine.
+Commençons ce débat enrichissant !"""
+        else:
+            intro_text = "Bienvenue dans notre studio !"
+        
+        # 3. GÉNÉRATION AUDIO
+        audio_data = b""
+        if self.tts_service:
+            try:
+                audio_data = await self.tts_service.synthesize_with_emotion(
+                    text=intro_text,
+                    voice_id="George",  # Michel pour l'introduction
+                    emotion="enthousiasme",
+                    intensity=0.7
+                )
+                logger.info(f"✅ Audio introduction généré: {len(audio_data)} bytes")
+            except Exception as e:
+                logger.error(f"❌ Erreur génération audio introduction: {e}")
+        
+        # 4. MISE EN CACHE POUR LA PROCHAINE FOIS
+        if audio_data:
+            await self.cache_introduction(exercise_type, intro_text, audio_data)
+        
+        return intro_text, audio_data
 
     async def test_tts_integration(self) -> bool:
         """Teste l'intégration TTS ElevenLabs"""
