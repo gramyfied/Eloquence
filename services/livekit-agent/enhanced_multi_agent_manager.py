@@ -710,7 +710,7 @@ Apporter une expertise passionnée et parfois controversée qui enrichit le déb
                     
                     audio_data = await self.tts_service.synthesize_with_emotion(
                         text=response,
-                        voice_id=voice_id,
+                        agent_id=voice_id,
                         emotion=emotion.primary_emotion,
                         intensity=emotion.intensity
                     )
@@ -1076,7 +1076,7 @@ Commençons ce débat enrichissant !"""
             try:
                 audio_data = await self.tts_service.synthesize_with_emotion(
                     text=intro_text,
-                    voice_id="George",  # Michel pour l'introduction
+                    agent_id="michel_dubois_animateur",  # Michel pour l'introduction
                     emotion="enthousiasme",
                     intensity=0.7
                 )
@@ -1100,7 +1100,7 @@ Commençons ce débat enrichissant !"""
             # Test simple
             test_audio = await self.tts_service.synthesize_with_emotion(
                 text="Test de connexion ElevenLabs",
-                voice_id="George",
+                agent_id="michel_dubois_animateur",
                 emotion="neutre",
                 intensity=0.5
             )
