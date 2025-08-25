@@ -1749,14 +1749,14 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
             
             # Génération introduction avec manager
             try:
-        if 'manager' in locals() and manager:
-            intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
-        else:
-            logger.error("❌ Manager non initialisé pour introduction")
-            return
-    except Exception as e:
-        logger.error(f"❌ Erreur génération introduction: {e}")
-        return
+                if 'manager' in locals() and manager:
+                    intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
+                else:
+                    logger.error("❌ Manager non initialisé pour introduction")
+                    return
+            except Exception as e:
+                logger.error(f"❌ Erreur génération introduction: {e}")
+                return
             logging.getLogger(__name__).info(f"✅ Introduction générée: {len(intro_text)} caractères")
             
             # Note: L'audio sera géré par le système TTS existant
@@ -1782,14 +1782,14 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
         # Génération ou récupération depuis cache
         try:
             try:
-        if 'manager' in locals() and manager:
-            intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
-        else:
-            logger.error("❌ Manager non initialisé pour introduction")
-            return
-    except Exception as e:
-        logger.error(f"❌ Erreur génération introduction: {e}")
-        return
+                if 'manager' in locals() and manager:
+                    intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
+                else:
+                    logger.error("❌ Manager non initialisé pour introduction")
+                    return
+            except Exception as e:
+                logger.error(f"❌ Erreur génération introduction: {e}")
+                return
             logging.getLogger(__name__).info(f"✅ Introduction générée: {len(intro_text)} caractères, {len(intro_audio)} bytes audio")
             
             # Diffusion de l'introduction
