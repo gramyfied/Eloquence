@@ -1738,6 +1738,13 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
         logging.getLogger(__name__).info("✅ Connexion LiveKit multi-agents établie avec succès")
         
         # 🎬 GÉNÉRATION INTRODUCTION SIMPLE
+        # Introduction sera générée après initialisation du manager
+        
+        # 2. INITIALISATION DU MANAGER AVANT UTILISATION
+        logging.getLogger(__name__).info(f"🎯 Initialisation système: {exercise_type}")
+        manager = await initialize_multi_agent_system(exercise_type)
+        
+        # 3. GÉNÉRATION INTRODUCTION AVEC MANAGER INITIALISÉ
         try:
             logging.getLogger(__name__).info("🎬 Génération introduction...")
             
@@ -1747,28 +1754,16 @@ async def start_enhanced_multiagent_system(ctx: JobContext, exercise_config: dic
                 'user_subject': getattr(ctx, 'user_subject', 'un sujet passionnant')
             }
             
-            # Génération introduction avec manager
-            try:
-                if 'manager' in locals() and manager:
-                    intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
-                else:
-                    logger.error("❌ Manager non initialisé pour introduction")
-                    return
-            except Exception as e:
-                logger.error(f"❌ Erreur génération introduction: {e}")
-                return
-            logging.getLogger(__name__).info(f"✅ Introduction générée: {len(intro_text)} caractères")
-            
-            # Note: L'audio sera géré par le système TTS existant
-            
+            # Génération introduction avec manager (maintenant initialisé)
+            if manager:
+                intro_text, intro_audio = await manager.generate_introduction(exercise_type, user_data)
+                logging.getLogger(__name__).info(f"✅ Introduction générée: {len(intro_text)} caractères, {len(intro_audio) if intro_audio else 0} bytes audio")
+            else:
+                logging.getLogger(__name__).error("❌ Manager non initialisé après initialize_multi_agent_system")
+                
         except Exception as e:
             logging.getLogger(__name__).error(f"❌ Erreur génération introduction: {e}")
             # Continuer sans introduction
-            pass
-        
-        # 2. INITIALISATION DU MANAGER AVANT UTILISATION
-        logging.getLogger(__name__).info(f"🎯 Initialisation système: {exercise_type}")
-        manager = await initialize_multi_agent_system(exercise_type)
         
         # 3. GÉNÉRATION INTRODUCTION AVEC CACHE REDIS
         logging.getLogger(__name__).info("🎬 Génération introduction...")
