@@ -1,3 +1,4 @@
+import re
 # /services/livekit-agent/enhanced_multi_agent_manager.py
 """
 Gestionnaire multi-agents révolutionnaire avec GPT-4o + ElevenLabs v2.5
