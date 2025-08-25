@@ -1,0 +1,156 @@
+2025-08-21 21:02:08,547 - __main__ - INFO - \U0001f680 === DÉBUT TESTS CORRECTION HARDCODAGE ===
+2025-08-21 21:02:08,547 - __main__ - INFO - 
+\U0001f9ea Test: Transmission exercise_type
+2025-08-21 21:02:08,548 - __main__ - INFO - \U0001f9ea === TEST TRANSMISSION EXERCISE_TYPE ===
+2025-08-21 21:02:09,523 - unified_entrypoint - INFO - \U0001f50d DIAGNOSTIC: Détection d'exercice en cours...
+2025-08-21 21:02:09,524 - unified_entrypoint - INFO - \U0001f3e0 Nom de room: studio_debatplateau_test
+2025-08-21 21:02:09,524 - unified_entrypoint - INFO - \U0001f50d Aucune métadonnée trouvée, analyse du nom de room...
+2025-08-21 21:02:09,524 - unified_entrypoint - INFO - \U0001f50d ANALYSE DÉTAILLÉE: 'studio_debatplateau_test'
+2025-08-21 21:02:09,525 - unified_entrypoint - INFO - \U0001f50d MOTS-CLÉS TROUVÉS: ['debat/debate/plateau', 'studio']
+2025-08-21 21:02:09,525 - unified_entrypoint - INFO - \U0001f3af DIAGNOSTIC DÉBAT: {'debatplateau': True, 'debat_plateau': False, 'debat': True, 'debate': False, 'plateau': True, 'studio': True}
+2025-08-21 21:02:09,525 - unified_entrypoint - INFO - \U0001f3af PRÉDICTION: Devrait être studio_debate_tv
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f3af DÉBAT PLATEAU DÉTECTÉ DIRECTEMENT: studio_debate_tv
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \u2705 Exercice détecté: studio_debate_tv
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d EST MULTI-AGENT: True
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d EST INDIVIDUAL: False
+2025-08-21 21:02:09,526 - __main__ - INFO - \u2705 Test 1 - Room 'studio_debatPlateau_test': studio_debate_tv
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d DIAGNOSTIC: Détection d'exercice en cours...
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f3e0 Nom de room: studio_situations_pro_test
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d Aucune métadonnée trouvée, analyse du nom de room...
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d ANALYSE DÉTAILLÉE: 'studio_situations_pro_test'
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d MOTS-CLÉS TROUVÉS: ['studio', 'situation']
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f3af DIAGNOSTIC DÉBAT: {'debatplateau': False, 'debat_plateau': False, 'debat': False, 'debate': False, 'plateau': False, 'studio': True}
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f3af PRÉDICTION: Devrait être studio_situations_pro
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f3af STUDIO GÉNÉRIQUE DÉTECTÉ: studio_situations_pro
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \u2705 Exercice détecté: studio_situations_pro
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d EST MULTI-AGENT: True
+2025-08-21 21:02:09,526 - unified_entrypoint - INFO - \U0001f50d EST INDIVIDUAL: False
+2025-08-21 21:02:09,526 - __main__ - INFO - \u2705 Test 2 - Room 'studio_situations_pro_test': studio_situations_pro
+2025-08-21 21:02:09,526 - __main__ - INFO - \u2705 Test 3 - Exercise type transmis au contexte: studio_debate_tv
+2025-08-21 21:02:09,526 - __main__ - INFO - \u2705 RÉUSSI - Transmission exercise_type
+2025-08-21 21:02:09,526 - __main__ - INFO - 
+\U0001f9ea Test: Initialisation multi-agents
+2025-08-21 21:02:09,526 - __main__ - INFO - \U0001f9ea === TEST INITIALISATION MULTI-AGENTS ===
+2025-08-21 21:02:10,207 - multi_agent_main - INFO - \u2705 Enhanced Multi-Agent Manager disponible
+2025-08-21 21:02:10,215 - multi_agent_main - INFO - \U0001f50d DIAGNOSTIC MULTI-AGENTS: Variables d'environnement
+2025-08-21 21:02:10,215 - multi_agent_main - INFO -    OPENAI_API_KEY présente: Oui
+2025-08-21 21:02:10,215 - multi_agent_main - INFO -    ELEVENLABS_API_KEY présente: Oui
+2025-08-21 21:02:10,215 - multi_agent_main - INFO -    MISTRAL_BASE_URL: https://api.scaleway.com/llm-inference/v1/regions/fr-par/endpoints/your-endpoint-id
+2025-08-21 21:02:10,223 - __main__ - INFO - \U0001f3ac Test initialisation studio_debate_tv...
+2025-08-21 21:02:10,223 - multi_agent_main - INFO - \U0001f680 Initialisation système multi-agents: studio_debate_tv
+2025-08-21 21:02:10,223 - multi_agent_main - INFO - \u2705 CONFIGURATION DÉBAT TV: Michel, Sarah, Marcus
+2025-08-21 21:02:10,223 - multi_agent_main - INFO - \u2705 Configuration chargée: 3 agents
+2025-08-21 21:02:10,223 - multi_agent_main - INFO -    - Michel Dubois (Animateur TV)
+2025-08-21 21:02:10,223 - multi_agent_main - INFO -    - Sarah Johnson (Journaliste)
+2025-08-21 21:02:10,223 - multi_agent_main - INFO -    - Marcus Thompson (Expert)
+2025-08-21 21:02:10,577 - enhanced_multi_agent_manager - INFO - \U0001f3af Système d'interpellation intelligente activé
+2025-08-21 21:02:10,577 - enhanced_multi_agent_manager - INFO - \U0001f680 ENHANCED MULTI-AGENT MANAGER initialisé avec GPT-4o + ElevenLabs v2.5 + Interpellation
+2025-08-21 21:02:10,577 - multi_agent_main - INFO - \U0001f3af Enhanced Multi-Agent Manager initialisé
+2025-08-21 21:02:10,577 - multi_agent_main - INFO - \u2705 Manager initialisé avec 3 agents
+2025-08-21 21:02:10,577 - enhanced_multi_agent_manager - INFO - \U0001f4ca STATUT PERFORMANCE ENHANCED MANAGER
+2025-08-21 21:02:10,577 - enhanced_multi_agent_manager - INFO -    Agents configurés: 3
+2025-08-21 21:02:10,577 - enhanced_multi_agent_manager - INFO -    Mémoire conversation: 0 agents
+2025-08-21 21:02:10,577 - enhanced_multi_agent_manager - INFO -    Dernières réponses: 0 agents
+2025-08-21 21:02:10,577 - __main__ - INFO - \u2705 Manager studio_debate_tv initialisé: <class 'enhanced_multi_agent_manager.EnhancedMultiAgentManager'>
+2025-08-21 21:02:10,577 - __main__ - INFO - \U0001f3ad Test initialisation studio_situations_pro...
+2025-08-21 21:02:10,577 - multi_agent_main - INFO - \U0001f680 Initialisation système multi-agents: studio_situations_pro
+2025-08-21 21:02:10,577 - multi_agent_main - INFO - \u2705 CONFIGURATION SITUATIONS PRO: Thomas
+2025-08-21 21:02:10,577 - multi_agent_main - INFO - \u2705 Configuration chargée: 3 agents
+2025-08-21 21:02:10,577 - multi_agent_main - INFO -    - Michel Dubois (Animateur TV)
+2025-08-21 21:02:10,577 - multi_agent_main - INFO -    - Sarah Johnson (Journaliste)
+2025-08-21 21:02:10,577 - multi_agent_main - INFO -    - Marcus Thompson (Expert)
+2025-08-21 21:02:10,881 - enhanced_multi_agent_manager - INFO - \U0001f3af Système d'interpellation intelligente activé
+2025-08-21 21:02:10,881 - enhanced_multi_agent_manager - INFO - \U0001f680 ENHANCED MULTI-AGENT MANAGER initialisé avec GPT-4o + ElevenLabs v2.5 + Interpellation
+2025-08-21 21:02:10,881 - multi_agent_main - INFO - \U0001f3af Enhanced Multi-Agent Manager initialisé
+2025-08-21 21:02:10,881 - multi_agent_main - INFO - \u2705 Manager initialisé avec 3 agents
+2025-08-21 21:02:10,881 - enhanced_multi_agent_manager - INFO - \U0001f4ca STATUT PERFORMANCE ENHANCED MANAGER
+2025-08-21 21:02:10,881 - enhanced_multi_agent_manager - INFO -    Agents configurés: 3
+2025-08-21 21:02:10,881 - enhanced_multi_agent_manager - INFO -    Mémoire conversation: 0 agents
+2025-08-21 21:02:10,881 - enhanced_multi_agent_manager - INFO -    Dernières réponses: 0 agents
+2025-08-21 21:02:10,881 - __main__ - INFO - \u2705 Manager studio_situations_pro initialisé: <class 'enhanced_multi_agent_manager.EnhancedMultiAgentManager'>
+2025-08-21 21:02:10,881 - __main__ - INFO - \u2705 RÉUSSI - Initialisation multi-agents
+2025-08-21 21:02:10,881 - __main__ - INFO - 
+\U0001f9ea Test: Logique multiagent_entrypoint
+2025-08-21 21:02:10,881 - __main__ - INFO - \U0001f9ea === TEST LOGIQUE MULTIAGENT_ENTRYPOINT ===
+2025-08-21 21:02:10,881 - multi_agent_main - INFO - \U0001f3ac DÉMARRAGE SYSTÈME MULTI-AGENTS STUDIO DEBATE TV
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \U0001f3ad Agents: Michel Dubois, Sarah Johnson, Marcus Thompson
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - ======================================================================
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \U0001f517 Établissement de la connexion LiveKit multi-agents...
+2025-08-21 21:02:10,882 - __main__ - INFO - \U0001f517 Mock connexion LiveKit
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \u2705 Connexion LiveKit multi-agents établie avec succès
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \U0001f50d VALIDATION COMPLÈTE DU SYSTÈME MULTI-AGENTS
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - ============================================================
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \U0001f3af Initialisation système: studio_debate_tv
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \U0001f680 Initialisation système multi-agents: studio_debate_tv
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \u2705 CONFIGURATION DÉBAT TV: Michel, Sarah, Marcus
+2025-08-21 21:02:10,882 - multi_agent_main - INFO - \u2705 Configuration chargée: 3 agents
+2025-08-21 21:02:10,882 - multi_agent_main - INFO -    - Michel Dubois (Animateur TV)
+2025-08-21 21:02:10,882 - multi_agent_main - INFO -    - Sarah Johnson (Journaliste)
+2025-08-21 21:02:10,882 - multi_agent_main - INFO -    - Marcus Thompson (Expert)
+2025-08-21 21:02:11,190 - enhanced_multi_agent_manager - INFO - \U0001f3af Système d'interpellation intelligente activé
+2025-08-21 21:02:11,190 - enhanced_multi_agent_manager - INFO - \U0001f680 ENHANCED MULTI-AGENT MANAGER initialisé avec GPT-4o + ElevenLabs v2.5 + Interpellation
+2025-08-21 21:02:11,190 - multi_agent_main - INFO - \U0001f3af Enhanced Multi-Agent Manager initialisé
+2025-08-21 21:02:11,190 - multi_agent_main - INFO - \u2705 Manager initialisé avec 3 agents
+2025-08-21 21:02:11,190 - enhanced_multi_agent_manager - INFO - \U0001f4ca STATUT PERFORMANCE ENHANCED MANAGER
+2025-08-21 21:02:11,191 - enhanced_multi_agent_manager - INFO -    Agents configurés: 3
+2025-08-21 21:02:11,191 - enhanced_multi_agent_manager - INFO -    Mémoire conversation: 0 agents
+2025-08-21 21:02:11,191 - enhanced_multi_agent_manager - INFO -    Dernières réponses: 0 agents
+2025-08-21 21:02:11,191 - multi_agent_main - INFO - \U0001f50d VALIDATION SYSTÈME COMPLET...
+2025-08-21 21:02:11,191 - multi_agent_main - INFO - \u2705 Enhanced Manager détecté avec 3 agents
+2025-08-21 21:02:11,191 - multi_agent_main - INFO - \u2705 Agent Michel Dubois validé (français + voix neutre)
+2025-08-21 21:02:11,191 - multi_agent_main - INFO - \u2705 Agent Sarah Johnson validé (français + voix neutre)
+2025-08-21 21:02:11,191 - multi_agent_main - INFO - \u2705 Agent Marcus Thompson validé (français + voix neutre)
+2025-08-21 21:02:36,735 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-21 21:02:36,744 - enhanced_multi_agent_manager - INFO - \u2705 Réponse générée pour Michel Dubois: Excellente question ! Laissez-moi reformuler......
+2025-08-21 21:02:36,744 - multi_agent_main - WARNING - \u26a0\ufe0f Réponse lente mais tolérée: 25.553s
+2025-08-21 21:02:36,744 - multi_agent_main - INFO - \u2705 Système émotions validé: 10 émotions
+2025-08-21 21:02:36,744 - multi_agent_main - INFO - \u2705 Performance validée: 1 réponses en cache
+2025-08-21 21:02:51,783 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-21 21:02:51,790 - enhanced_multi_agent_manager - INFO - \u2705 Réponse générée pour Michel Dubois: C'est effectivement un point important à clarifier...
+2025-08-21 21:02:51,790 - multi_agent_main - INFO - \u2705 Génération réponse validée: C'est effectivement un point i...
+2025-08-21 21:02:51,790 - multi_agent_main - INFO - \U0001f389 SYSTÈME COMPLET VALIDÉ AVEC SUCCÈS !
+2025-08-21 21:02:51,790 - multi_agent_main - INFO - \u2705 SYSTÈME VALIDÉ - DÉMARRAGE AGENT LIVEKIT
+2025-08-21 21:02:51,790 - multi_agent_main - INFO - \U0001f50d DIAGNOSTIC APPROFONDI DES MÉTADONNÉES
+2025-08-21 21:02:51,790 - multi_agent_main - INFO - ============================================================
+2025-08-21 21:02:53,794 - multi_agent_main - ERROR - \u274c ERREUR CRITIQUE dans le système multi-agents: 'MockRoom' object has no attribute 'remote_participants'
+2025-08-21 21:02:53,795 - multi_agent_main - ERROR - Détails de l'erreur:
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Eloquence\services\livekit-agent\multi_agent_main.py", line 1731, in multiagent_entrypoint
+    for participant_id, participant in ctx.room.remote_participants.items():
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MockRoom' object has no attribute 'remote_participants'
+2025-08-21 21:02:53,797 - multi_agent_main - INFO - \U0001f504 Tentative de fallback vers système simple...
+2025-08-21 21:02:54,164 - llm_client - INFO - \u2705 Client OpenAI initialisé
+2025-08-21 21:02:54,165 - main - INFO - \U0001f50d DIAGNOSTIC: Variables d'environnement
+2025-08-21 21:02:54,165 - main - INFO -    OPENAI_API_KEY présente: Oui
+2025-08-21 21:02:54,165 - main - INFO -    MISTRAL_BASE_URL: https://api.scaleway.com/llm-inference/v1/regions/fr-par/endpoints/your-endpoint-id
+2025-08-21 21:02:54,558 - main - INFO - \U0001f504 FALLBACK - Utilisation de l'ancienne méthode
+2025-08-21 21:02:54,559 - __main__ - INFO - \U0001f517 Mock connexion LiveKit
+2025-08-21 21:02:54,661 - main - INFO - \u2705 VAD Silero chargé
+2025-08-21 21:02:54,661 - main - INFO - \U0001f504 [STT-TRACE] Initialisation STT avec logique de fallback (Vosk \u2192 OpenAI)
+2025-08-21 21:02:54,661 - main - INFO - \U0001f504 [STT-TRACE] URL Vosk configurée: http://vosk-stt:8002
+2025-08-21 21:02:54,661 - main - INFO - \U0001f3af [STT-TRACE] Tentative de création STT Vosk...
+2025-08-21 21:02:54,661 - vosk_stt_interface - INFO - \U0001f527 [STT-TRACE] VoskSTTFixed initialisé - URL: http://vosk-stt:8002, Langue: fr
+2025-08-21 21:02:54,661 - vosk_stt_interface - INFO - \U0001f527 [STT-TRACE] Pool HTTP: 3 connexions persistantes
+2025-08-21 21:02:54,661 - main - INFO - \u2705 [STT-TRACE] *** VOSK STT CORRIGÉ ACTIVÉ AVEC SUCCÈS ***
+2025-08-21 21:02:54,661 - main - INFO - \u2705 [STT-TRACE] Service Vosk URL: http://vosk-stt:8002
+2025-08-21 21:02:54,661 - main - INFO - \u2705 [STT-TRACE] Configuration: langue=fr, sample_rate=16000
+2025-08-21 21:02:54,661 - main - INFO - \u2705 [STT-TRACE] Reset automatique configuré via clear_user_turn
+2025-08-21 21:02:54,661 - main - INFO - \u2705 STT Vosk (fallback OpenAI) créé
+2025-08-21 21:02:55,057 - main - INFO - \u2705 LLM OpenAI natif créé
+2025-08-21 21:02:55,400 - main - INFO - \u2705 TTS OpenAI créé
+2025-08-21 21:02:55,408 - main - ERROR - \u274c ERREUR dans fallback legacy: 'MockRoom' object has no attribute 'isconnected'
+2025-08-21 21:02:55,408 - multi_agent_main - ERROR - \u274c Même le fallback échoue: 'MockRoom' object has no attribute 'isconnected'
+2025-08-21 21:02:55,408 - __main__ - INFO - \u26a0\ufe0f Erreur attendue (pas de connexion LiveKit): 'MockRoom' object has no attribute 'isconnected'
+2025-08-21 21:02:55,408 - __main__ - INFO - \u2705 Logs STUDIO DEBATE TV trouvés: 0
+2025-08-21 21:02:55,408 - __main__ - INFO - \u2705 Logs STUDIO SITUATIONS PRO trouvés: 0
+2025-08-21 21:02:55,408 - __main__ - INFO - \u274c ÉCHOUÉ - Logique multiagent_entrypoint
+2025-08-21 21:02:55,408 - __main__ - INFO - 
+============================================================
+2025-08-21 21:02:55,408 - __main__ - INFO - \U0001f4ca RÉSULTATS FINAUX:
+2025-08-21 21:02:55,408 - __main__ - INFO -   \u2705 Transmission exercise_type
+2025-08-21 21:02:55,408 - __main__ - INFO -   \u2705 Initialisation multi-agents
+2025-08-21 21:02:55,408 - __main__ - INFO -   \u274c Logique multiagent_entrypoint
+2025-08-21 21:02:55,408 - __main__ - INFO - 
+\U0001f3af Score: 2/3 tests réussis
+2025-08-21 21:02:55,408 - __main__ - ERROR - \u274c CERTAINS TESTS ONT ÉCHOUÉ - CORRECTION INCOMPLÈTE

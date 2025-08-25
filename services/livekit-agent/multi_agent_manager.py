@@ -61,13 +61,50 @@ class MultiAgentManager:
         # Mémoire de la dernière réaction par agent pour limiter les redites
         self._last_reaction_by_agent: Dict[str, str] = {}
         
-        # === SYSTÈME D'INTRODUCTION SIMPLIFIÉE ===
+        # === OPTIMISATION DÉMARRAGE IMMÉDIAT ===
+        # Suppression du système d'introduction bloquant
         self.introduction_state = {
-            'step': 'debate_started',  # Démarrage direct du débat
+            'step': 'ready_immediate',  # Démarrage immédiat
             'participant_name': 'Participant',
-            'chosen_subject': 'débat général',
-            'introduction_completed': True  # Pas d'introduction interactive
+            'chosen_subject': None,  # Sera défini dynamiquement
+            'introduction_completed': True,  # Pas d'intro bloquante
+            'first_response_ready': True  # Prêt pour première réponse
         }
+        
+        # Cache de réponses rapides pré-générées pour latence < 1s
+        self.quick_response_cache = {
+            'michel_dubois_animateur': [
+                "Bonsoir ! Bienvenue dans notre studio de débat !",
+                "Excellente question ! Développons ce point ensemble...",
+                "C'est effectivement un sujet passionnant !",
+                "Permettez-moi de donner la parole à nos experts...",
+                "Voilà une perspective intéressante à explorer !"
+            ],
+            'sarah_johnson_journaliste': [
+                "Attendez, j'aimerais creuser ce point...",
+                "C'est intéressant, pouvez-vous préciser ?",
+                "J'ai une question qui me brûle les lèvres...",
+                "Les faits montrent pourtant que...",
+                "Permettez-moi d'insister sur ce point..."
+            ],
+            'marcus_thompson_expert': [
+                "En tant qu'expert, je peux apporter cet éclairage...",
+                "La réalité est plus nuancée que cela...",
+                "Permettez-moi d'expliquer les enjeux...",
+                "C'est effectivement un enjeu majeur...",
+                "Il faut distinguer plusieurs aspects..."
+            ]
+        }
+        
+        # Pool de connexions pré-établies pour latence minimale
+        self.connection_pool = {
+            'openai_ready': False,
+            'elevenlabs_ready': False,
+            'warmup_completed': False
+        }
+        
+        # Démarrage asynchrone du warmup
+        asyncio.create_task(self._warmup_connections())
         
         # Pré-optimisation du pipeline de réponses (cache, pool, templates)
         try:
@@ -101,6 +138,129 @@ class MultiAgentManager:
         self.last_message = None
         
         logger.info("🎭 SYSTÈMES DE NATURALITÉ + AUTORITÉ ANIMATEUR initialisés")
+
+    async def _warmup_connections(self):
+        """Pré-établit les connexions pour latence minimale"""
+        try:
+            logger.info("🚀 Démarrage warmup connexions pour latence optimale...")
+            
+            # Warmup OpenAI en parallèle
+            openai_task = asyncio.create_task(self._warmup_openai())
+            
+            # Warmup ElevenLabs en parallèle
+            elevenlabs_task = asyncio.create_task(self._warmup_elevenlabs())
+            
+            # Attendre les deux warmups
+            await asyncio.gather(openai_task, elevenlabs_task, return_exceptions=True)
+            
+            self.connection_pool['warmup_completed'] = True
+            logger.info("✅ Warmup connexions terminé - Latence optimisée")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Warmup partiel: {e}")
+
+    async def _warmup_openai(self):
+        """Réchauffe la connexion OpenAI"""
+        try:
+            # Test minimal de connexion OpenAI
+            import openai
+            client = openai.OpenAI()
+            
+            # Appel minimal pour établir connexion
+            await client.chat.completions.acreate(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=1,
+                timeout=5
+            )
+            
+            self.connection_pool['openai_ready'] = True
+            logger.info("✅ Connexion OpenAI réchauffée")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Warmup OpenAI partiel: {e}")
+
+    async def _warmup_elevenlabs(self):
+        """Réchauffe la connexion ElevenLabs"""
+        try:
+            # Test minimal de connexion ElevenLabs
+            import aiohttp
+            import os
+            
+            headers = {
+                "xi-api-key": os.getenv('ELEVENLABS_API_KEY', 'test')
+            }
+            
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+                async with session.get("https://api.elevenlabs.io/v1/voices", headers=headers) as response:
+                    if response.status in [200, 401]:  # 401 = clé invalide mais connexion OK
+                        self.connection_pool['elevenlabs_ready'] = True
+                        logger.info("✅ Connexion ElevenLabs réchauffée")
+                        
+        except Exception as e:
+            logger.warning(f"⚠️ Warmup ElevenLabs partiel: {e}")
+
+    def is_ready_for_fast_response(self) -> bool:
+        """Vérifie si le système est prêt pour réponse rapide"""
+        return (
+            self.introduction_state['first_response_ready'] and
+            self.connection_pool.get('warmup_completed', False)
+        )
+
+    async def get_immediate_response(self, agent_id: str, context: str = "", 
+                                   user_message: str = "") -> str:
+        """Génère une réponse immédiate < 1 seconde depuis le cache"""
+        
+        if agent_id not in self.quick_response_cache:
+            logger.warning(f"Agent {agent_id} non trouvé dans cache, utilisation fallback")
+            agent_id = "michel_dubois_animateur"
+        
+        cached_responses = self.quick_response_cache[agent_id]
+        
+        # Sélection contextuelle intelligente
+        context_lower = (context + " " + user_message).lower()
+        
+        if agent_id == "michel_dubois_animateur":
+            if any(word in context_lower for word in ["question", "demande", "pourquoi"]):
+                relevant = [r for r in cached_responses if "question" in r.lower() or "développons" in r.lower()]
+                if relevant:
+                    import random
+                    return random.choice(relevant)
+            elif any(word in context_lower for word in ["bonjour", "salut", "début"]):
+                return cached_responses[0]  # "Bonsoir ! Bienvenue..."
+        
+        elif agent_id == "sarah_johnson_journaliste":
+            if any(word in context_lower for word in ["préciser", "expliquer", "comment"]):
+                relevant = [r for r in cached_responses if "préciser" in r.lower() or "creuser" in r.lower()]
+                if relevant:
+                    import random
+                    return random.choice(relevant)
+        
+        elif agent_id == "marcus_thompson_expert":
+            if any(word in context_lower for word in ["expert", "avis", "opinion"]):
+                relevant = [r for r in cached_responses if "expert" in r.lower() or "éclairage" in r.lower()]
+                if relevant:
+                    import random
+                    return random.choice(relevant)
+        
+        # Sélection aléatoire par défaut
+        import random
+        return random.choice(cached_responses)
+
+    def should_use_immediate_response(self, response_time_target: float = 2.0, 
+                                    context_complexity: str = "simple") -> bool:
+        """Détermine si utiliser réponse immédiate selon cible latence"""
+        
+        # Utilise réponse immédiate si :
+        # 1. Cible latence <= 2 secondes
+        # 2. Contexte simple (pas de génération complexe requise)
+        # 3. Système pas encore complètement réchauffé
+        
+        return (
+            response_time_target <= 2.0 or
+            context_complexity == "simple" or
+            not self.connection_pool.get('warmup_completed', False)
+        )
 
     def _detect_all_interpellations(self, text: str, source_id: str = None) -> List[str]:
         """Détecte TOUTES les interpellations (humain ou agent) vers n'importe quel agent cible"""
@@ -235,12 +395,12 @@ class MultiAgentManager:
             state['chosen_subject'] = sujet_choisi
             state['step'] = 'debate_started'
             state['introduction_completed'] = True
-            prenom = state.get('participant_name', '') or self.extract_name_from_message(user_message) or ''
+            prenom = state.get('participant_name', '') or self.extract_name_from_message(user_message) or 'Participant'
             return f"""Michel: {prenom}, excellent choix ! Le sujet "{sujet_choisi}" est effectivement au cœur des enjeux actuels. Sarah, Marcus, vous êtes prêts ? Alors commençons par poser les bases du débat..."""
         
         # 2. Détection de prénom (priorité haute)
         prenom = self.extract_name_from_message(user_message)
-        if prenom:
+        if prenom and not state.get('participant_name'):
             state['participant_name'] = prenom
             state['step'] = 'subject_choice'
             return f"""Michel: Parfait {prenom} ! Maintenant, choisissez le sujet qui vous passionne le plus pour notre débat de ce soir :
@@ -254,7 +414,44 @@ E) **Éducation Numérique** - L'école de demain sera-t-elle virtuelle ?
 
 Dites-moi simplement la lettre de votre choix : A, B, C, D ou E ?"""
         
-        # 3. GESTION PAR ÉTAT INTERNE (logique normale)
+        # 3. Détection de réponses courtes ou incomplètes
+        if len(user_lower) < 10 and not any(word in user_lower for word in ['bonjour', 'salut', 'hello', 'oui', 'non']):
+            # L'utilisateur a probablement donné son nom ou fait un choix
+            if not state.get('participant_name'):
+                # Traiter comme un nom
+                potential_name = user_message.strip().capitalize()
+                if len(potential_name) > 1 and potential_name.isalpha():
+                    state['participant_name'] = potential_name
+                    state['step'] = 'subject_choice'
+                    return f"""Michel: Merci {potential_name} ! Maintenant, choisissez le sujet qui vous passionne le plus pour notre débat de ce soir :
+
+🎯 **Sujets disponibles :**
+A) **Intelligence Artificielle et Emploi** - L'IA va-t-elle remplacer les humains ?
+B) **Écologie vs Économie** - Peut-on concilier croissance et environnement ?
+C) **Télétravail et Société** - Le futur du travail se joue-t-il à distance ?
+D) **Réseaux Sociaux et Démocratie** - Menace ou opportunité pour notre société ?
+E) **Éducation Numérique** - L'école de demain sera-t-elle virtuelle ?
+
+Dites-moi simplement la lettre de votre choix : A, B, C, D ou E ?"""
+            else:
+                # Traiter comme un choix de sujet
+                if user_lower in ['a', 'b', 'c', 'd', 'e']:
+                    subjects = {
+                        'a': 'Intelligence Artificielle et Emploi',
+                        'b': 'Écologie vs Économie', 
+                        'c': 'Télétravail et Société',
+                        'd': 'Réseaux Sociaux et Démocratie',
+                        'e': 'Éducation Numérique'
+                    }
+                    sujet_choisi = subjects.get(user_lower)
+                    if sujet_choisi:
+                        state['chosen_subject'] = sujet_choisi
+                        state['step'] = 'debate_started'
+                        state['introduction_completed'] = True
+                        prenom = state.get('participant_name', 'Participant')
+                        return f"""Michel: {prenom}, excellent choix ! Le sujet "{sujet_choisi}" est effectivement au cœur des enjeux actuels. Sarah, Marcus, vous êtes prêts ? Alors commençons par poser les bases du débat..."""
+        
+        # 4. GESTION PAR ÉTAT INTERNE (logique normale)
         if state['step'] == 'welcome':
             state['step'] = 'name_and_subject_choice'
             return """Michel: Bonsoir et bienvenue dans notre studio de débat ! Je suis Michel Dubois, votre animateur pour cette émission spéciale. Nous allons vivre ensemble un débat passionnant avec nos experts Sarah Johnson, journaliste d'investigation, et Marcus Thompson, notre expert spécialisé.
@@ -276,8 +473,15 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         elif state['step'] == 'subject_choice':
             return "Michel: Je n'ai pas bien compris votre choix. Pouvez-vous me dire A, B, C, D ou E pour le sujet qui vous intéresse ?"
         
-        # FALLBACK: Introduction déjà complète
-        return "Michel: Continuons notre débat..."
+        # 5. FALLBACK: Si l'introduction est déjà complète, passer au débat
+        if state.get('introduction_completed'):
+            return "Michel: Continuons notre débat..."
+        
+        # 6. FALLBACK FINAL: Réinitialiser et recommencer
+        state['step'] = 'welcome'
+        return """Michel: Bonsoir et bienvenue dans notre studio de débat ! Je suis Michel Dubois, votre animateur pour cette émission spéciale. 
+
+Avant de commencer, puis-je connaître votre prénom ?"""
     
     def extract_name_from_message(self, message: str) -> Optional[str]:
         """Extrait le prénom d'un message utilisateur."""
@@ -374,6 +578,48 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         self.setup_turn_management()
         
         logger.info(f"✅ Session initialisée avec {len(self.agents)} agents")
+
+    # === Intégration système d'exercices: application de contexte ===
+    def apply_exercise_context(self, scenario_context: Dict[str, Any]):
+        """Applique un contexte de scénario (non destructif)."""
+        try:
+            ctx = dict(scenario_context or {})
+            if not ctx:
+                return
+            # Note: on adapte immédiatement les signaux adaptatifs dans les prompts
+            logger.info(f"🧩 Contexte scénario appliqué: clés={list(ctx.keys())}")
+            try:
+                ev_preview = ",".join(e.get('type', 'evt') for e in (ctx.get('dynamic_events') or [])[:5]) or "-"
+                trig_preview = ",".join(t.get('trigger', 't') for t in (ctx.get('adaptation_triggers') or [])[:5]) or "-"
+                logger.info(f"🔎 ADAPTIVE_CONTEXT | diff={ctx.get('estimated_difficulty')} | events={ev_preview} | triggers={trig_preview}")
+            except Exception:
+                pass
+            self._adaptive_context = {
+                'dynamic_events': ctx.get('dynamic_events', []),
+                'adaptation_triggers': ctx.get('adaptation_triggers', []),
+                'estimated_difficulty': ctx.get('estimated_difficulty'),
+            }
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible d'appliquer le contexte scénario: {e}")
+
+    def override_agent_personalities(self, adapted_personalities: Dict[str, Dict[str, Any]]):
+        """Adapte légèrement les personnalités/ton sans casser la config.
+        adapted_personalities: mapping agent_id -> {persona/style/...}
+        """
+        try:
+            if not adapted_personalities:
+                return
+            for agent_id, overrides in adapted_personalities.items():
+                agent = self.agents.get(agent_id)
+                if not agent:
+                    continue
+                # Appliquer des attributs non destructifs si présents
+                if hasattr(agent, 'personality_traits') and 'persona' in overrides:
+                    # Préfixer une nuance simple
+                    agent.personality_traits = f"{agent.personality_traits}\nNuance scénario: {overrides['persona']}"
+            logger.info("🎨 Personnalités agents adaptées (scénario)")
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible d'adapter les personnalités: {e}")
         
     def setup_turn_management(self):
         """Configure la gestion des tours de parole"""
@@ -644,6 +890,22 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
 
             # 3. Si pas d'interpellation, traitement normal avec prévention auto-dialogue
             logger.info("📝 Pas d'interpellation, traitement normal avec prévention auto-dialogue")
+            user_lower = user_input.lower()
+            if any(k in user_lower for k in ["je vous entends plus", "je n'entends plus", "plus de son", "pas de son", "vous entends plus", "vous n'entends plus"]):
+                # Accusé de réception audio pour éviter boucles d'intro
+                fallback = self.find_agent_by_style(InteractionStyle.CHALLENGER) or self.find_agent_by_style(InteractionStyle.EXPERT)
+                if fallback:
+                    ack_text = f"{fallback.name.split()[0]}: Je vous entends. Allons droit au but: quel point voulez-vous clarifier ?"
+                    self._record_agent_message(fallback.agent_id, ack_text)
+                    return {
+                        'responses': [{
+                            'agent_id': fallback.agent_id,
+                            'agent_name': fallback.name,
+                            'content': ack_text,
+                            'type': 'audio_ack'
+                        }],
+                        'type': 'audio_ack'
+                    }
             normal = await self._process_normal_input_with_prevention(user_input, user_id)
             normal['processing_time'] = time.time() - start_time
             return normal
@@ -940,8 +1202,10 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         except Exception as e:
             logger.warning(f"⚠️ Impossible d'enregistrer le message agent {agent_id}: {e}")
 
-    async def generate_agent_response(self, agent_id: str, user_message: str) -> str:
-        """Génère la réponse d'un agent spécifique"""
+    async def generate_agent_response(self, agent_id: str, user_message: str, target_latency: float = 2.0) -> str:
+        """Génère une réponse optimisée selon la latence cible"""
+        
+        start_time = time.time()
         
         if agent_id not in self.agents:
             logger.error(f"❌ Agent inconnu: {agent_id}")
@@ -951,6 +1215,40 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         
         # Construire le contexte pour l'agent
         context = self.build_agent_context(agent_id, user_message)
+        
+        # Décision rapide : cache ou génération complète
+        if self.should_use_immediate_response(target_latency, "simple"):
+            logger.info(f"🚀 Réponse immédiate pour {agent_id} (cible: {target_latency}s)")
+            response = await self.get_immediate_response(agent_id, context, user_message)
+            
+            elapsed = time.time() - start_time
+            logger.info(f"✅ Réponse générée en {elapsed:.3f}s: {response[:50]}...")
+            
+            # Mettre à jour les métriques
+            speaking_duration = 3.0  # Durée simulée en secondes
+            self.speaking_times[agent_id] += speaking_duration
+            self.interaction_count[agent_id] += 1
+            
+            # Ajouter à l'historique
+            agent_entry = ConversationEntry(
+                speaker_id=agent_id,
+                speaker_name=agent.name,
+                message=response,
+                timestamp=datetime.now(),
+                is_user=False
+            )
+            self.conversation_history.append(agent_entry)
+            
+            # Mettre à jour le speaker actuel
+            self.current_speaker = agent_id
+            self.last_speaker_change = datetime.now()
+            
+            logger.info(f"🗣️ {agent.name}: {response[:50]}...")
+            
+            return response
+        
+        # Génération complète si latence permet
+        logger.info(f"🎯 Génération complète pour {agent_id} (cible: {target_latency}s)")
 
         # Simuler le temps de réflexion (réduit pour plus de réactivité)
         await asyncio.sleep(0.05)
@@ -987,6 +1285,9 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
         
         logger.info(f"🗣️ {agent.name}: {response[:50]}...")
         
+        elapsed = time.time() - start_time
+        logger.info(f"✅ Réponse complète générée en {elapsed:.3f}s")
+        
         return response
     
     async def simulate_agent_response(self, agent: AgentPersonality, context: str, user_message: str) -> str:
@@ -998,6 +1299,19 @@ Dites-moi votre prénom et la lettre de votre choix : A, B, C, D ou E ?"""
             
             # Construire le prompt avec la personnalité complète de l'agent
             first_name = agent.name.split()[0]
+            # Injecter signaux adaptatifs
+            adaptive_suffix = ""
+            try:
+                if hasattr(self, '_adaptive_context') and self._adaptive_context:
+                    dif = self._adaptive_context.get('estimated_difficulty')
+                    evs = self._adaptive_context.get('dynamic_events') or []
+                    triggers = self._adaptive_context.get('adaptation_triggers') or []
+                    ev_labels = ", ".join(e.get('type', 'evt') for e in evs[:3])
+                    trig_labels = ", ".join(t.get('trigger', 't') for t in triggers[:3])
+                    adaptive_suffix = f"\n\nSIGNAL ADAPTATIF:\n- Difficulté estimée: {dif}\n- Événements dynamiques: {ev_labels or 'aucun'}\n- Triggers: {trig_labels or 'aucun'}\n"
+            except Exception:
+                adaptive_suffix = ""
+
             system_prompt = f"""Tu es {agent.name}, {agent.role}.
 
 PERSONNALITÉ:
@@ -1011,6 +1325,7 @@ STYLE DE COMMUNICATION ({agent.interaction_style.value}):
 
 CONTEXTE DE LA CONVERSATION:
 {context}
+{adaptive_suffix}
 
 AUTRES PARTICIPANTS:
 {', '.join([a.name + ' (' + a.role + ')' for a in self.agents.values() if a.agent_id != agent.agent_id])}
@@ -1148,42 +1463,73 @@ AUTRES PARTICIPANTS:
         except Exception as e:
             logger.warning(f"⚠️ Échec gestion interpellations par agent: {e}")
 
-        # Vérifier si des réactions sont nécessaires
+        # 1) Vérifier si des réactions sont nécessaires
         should_react = await self.should_trigger_reactions_smart(primary_response)
 
-        # Dynamiser: si le modérateur parle, forcer au moins une réaction
+        # 2) Dynamiser: forcer la participation multi-agents
         primary_agent = self.agents.get(primary_agent_id)
-        if not should_react and primary_agent and primary_agent.interaction_style == InteractionStyle.MODERATOR:
-            logger.info("🎯 Forçage: au moins une réaction après l'intervention du modérateur")
-            should_react = True
+        force_reaction = False
+        
+        # Forcer une réaction si :
+        # - Le modérateur parle (pour lancer le débat)
+        # - Un seul agent a parlé plusieurs fois de suite
+        # - Le message est long ou contient des questions
+        if primary_agent and primary_agent.interaction_style == InteractionStyle.MODERATOR:
+            logger.info("🎯 Forçage: réaction après l'intervention du modérateur")
+            force_reaction = True
+        elif len(primary_response) > 100:  # Message long
+            logger.info("🎯 Forçage: réaction après un message long")
+            force_reaction = True
+        elif any(word in primary_response.lower() for word in ['?', 'pensez', 'avis', 'opinion']):
+            logger.info("🎯 Forçage: réaction après une question ou demande d'avis")
+            force_reaction = True
+        
+        # Vérifier si un seul agent monopolise la conversation
+        recent_speakers = self.dialogue_prevention.get_recent_speakers(3)
+        if len(recent_speakers) == 1 and primary_agent_id in recent_speakers:
+            logger.info("🎯 Forçage: un seul agent parle, forcer la participation des autres")
+            force_reaction = True
 
-        if not should_react:
+        if not should_react and not force_reaction:
             logger.info("🤷 Aucune réaction déclenchée")
             return reactions
 
-        # Sélectionner les agents réactifs
+        # 3) Sélectionner les agents réactifs avec priorité
         reacting_agents = self.select_reacting_agents(primary_agent_id, primary_response)
         if not reacting_agents:
-            # Fallback: privilégier challenger puis expert
+            # Fallback: privilégier challenger puis expert, puis journaliste
             fallback_list = []
+            
+            # Chercher un challenger (Sarah Johnson)
             challenger = self.find_agent_by_style(InteractionStyle.CHALLENGER)
-            expert = self.find_agent_by_style(InteractionStyle.EXPERT)
             if challenger and challenger.agent_id != primary_agent_id:
                 fallback_list.append(challenger.agent_id)
+                logger.info(f"🎯 Ajout challenger: {challenger.name}")
+            
+            # Chercher un expert (Marcus Thompson)
+            expert = self.find_agent_by_style(InteractionStyle.EXPERT)
             if expert and expert.agent_id != primary_agent_id:
                 fallback_list.append(expert.agent_id)
-            if not fallback_list:
-                fallback_list = [aid for aid in self.agents if aid != primary_agent_id][:1]
+                logger.info(f"🎯 Ajout expert: {expert.name}")
+            
+            # Si pas assez d'agents, ajouter d'autres
+            if len(fallback_list) < 2:
+                other_agents = [aid for aid in self.agents.keys() if aid != primary_agent_id and aid not in fallback_list]
+                fallback_list.extend(other_agents[:2-len(fallback_list)])
+            
             reacting_agents = fallback_list
-            if not reacting_agents:
-                return reactions
+            logger.info(f"🎯 Agents sélectionnés (fallback): {[self.agents[aid].name for aid in reacting_agents]}")
+
+        if not reacting_agents:
+            logger.warning("⚠️ Aucun agent disponible pour réagir")
+            return reactions
 
         logger.info(
             f"🎭 {len(reacting_agents)} agents vont réagir: "
             f"{[self.agents[aid].name for aid in reacting_agents]}"
         )
 
-        # Générer toutes les réactions EN PARALLÈLE (avec micro-jitter + priorité mention)
+        # 4) Générer toutes les réactions EN PARALLÈLE
         start_parallel = datetime.now()
         tasks = []
         for idx, agent_id in enumerate(reacting_agents):
@@ -1206,7 +1552,7 @@ AUTRES PARTICIPANTS:
             logger.warning("⚠️ Timeout sur génération des réactions")
             reactions_results = ["Timeout"] * len(tasks)
 
-        # Traiter les résultats
+        # 5) Traiter les résultats
         for i, reaction in enumerate(reactions_results):
             agent_id = reacting_agents[i]
             agent = self.agents[agent_id]
@@ -1687,8 +2033,8 @@ Varie tes formules, ne te présente pas à chaque fois."""
     def build_agent_context(self, agent_id: str, user_message: str) -> str:
         """Construit le contexte pour un agent spécifique"""
         
-        # Historique récent (5 derniers messages)
-        recent_history = self.conversation_history[-5:] if self.conversation_history else []
+        # Historique récent (12 derniers messages) pour une meilleure mémoire
+        recent_history = self.conversation_history[-12:] if self.conversation_history else []
         
         context_parts = []
         
@@ -1712,9 +2058,10 @@ Varie tes formules, ne te présente pas à chaque fois."""
         # Historique récent
         if recent_history:
             context_parts.append("\nHISTORIQUE RÉCENT:")
+            # Inclure davantage de contexte, tronqué proprement
             for entry in recent_history:
-                if entry.speaker_id != agent_id:  # Ne pas inclure ses propres messages
-                    context_parts.append(f"- {entry.speaker_name}: {entry.message[:100]}...")
+                label = "Utilisateur" if entry.is_user else entry.speaker_name
+                context_parts.append(f"- {label}: {entry.message[:160]}...")
         
         return "\n".join(context_parts)
 
@@ -1907,3 +2254,28 @@ Continuez à pratiquer pour développer encore plus votre aisance !
         recommendations.append("N'hésitez pas à varier les types de simulations")
         
         return recommendations
+
+    def get_performance_metrics(self) -> Dict[str, Any]:
+        """Retourne les métriques de performance du système"""
+        
+        return {
+            "introduction_ready": self.introduction_state['first_response_ready'],
+            "warmup_completed": self.connection_pool.get('warmup_completed', False),
+            "openai_ready": self.connection_pool.get('openai_ready', False),
+            "elevenlabs_ready": self.connection_pool.get('elevenlabs_ready', False),
+            "cache_size": {
+                agent_id: len(responses) 
+                for agent_id, responses in self.quick_response_cache.items()
+            },
+            "agents_count": len(self.agents),
+            "conversation_entries": len(self.conversation_history)
+        }
+
+    def log_performance_status(self):
+        """Log le statut de performance pour debug"""
+        metrics = self.get_performance_metrics()
+        logger.info("📊 MÉTRIQUES PERFORMANCE:")
+        logger.info(f"   Warmup terminé: {metrics['warmup_completed']}")
+        logger.info(f"   OpenAI prêt: {metrics['openai_ready']}")
+        logger.info(f"   ElevenLabs prêt: {metrics['elevenlabs_ready']}")
+        logger.info(f"   Cache réponses: {sum(metrics['cache_size'].values())} entrées")

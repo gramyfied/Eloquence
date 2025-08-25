@@ -21,5 +21,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Commande de démarrage
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+# Commande de démarrage (logs visibles en stdout, niveau contrôlé via LOG_LEVEL)
+ENV PYTHONUNBUFFERED=1 \
+    LOG_LEVEL=DEBUG
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "debug"]

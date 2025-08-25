@@ -339,7 +339,12 @@ class StudioSituationsProService extends ChangeNotifier {
       final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
       
       // Se connecter à LiveKit
-      await _livekitService.connect(_currentRoomId!, userId: userId);
+      await _livekitService.connect(
+        _currentRoomId!,
+        userId: userId,
+        userName: userName,
+        userSubject: userSubject,
+      );
       
       // Connecter au backend multi-agents avec les données utilisateur
       await _connectToMultiAgentBackend(type, userName: userName, userSubject: userSubject);
@@ -365,61 +370,25 @@ class StudioSituationsProService extends ChangeNotifier {
     }
   }
   
-  /// Connecte au backend multi-agents via HAProxy
+  /// Connecte directement à LiveKit avec les agents multi-agents
   Future<void> _connectToMultiAgentBackend(
     SimulationType type, {
     String? userName,
     String? userSubject,
   }) async {
     try {
-      UnifiedLoggerService.info('🔌 Connexion au backend multi-agents...');
+      UnifiedLoggerService.info('🔌 Connexion directe à LiveKit multi-agents...');
       
-      // URL du backend via HAProxy - utilise la configuration réseau
-      final backendUrl = NetworkConfig.studioBackendUrl;
+      // L'agent multi-agent réel va se connecter automatiquement via LiveKit
+      // Pas besoin de fallback, laissons l'agent réel fonctionner
+      UnifiedLoggerService.info('🎭 Attente de la connexion de l\'agent multi-agent réel...');
       
-      // Configuration des agents pour le type de simulation
-      final agentsConfig = _getAgentsConfig(type);
+      // Envoyer les métadonnées de la simulation pour que l'agent puisse les détecter
+      await _sendSimulationMetadata(type, userName: userName, userSubject: userSubject);
       
-      // Requête de démarrage de session multi-agents
-      final response = await http.post(
-        Uri.parse(backendUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'exercise_type': 'studio_${type.name}',
-          'room_id': _currentRoomId,
-          'simulation_type': type.name,
-          'agents_config': agentsConfig,
-          'max_agents': agentsConfig.length,
-          'user_name': userName ?? 'Participant',
-          'user_subject': userSubject ?? 'Sujet non défini',
-        }),
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Timeout de connexion au backend multi-agents');
-        },
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        UnifiedLoggerService.info('✅ Backend multi-agents connecté: ${data['message']}');
-        
-        // Envoyer les métadonnées via LiveKit avec les données utilisateur
-        await _sendSimulationMetadata(type, userName: userName, userSubject: userSubject);
-      } else {
-        throw Exception('Erreur backend: ${response.statusCode} - ${response.body}');
-      }
     } catch (e) {
-      UnifiedLoggerService.error('❌ Erreur connexion backend multi-agents: $e');
-      
-      // Fallback : utiliser les agents locaux si le backend n'est pas disponible
-      if (e.toString().contains('Connection refused') ||
-          e.toString().contains('Timeout')) {
-        UnifiedLoggerService.warning('⚠️ Backend indisponible, utilisation des agents locaux');
-        await _fallbackToLocalAgents(type);
-      } else {
-        rethrow;
-      }
+      UnifiedLoggerService.error('❌ Erreur connexion multi-agents: $e');
+      rethrow;
     }
   }
   
@@ -475,34 +444,29 @@ class StudioSituationsProService extends ChangeNotifier {
   
   /// Attendre que les agents rejoignent la room
   Future<void> _waitForAgentsToJoin() async {
-    UnifiedLoggerService.info('⏳ En attente des agents...');
+    UnifiedLoggerService.info('⏳ En attente des agents multi-agents réels...');
     
     _agentCheckAttempts = 0;
     final completer = Completer<void>();
     
-    _agentCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _agentCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _agentCheckAttempts++;
       
-      if (_activeAgents.length >= (_simulationAgents[_currentSimulation!]?.length ?? 0)) {
-        // Tous les agents ont rejoint
+      // Attendre plus longtemps pour l'agent multi-agent réel (30 secondes)
+      if (_agentCheckAttempts >= 15) { // 15 * 2 secondes = 30 secondes
         timer.cancel();
-        UnifiedLoggerService.info('✅ Tous les agents ont rejoint la simulation');
-        _addWelcomeMessage();
-        if (!completer.isCompleted) completer.complete();
-      } else if (_agentCheckAttempts >= _maxAgentCheckAttempts) {
-        // Timeout
-        timer.cancel();
-        UnifiedLoggerService.warning('⚠️ Timeout en attente des agents');
+        UnifiedLoggerService.warning('⚠️ Timeout en attente des agents multi-agents');
         
         // Si aucun agent n'a rejoint, utiliser le fallback
         if (_activeAgents.isEmpty) {
+          UnifiedLoggerService.warning('📦 Aucun agent multi-agent détecté, utilisation du mode fallback');
           _fallbackToLocalAgents(_currentSimulation!);
         }
         
         _addWelcomeMessage();
         if (!completer.isCompleted) completer.complete();
       } else {
-        UnifiedLoggerService.debug('Agents connectés: ${_activeAgents.length}/${_simulationAgents[_currentSimulation!]?.length ?? 0}');
+        UnifiedLoggerService.debug('Attente agents multi-agents: tentative ${_agentCheckAttempts}/15');
       }
     });
     
@@ -538,7 +502,7 @@ class StudioSituationsProService extends ChangeNotifier {
   }) async {
     final metadata = {
       'type': 'simulation_start',
-      'exercise_type': 'studio_${type.name}',
+      'exercise_type': _getExerciseTypeForSimulation(type),
       'simulation_type': type.name,
       'agents_count': _activeAgents.length,
       'agents': _activeAgents.map((agent) => {
@@ -549,10 +513,30 @@ class StudioSituationsProService extends ChangeNotifier {
       'user_id': 'user_${DateTime.now().millisecondsSinceEpoch}',
       'user_name': userName ?? 'Participant',
       'user_subject': userSubject ?? 'Sujet non défini',
+      // Champ topic pour harmoniser la consommation côté agents
+      'topic': userSubject ?? 'Sujet non défini',
       'timestamp': DateTime.now().toIso8601String(),
     };
     
     await _livekitService.sendMessage(json.encode(metadata));
+  }
+  
+  /// Mappe les types de simulation vers les types d'exercices du backend
+  String _getExerciseTypeForSimulation(SimulationType type) {
+    switch (type) {
+      case SimulationType.debatPlateau:
+        return 'studio_debate_tv';
+      case SimulationType.entretienEmbauche:
+        return 'studio_job_interview';
+      case SimulationType.reunionDirection:
+        return 'studio_boardroom';
+      case SimulationType.conferenceVente:
+        return 'studio_sales_conference';
+      case SimulationType.conferencePublique:
+        return 'studio_keynote';
+      default:
+        return 'studio_${type.name}';
+    }
   }
   
   /// Configure les listeners pour les événements LiveKit
@@ -730,7 +714,6 @@ class StudioSituationsProService extends ChangeNotifier {
   /// Met à jour le speaker actif
   void _updateActiveSpeaker(Map<String, dynamic> data) {
     final speakerId = data['speaker_id'] ?? '';
-    final speakerType = data['speaker_type'] ?? '';
     
     _currentSpeaker = speakerId;
     

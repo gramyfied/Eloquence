@@ -1,0 +1,27 @@
+name: eloquence
+services:
+  multiagent:
+    build:
+      context: ../../services/livekit-agent
+      dockerfile: Dockerfile.multiagent
+    image: eloquence-livekit-agent-multiagent:latest
+    networks:
+      - eloquence-network
+    environment:
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - MISTRAL_BASE_URL=${MISTRAL_BASE_URL}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_MODEL=${MISTRAL_MODEL}
+      - MISTRAL_USE_PROXY=1
+      - MISTRAL_PROXY_URL=http://mistral-conversation:8001/v1
+      - ELEVENLABS_RESAMPLE_48K=1
+    depends_on:
+      livekit-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  # Neutralise l'exposition de port de redis pour éviter le conflit 6379
+  redis:
+    ports: []

@@ -180,14 +180,15 @@ void main() {
       } else {
         // Mode Mistral classique
         const mistralUrl = 'https://api.mistral.ai/v1/chat/completions';
-        const mistralModel = 'mistral-small-latest';
+        // const mistralModel = 'mistral-small-latest'; // Déprécié
+        const mistralModel = 'mistral-nemo-instruct-2407';
         
         debugPrint('🏗️ Configuration Mistral classique construite:');
         debugPrint('   URL: $mistralUrl');
         debugPrint('   Modèle: $mistralModel');
         
         expect(mistralUrl, contains('api.mistral.ai'));
-        expect(mistralModel, equals('mistral-small-latest'));
+        expect(mistralModel, equals('mistral-nemo-instruct-2407'));
       }
     });
   });

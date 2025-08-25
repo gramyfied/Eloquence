@@ -47,7 +47,8 @@ class EloquenceConversationService {
     Map<String, dynamic>? userConfig,
   }) async {
     try {
-      final roomName = 'confidence_boost_${exerciseType}_${DateTime.now().millisecondsSinceEpoch}';
+      // Ne pas préfixer par confidence_boost pour laisser le router serveur décider
+      final roomName = '${exerciseType}_${DateTime.now().millisecondsSinceEpoch}';
       final participantName = 'user_${DateTime.now().millisecondsSinceEpoch}';
       
       final requestBody = {

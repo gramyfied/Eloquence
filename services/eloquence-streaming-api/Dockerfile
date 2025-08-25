@@ -19,5 +19,7 @@ COPY . .
 # Exposer le port de l'API
 EXPOSE 8005
 
-# Commande de démarrage
+# Commande de démarrage (logs stdout non bufferisés et niveau contrôlé)
+ENV PYTHONUNBUFFERED=1 \
+    LOG_LEVEL=DEBUG
 CMD ["python", "app.py"]

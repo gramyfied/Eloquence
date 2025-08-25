@@ -25,7 +25,8 @@ void main() {
       };
       
       final body = {
-        'model': 'mistral-small-latest',
+        // 'model': 'mistral-small-latest', // Déprécié
+        'model': 'mistral-nemo-instruct-2407',
         'messages': [
           {
             'role': 'user',

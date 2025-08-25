@@ -14,6 +14,7 @@ from livekit.agents import (
     function_tool,
     llm,
 )
+from unified_entrypoint import unified_entrypoint
 from livekit.plugins import openai, silero
 from vosk_stt_interface import VoskSTTFixed as VoskSTT
 from llm_client import llm_client
@@ -279,11 +280,9 @@ class RobustLiveKitAgent:
             
         # STT avec fallback Vosk → OpenAI
         try:
-            # DÉBOGAGE: Forcer l'utilisation de OpenAI STT pour valider le flux
-            logger.warning("🧪 MODE DÉBOGAGE: Utilisation de OpenAI STT au lieu de Vosk")
-            stt = create_openai_stt()
+            stt = create_vosk_stt_with_fallback()
             components['stt'] = stt
-            logger.info("✅ STT OpenAI (pour test) créé")
+            logger.info("✅ STT avec fallback créé (Vosk prioritaire)")
         except Exception as e:
             logger.error(f"❌ Erreur STT: {e}")
             raise
@@ -310,11 +309,11 @@ class RobustLiveKitAgent:
         
     async def create_robust_tts(self):
         """Crée un TTS robuste avec multiples fallbacks et voix spécialisées"""
-        api_key = os.getenv('OPENAI_API_KEY')
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
         
-        if not api_key:
-            logger.warning("⚠️ OPENAI_API_KEY manquante, utilisation Silero TTS")
-            return silero.TTS()
+        if not openai_api_key and not elevenlabs_api_key:
+            raise RuntimeError("Aucune clé TTS disponible (OPENAI_API_KEY ou ELEVENLABS_API_KEY). Configurez au moins une clé.")
             
         # Sélection de la voix selon le personnage
         voice_mapping = {
@@ -327,27 +326,23 @@ class RobustLiveKitAgent:
         selected_voice = voice_mapping.get(self.exercise_config.ai_character, "alloy")
         logger.info(f"🎭 Voix sélectionnée pour {self.exercise_config.ai_character}: {selected_voice}")
             
-        # Tentative OpenAI TTS principal avec voix spécialisée
-        try:
-            tts = openai.TTS(
-                voice=selected_voice,
-                api_key=api_key,
-                model="tts-1",
-                base_url="https://api.openai.com/v1"
-            )
-            logger.info(f"✅ TTS OpenAI créé avec voix {selected_voice} pour {self.exercise_config.ai_character}")
-            return tts
-        except Exception as e:
-            logger.warning(f"⚠️ OpenAI TTS principal échoué: {e}")
-            
-        # Fallback Silero
-        try:
-            tts = silero.TTS()
-            logger.info("✅ TTS Silero fallback créé")
-            return tts
-        except Exception as e:
-            logger.error(f"❌ Même Silero TTS échoue: {e}")
-            raise
+        # Si clé OpenAI dispo, utiliser OpenAI TTS (stable avec LiveKit Agents)
+        if openai_api_key:
+            try:
+                tts = openai.TTS(
+                    voice=selected_voice,
+                    api_key=openai_api_key,
+                    model="tts-1",
+                    base_url="https://api.openai.com/v1"
+                )
+                logger.info(f"✅ TTS OpenAI créé avec voix {selected_voice} pour {self.exercise_config.ai_character}")
+                return tts
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI TTS échoué: {e}")
+
+        # Si OpenAI indisponible mais ELEVENLABS est configuré, nous évitons Silero (non supporté)
+        # et remontons une erreur explicite pour maintenir la robustesse.
+        raise RuntimeError("OpenAI TTS indisponible et Silero non supporté. ElevenLabs est réservé aux simulations multi‑agents.")
             
     async def run_exercise(self, ctx: JobContext, dynamic_metadata: Optional[Dict[str, Any]] = None):
         """Execute l'exercice avec gestion robuste et métadonnées dynamiques"""
@@ -587,6 +582,26 @@ def create_mistral_llm():
 async def robust_entrypoint(ctx: JobContext):
     """Point d'entrée robuste avec framework modulaire et gestion d'erreurs"""
     logger.info("🚀 DÉMARRAGE AGENT ROBUSTE AVEC FRAMEWORK MODULAIRE")
+    
+    # Garde-fou: si la room correspond à un débat, rerouter immédiatement vers le multi-agent
+    try:
+        room_lower = (ctx.room.name or "").lower()
+    except Exception:
+        room_lower = ""
+    should_route_debate = (
+        'debatplateau' in room_lower or 
+        'debat_plateau' in room_lower or 
+        ('debat' in room_lower and 'plateau' in room_lower) or
+        ('debate' in room_lower and 'tv' in room_lower) or
+        ('studio' in room_lower and 'debat' in room_lower)
+    )
+    if should_route_debate:
+        logger.error("❌ ROUTE FIX MAIN: Détection débat côté main.py, redirection vers multi-agent")
+        try:
+            from multi_agent_main import multiagent_entrypoint
+            return await multiagent_entrypoint(ctx)
+        except Exception as e:
+            logger.error(f"❌ ROUTE FIX MAIN ÉCHEC: {e}")
     
     try:
         # 1. ÉTABLIR LA CONNEXION LIVEKIT
@@ -909,10 +924,8 @@ async def legacy_entrypoint(ctx: JobContext):
             raise
             
         try:
-            # DÉBOGAGE: Forcer l'utilisation de OpenAI STT pour valider le flux
-            logger.warning("🧪 MODE DÉBOGAGE: Utilisation de OpenAI STT au lieu de Vosk dans legacy_entrypoint")
-            stt = create_openai_stt()
-            logger.info("✅ STT OpenAI (pour test) créé")
+            stt = create_vosk_stt_with_fallback()
+            logger.info("✅ STT Vosk (fallback OpenAI) créé")
         except Exception as e:
             logger.error(f"❌ Erreur STT: {e}")
             raise
@@ -927,10 +940,7 @@ async def legacy_entrypoint(ctx: JobContext):
         # TTS avec fallbacks multiples
         try:
             api_key = os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                logger.warning("⚠️ OPENAI_API_KEY manquante, utilisation Silero TTS")
-                tts = silero.TTS()
-            else:
+            if api_key:
                 try:
                     tts = openai.TTS(
                         voice="alloy",
@@ -940,11 +950,13 @@ async def legacy_entrypoint(ctx: JobContext):
                     )
                     logger.info("✅ TTS OpenAI créé")
                 except Exception as openai_error:
-                    logger.warning(f"⚠️ OpenAI TTS échoué: {openai_error}, fallback Silero")
-                    tts = silero.TTS()
+                    logger.error(f"❌ OpenAI TTS échoué: {openai_error}")
+                    raise
+            else:
+                raise RuntimeError("OPENAI_API_KEY manquante pour le TTS")
         except Exception as e:
             logger.error(f"❌ Erreur TTS générale: {e}")
-            tts = silero.TTS()  # Fallback ultime
+            raise
         
         # Création de la session
         session = AgentSession(
@@ -1276,7 +1288,7 @@ if __name__ == "__main__":
     
     # Configuration WorkerOptions avec l'entrypoint robuste
     worker_options = agents.WorkerOptions(
-        entrypoint_fnc=robust_entrypoint
+        entrypoint_fnc=unified_entrypoint
     )
     
     logger.info("🎯 WorkerOptions configuré avec agent robuste")

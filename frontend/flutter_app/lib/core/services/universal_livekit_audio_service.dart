@@ -246,7 +246,9 @@ class UniversalLiveKitAudioService {
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'room_name': 'confidence_boost_${exerciseType}_${DateTime.now().millisecondsSinceEpoch}',
+          // Nom de room neutre et compatible avec le router unifié
+          // (évite de forcer une détection confidence_boost côté serveur)
+          'room_name': '${exerciseType}_${DateTime.now().millisecondsSinceEpoch}',
           'participant_name': 'user_$userId',
           'participant_identity': userId,
           'grants': {

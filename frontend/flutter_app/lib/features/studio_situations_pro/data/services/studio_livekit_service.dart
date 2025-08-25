@@ -39,7 +39,7 @@ class StudioLiveKitService {
   StudioLiveKitService(this._ref);
 
   /// Se connecte à une room LiveKit
-  Future<void> connect(String roomName, {required String userId}) async {
+  Future<void> connect(String roomName, {required String userId, String? userName, String? userSubject}) async {
     if (_room != null && _room?.connectionState == ConnectionState.connected) {
       UnifiedLoggerService.info('Already connected to room: ${_room?.name}');
       return;
@@ -60,14 +60,17 @@ class StudioLiveKitService {
         ),
       );
       
-      // Générer un token (dans un cas réel, cela viendrait du backend)
-      final token = await _generateToken(roomName, userId);
+      // Générer un token avec métadonnées attachées
+      final token = await _generateToken(roomName, userId, userName: userName, userSubject: userSubject);
 
       await _room!.connect(NetworkConfig.livekitUrl, token, roomOptions: roomOptions);
       _isConnected = true;
       _connectionStateController.add(ConnectionState.connected);
       
       UnifiedLoggerService.info('Successfully connected to LiveKit room: ${_room?.name}');
+      
+      // Attacher les métadonnées à la room après connexion (non-bloquant)
+      await _attachRoomMetadata(userName: userName, userSubject: userSubject);
       
       _setupListeners();
       
@@ -82,8 +85,47 @@ class StudioLiveKitService {
     }
   }
 
+  /// Attache les métadonnées à la room pour que les agents puissent les récupérer
+  Future<void> _attachRoomMetadata({String? userName, String? userSubject}) async {
+    try {
+      if (_room?.localParticipant == null) {
+        UnifiedLoggerService.warning('Local participant not available for metadata attachment');
+        return;
+      }
+
+      // Créer les métadonnées de la room
+      final roomMetadata = {
+        'exercise_type': 'studio_debate_tv',
+        'user_name': userName ?? 'Participant',
+        'user_subject': userSubject ?? 'Sujet non défini',
+        'topic': userSubject ?? 'Sujet non défini',
+        'timestamp': DateTime.now().toIso8601String(),
+        'room_type': 'multi_agent_simulation',
+      };
+
+      // Attacher les métadonnées au participant local (non-bloquant)
+      try {
+        _room!.localParticipant!.setMetadata(json.encode(roomMetadata));
+        UnifiedLoggerService.info('✅ Métadonnées attachées au participant: ${json.encode(roomMetadata)}');
+        
+        // Envoyer également les métadonnées via un message de données pour s'assurer qu'elles sont reçues
+        await sendMessage(json.encode({
+          'type': 'room_metadata',
+          'metadata': roomMetadata,
+        }));
+        UnifiedLoggerService.info('✅ Métadonnées envoyées via message de données');
+        
+      } catch (e) {
+        UnifiedLoggerService.error('❌ Erreur lors de l\'attachement des métadonnées: $e');
+      }
+      
+    } catch (e) {
+      UnifiedLoggerService.error('❌ Erreur lors de l\'attachement des métadonnées: $e');
+    }
+  }
+
   /// Génère un token d'authentification via le backend
-  Future<String> _generateToken(String roomName, String userId) async {
+  Future<String> _generateToken(String roomName, String userId, {String? userName, String? userSubject}) async {
     try {
       // Appeler le backend pour générer un token réel
       final response = await http.post(
@@ -93,8 +135,12 @@ class StudioLiveKitService {
           'room': roomName,
           'identity': userId,
           'metadata': json.encode({
-            'exercise_type': 'studio_situations_pro',
+            'exercise_type': 'studio_debate_tv',
             'user_role': 'participant',
+            // Propager la configuration utilisateur dès le token
+            'user_name': userName ?? 'Participant',
+            'user_subject': userSubject ?? 'Sujet non défini',
+            'topic': userSubject ?? 'Sujet non défini',
           }),
         }),
       ).timeout(const Duration(seconds: 10));
@@ -126,7 +172,7 @@ class StudioLiveKitService {
       // Configuration supplémentaire pour réduire la sensibilité
       await _configureAudioSensitivity(audioTrack);
       
-      await localParticipant?.publishAudioTrack(audioTrack);
+      await localParticipant!.publishAudioTrack(audioTrack);
       UnifiedLoggerService.info('Local audio track published with reduced sensitivity.');
     } catch (e) {
       UnifiedLoggerService.error('Could not publish audio track: $e');
@@ -160,7 +206,7 @@ class StudioLiveKitService {
       _connectionStateController.add(state);
       
       if (state == ConnectionState.connected) {
-        UnifiedLoggerService.info('Room connected: ${_room?.name}');
+        UnifiedLoggerService.info('Room connected: ${_room!.name}');
         _isConnected = true;
         
         // Simuler l'arrivée des agents après connexion
@@ -173,7 +219,7 @@ class StudioLiveKitService {
     
     // Écouter les participants et leurs pistes audio
     _room?.addListener(() {
-      final participants = _room?.remoteParticipants.values.toList() ?? [];
+      final participants = _room!.remoteParticipants.values.toList();
       for (final participant in participants) {
         participant.addListener(() {
           // Écouter les changements de l'état du participant
@@ -203,7 +249,8 @@ class StudioLiveKitService {
     // Écouter les événements via room events
     _room?.events.listen((event) {
       if (event is DataReceivedEvent) {
-        UnifiedLoggerService.debug('Data received from ${event.participant?.identity}: ${String.fromCharCodes(event.data)}');
+        final pid = event.participant?.identity ?? 'unknown';
+        UnifiedLoggerService.debug('Data received from $pid: ${String.fromCharCodes(event.data)}');
         _handleAgentData(Uint8List.fromList(event.data));
       } else if (event is ParticipantConnectedEvent) {
         UnifiedLoggerService.info('Participant connected: ${event.participant.identity}');
@@ -421,7 +468,7 @@ class StudioLiveKitService {
     
     try {
       final data = utf8.encode(message);
-      await _room!.localParticipant?.publishData(
+      await _room!.localParticipant!.publishData(
         Uint8List.fromList(data),
         reliable: true,
       );

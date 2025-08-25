@@ -2,5 +2,45 @@
 include:
   - docker/compose/docker-compose.base.yml
 
-# Pour activer le système multi-agents, utiliser :
-# docker compose -f docker-compose.yml -f docker/compose/docker-compose.multiagent.yml up -d
+services:
+  # Agent Multi-Agents Principal (système amélioré)
+  livekit-agent-multiagent:
+    build:
+      context: .
+      dockerfile: docker/dockerfiles/livekit-agent.multiagent.Dockerfile
+    container_name: eloquence-multiagent
+    ports:
+      - "8080:8080"  # Exposer le port HTTP de l'agent
+    environment:
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=devsecret123456789abcdef0123456789abcdef
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_BASE_URL=http://mistral-conversation:8001/v1
+      - MISTRAL_USE_PROXY=1
+      - MISTRAL_PROXY_URL=http://mistral-conversation:8001/v1
+      - MISTRAL_MODEL=mistral-nemo-instruct-2407
+      - ELOQUENCE_EXERCISES_ENABLED=1
+      - AGENT_TYPE=multi_agent_enhanced
+      - MAX_CONCURRENT_SESSIONS=5
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      livekit-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mistral-conversation:
+        condition: service_healthy
+    networks:
+      - eloquence-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Pas de bind-mount en dev pour éviter d'écraser le code embarqué dans l'image

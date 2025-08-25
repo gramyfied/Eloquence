@@ -18,7 +18,10 @@ class LLMOptimizer:
     """Gestionnaire optimisé pour les appels LLM avec cache et sélection de modèle"""
     
     def __init__(self):
-        self.api_key = os.getenv('OPENAI_API_KEY')
+        # Priorité à OpenAI, fallback Mistral
+        self.openai_key = os.getenv('OPENAI_API_KEY')
+        self.mistral_key = os.getenv('MISTRAL_API_KEY')
+        self.api_key = self.openai_key or self.mistral_key
         self.redis_client = self._init_redis()
         self.cache_ttl = 3600  # 1 heure de cache par défaut
         self.usage_stats = {
@@ -33,7 +36,9 @@ class LLMOptimizer:
         # Coûts approximatifs par 1000 tokens (en USD)
         self.model_costs = {
             'gpt-3.5-turbo': {'input': 0.0015, 'output': 0.002},
-            'gpt-4o-mini': {'input': 0.00015, 'output': 0.0006}
+            'gpt-4o': {'input': 0.005, 'output': 0.015},
+            # 'mistral-small-latest': {'input': 0.0003, 'output': 0.0006},  # Déprécié
+            'mistral-nemo-instruct-2407': {'input': 0.0003, 'output': 0.0006},
         }
         
     def _init_redis(self) -> Optional[redis.Redis]:
@@ -125,16 +130,35 @@ class LLMOptimizer:
             else:
                 self.usage_stats['cache_misses'] += 1
         
-        # Sélection intelligente du modèle
+        # Sélection intelligente du modèle - GPT-4o en priorité, Mistral en fallback
         use_advanced = self._should_use_advanced_model(task_type, complexity)
-        model = 'gpt-4o-mini' if use_advanced else 'gpt-3.5-turbo'
+        
+        # Priorité 1: GPT-4o si disponible et tâche complexe
+        openai_key = os.getenv('OPENAI_API_KEY')
+        if openai_key and use_advanced:
+            model = 'gpt-4o'
+        elif openai_key:
+            model = 'gpt-3.5-turbo'
+        # Fallback: Mistral si configuré
+        elif os.getenv('MISTRAL_BASE_URL'):
+            model = os.getenv('MISTRAL_MODEL', 'mistral-nemo-instruct-2407')
+        else:
+            # Fallback final
+            model = 'gpt-3.5-turbo'
         
         # Optimisation des prompts pour réduire les tokens
         optimized_messages = self._optimize_messages(messages, task_type)
         
         try:
-            # Appel API OpenAI
-            client = openai_client.OpenAI(api_key=self.api_key)
+            # Appel via client OpenAI - priorité à OpenAI, fallback Mistral
+            if openai_key:
+                base_url = 'https://api.openai.com/v1'
+                api_key = openai_key
+            else:
+                base_url = os.getenv('MISTRAL_BASE_URL')
+                api_key = self.api_key
+                
+            client = openai_client.OpenAI(api_key=api_key, base_url=base_url)
             
             # Paramètres optimisés selon le type de tâche
             temperature = self._get_optimal_temperature(task_type)
@@ -155,10 +179,10 @@ class LLMOptimizer:
             
             # Calcul des économies
             if not use_advanced:
-                # Économie en utilisant GPT-3.5 au lieu de GPT-4o-mini
+                # Économie en utilisant GPT-3.5 au lieu de GPT-4o
                 tokens_used = response.usage.total_tokens if hasattr(response, 'usage') else 100
                 cost_difference = (
-                    self.model_costs['gpt-4o-mini']['input'] - 
+                    self.model_costs['gpt-4o']['input'] - 
                     self.model_costs['gpt-3.5-turbo']['input']
                 ) * tokens_used / 1000
                 self.usage_stats['cost_saved'] += cost_difference

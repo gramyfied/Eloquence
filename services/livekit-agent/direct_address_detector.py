@@ -56,6 +56,7 @@ class DirectAddressDetector:
             f"{agent_first_name}?",
             f"{agent_first_name}:",
             f"{agent_first_name}.",
+            f"{agent_first_name}!",
 
             # Patterns avec questions
             f"{agent_first_name} que",
@@ -102,8 +103,11 @@ class DirectAddressDetector:
 
         # Patterns regex pour plus de flexibilité
         regex_patterns = [
-            rf"\b{re.escape(agent_first_name)}\b[,\s]",
+            # prénom suivi d'une ponctuation ou espace
+            rf"\b{re.escape(agent_first_name)}\b[\s,;:!\?…]",
+            # prénom en mot entier dans la phrase
             rf"(^|\s){re.escape(agent_first_name)}(\s|$)",
+            # prénom suivi d'un mot déclencheur
             rf"{re.escape(agent_first_name)}\s+(que|comment|pouvez|qu'en|votre)",
         ]
 
@@ -114,10 +118,9 @@ class DirectAddressDetector:
 
         # NOUVEAU: Détection d'interpellations indirectes (questions sans nom)
         # MAIS seulement si c'est une question générale ET qu'on a un contexte d'animateur
-        if self._is_general_question(text_lower):
-            # Pour les questions générales, on ne détecte PAS automatiquement tous les agents
-            # Il faut un contexte spécifique (comme une directive d'animateur)
-            return False
+        # Si l'animateur s'adresse explicitement à un agent (ex: "Sarah !" ou "Marcus ?"),
+        # cela a déjà été couvert par les patterns ci-dessus.
+        # Les questions générales ne déclenchent pas par défaut.
 
         return False
 

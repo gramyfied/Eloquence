@@ -58,26 +58,29 @@ import multiprocessing
 NUM_WORKERS = min(4, multiprocessing.cpu_count())
 
 def normalize_unicode_text(text: str) -> str:
-    """Normalise le texte Unicode et convertit les émojis en texte ASCII"""
+    """Normalise le texte Unicode en préservant les accents et remplace quelques émojis par des équivalents textuels.
+
+    Important: on NE convertit PAS en ASCII pour conserver les caractères accentués (é, à, è, ...).
+    """
     if not text:
         return ""
-    
+
     normalized = unicodedata.normalize('NFC', text)
-    
+
     emoji_map = {
-        '🌟': 'Excellent', '👍': 'Tres bien', '✅': 'Bon', '💪': 'Encourageant',
-        '😊': 'Content', '🎉': 'Felicitations', '😞': 'Peut mieux faire',
-        '⚡': 'Energie', '📊': 'Statistiques', '•': '-', '→': '->',
+        '🌟': 'Excellent', '👍': 'Très bien', '✅': 'Bon', '💪': 'Encourageant',
+        '😊': 'Content', '🎉': 'Félicitations', '😞': 'Peut mieux faire',
+        '⚡': 'Énergie', '📊': 'Statistiques', '•': '-', '→': '->',
         '←': '<-', '↑': '^', '↓': 'v'
     }
-    
+
     for emoji, text_replacement in emoji_map.items():
         normalized = normalized.replace(emoji, text_replacement)
-    
-    ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
-    ascii_text = re.sub(r'\s+', ' ', ascii_text).strip()
-    
-    return ascii_text
+
+    # Compacter les espaces sans supprimer les accents
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+
+    return normalized
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

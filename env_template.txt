@@ -5,6 +5,13 @@
 # === OPENAI (OBLIGATOIRE) ===
 OPENAI_API_KEY=sk-proj-VOTRE_VRAIE_CLE_OPENAI_ICI
 
+# === ELEVENLABS (OBLIGATOIRE pour système révolutionnaire) ===
+ELEVENLABS_API_KEY=sk_18840187b0e7d70936fa166d3ac5ea4dcc853b675aab7df4
+
+# === MISTRAL (FALLBACK) ===
+MISTRAL_API_KEY=VOTRE_CLE_MISTRAL_ICI
+MISTRAL_BASE_URL=https://api.scaleway.com/llm-inference/v1/regions/fr-par/endpoints/your-endpoint-id
+
 # === LIVEKIT ===
 LIVEKIT_URL=ws://localhost:7880
 LIVEKIT_API_KEY=devkey

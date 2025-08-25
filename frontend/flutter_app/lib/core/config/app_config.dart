@@ -8,8 +8,20 @@ class AppConfig {
   // Fonction utilitaire pour substituer localhost avec l'IP correcte en mode debug
   static String _replaceLocalhostWithDevIp(String url) {
     if (kDebugMode && url.contains('localhost')) {
-      // FIX: Utiliser l'IP machine hôte pour tous les cas car Docker expose sur 0.0.0.0
-      const devIp = '192.168.1.44';
+      String devIp = 'localhost';
+      try {
+        // Permettre override via .env pour appareils physiques
+        final envIp = dotenv.env['MOBILE_HOST_IP'];
+        if (envIp != null && envIp.isNotEmpty) {
+          devIp = envIp;
+        } else if (Platform.isAndroid) {
+          // Émulateur Android → alias localhost
+          devIp = '10.0.2.2';
+        }
+      } catch (_) {
+        // fallback
+        devIp = 'localhost';
+      }
       final newUrl = url.replaceFirst('localhost', devIp);
       debugPrint('🌐 URL remplacée: $url → $newUrl');
       return newUrl;
@@ -19,12 +31,6 @@ class AppConfig {
 
   // URLs des services
   static String get livekitUrl {
-    // For debug on device, forcer le port exposé 8780
-    if (kDebugMode) {
-      const debugUrl = 'ws://192.168.1.44:8780';
-      debugPrint('🔧 DEBUG: Force livekitUrl = $debugUrl');
-      return debugUrl;
-    }
     final url = dotenv.env['LIVEKIT_URL'] ?? 'ws://localhost:7880';
     return isProduction ? "wss://your-prod-server.com" : _replaceLocalhostWithDevIp(url);
   }
@@ -40,12 +46,6 @@ class AppConfig {
 
   // URL du serveur de tokens LiveKit
   static String get livekitTokenUrl {
-    // For debug on device, forcer le port exposé 8804
-    if (kDebugMode) {
-      const debugUrl = 'http://192.168.1.44:8804';
-      debugPrint('🔧 DEBUG: Force livekitTokenUrl = $debugUrl');
-      return debugUrl;
-    }
     final url = dotenv.env['LIVEKIT_TOKEN_URL'] ?? 'http://localhost:8004';
     return isProduction ? "https://your-prod-server.com/livekit-tokens" : _replaceLocalhostWithDevIp(url);
   }

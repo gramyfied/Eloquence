@@ -226,6 +226,14 @@ class VoskSTTFixed(stt.STT):
                     
                     processing_time = asyncio.get_event_loop().time() - start_time
                     text = result.get('text', '').strip()
+                    # Normaliser les caractères Unicode (préserver les accents)
+                    try:
+                        import unicodedata
+                        text = unicodedata.normalize('NFC', text)
+                        # Forcer l'encodage/décodage UTF-8 pour éliminer les substitutions
+                        text = text.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+                    except Exception:
+                        pass
                     confidence = result.get('confidence', 0.0)
                     
                     logger.info(f"✅ [STT-TRACE] Vosk STT - {processing_time:.3f}s - '{text}' (conf: {confidence:.2f})")
